@@ -7,10 +7,8 @@ from rest_framework.permissions import AllowAny
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from users import tasks
-from users.serializers.register import (
-    RegisteredUserPayloadSerializer,
-    RegisterUserSerializer,
-)
+from users.serializers.register import (RegisteredUserPayloadSerializer,
+                                        RegisterUserSerializer)
 from utils.response import Response
 from utils.utils import EDIT_PROFILE_URL, generate_otp, generate_temp_id
 

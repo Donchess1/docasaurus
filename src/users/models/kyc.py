@@ -1,9 +1,9 @@
 import uuid
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
 User = get_user_model()
-
 
 
 class UserKYC(models.Model):
@@ -18,8 +18,9 @@ class UserKYC(models.Model):
         ("ACTIVE", "ACTIVE"),
         ("INACTIVE", "INACTIVE"),
     )
-    id = models.UUIDField(unique=True, primary_key=True,
-                          default=uuid.uuid4, editable=False)
+    id = models.UUIDField(
+        unique=True, primary_key=True, default=uuid.uuid4, editable=False
+    )
     user_id = user_id = models.OneToOneField(User, on_delete=models.CASCADE)
     type = models.CharField(max_length=255, choices=KYC_CHOICES)
     status = models.CharField(

@@ -59,14 +59,14 @@ black-check:
 black-diff:
 	docker-compose -f docker-compose.yml exec api black --diff --exclude=migrations --exclude=/app/venv --exclude=/app/env --exclude=venv --exclude=env .
 black:
-	docker-compose -f docker-compose.yml exec api black --exclude=migrations --exclude=/app/venv --exclude=/app/env --exclude=venv --exclude=env .
+	docker-compose -f docker-compose.yml exec api black --exclude=migrations --exclude=__init__.py --exclude=admin.py --exclude=/app/venv --exclude=/app/env --exclude=__init__.py --exclude=venv --exclude=env .
 
 isort-check:
 	docker-compose -f docker-compose.yml exec api isort . --check-only --skip /app/env --skip migrations --skip /app/venv
 isort-diff:
 	docker-compose -f docker-compose.yml exec api isort . --diff --skip /app/env --skip migrations --skip /app/venv
 isort:
-	docker-compose -f docker-compose.yml exec api isort . --skip /app/env --skip migrations --skip /app/venv
+	docker-compose -f docker-compose.yml exec api isort . --skip /app/env --skip migrations --skip=__init__.py --skip=admin.py --skip /app/venv
 
 test:
 	docker-compose -f docker-compose.yml exec api pytest $(TEST_PATH)

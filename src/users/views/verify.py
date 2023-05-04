@@ -7,10 +7,8 @@ from rest_framework.permissions import AllowAny
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from users import tasks
-from users.serializers.verify_email import (
-    VerifiedOTPPayloadSerializer,
-    VerifyOTPSerializer,
-)
+from users.serializers.verify_email import (VerifiedOTPPayloadSerializer,
+                                            VerifyOTPSerializer)
 from utils.response import Response
 from utils.utils import GET_STARTED_BUYER_URL, GET_STARTED_SELLER_URL
 

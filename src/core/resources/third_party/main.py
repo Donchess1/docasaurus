@@ -1,30 +1,16 @@
 from core.resources.third_party.data.banks import BANKS
 from core.resources.third_party.data.lga import LGAS
 from core.resources.third_party.data.states import STATES
-from core.resources.third_party.data.store import (
-    BANK_ACCOUNT_DATA,
-    BVN_DATA,
-    DRIVER_LICENSE_DATA,
-    NIN_DATA,
-    PASSPORT_DATA,
-    VOTER_CARD_DATA,
-)
-from utils.utils import (
-    RECORD_NOT_FOUND_PAYLOAD,
-    TEST_BANK_CODE,
-    TEST_BVN,
-    TEST_DOB,
-    TEST_DRIVER_LICENSE_NUMBER,
-    TEST_FNAME,
-    TEST_LNAME,
-    TEST_NIN,
-    TEST_NUBAN,
-    TEST_PASSPORT_NUMBER,
-    TEST_VOTER_CARD_NUMBER,
-    TEST_VOTER_LGA,
-    TEST_VOTER_STATE,
-    get_lga_by_state_alias,
-)
+from core.resources.third_party.data.store import (BANK_ACCOUNT_DATA, BVN_DATA,
+                                                   DRIVER_LICENSE_DATA,
+                                                   NIN_DATA, PASSPORT_DATA,
+                                                   VOTER_CARD_DATA)
+from utils.utils import (RECORD_NOT_FOUND_PAYLOAD, TEST_BANK_CODE, TEST_BVN,
+                         TEST_DOB, TEST_DRIVER_LICENSE_NUMBER, TEST_FNAME,
+                         TEST_LNAME, TEST_NIN, TEST_NUBAN,
+                         TEST_PASSPORT_NUMBER, TEST_VOTER_CARD_NUMBER,
+                         TEST_VOTER_LGA, TEST_VOTER_STATE,
+                         get_lga_by_state_alias)
 
 from .base import BaseThirdPartyService
 
