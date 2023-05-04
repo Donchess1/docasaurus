@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from users import tasks
+from users.models import BankAccount, UserProfile
 from users.serializers.register import (
     RegisteredUserPayloadSerializer,
     RegisterUserSerializer,
@@ -60,6 +61,12 @@ class RegisterBuyerView(CreateAPIView):
         user.is_buyer = True
         user.set_password(password)
         user.save()
+
+        bank_account = BankAccount.objects.create(user_id=user)
+        bank_account.save()
+
+        profile = UserProfile.objects.create(user_id=user)
+        profile.save()
 
         dynamic_values = {
             "name": name,

@@ -1,10 +1,10 @@
 from django.contrib.auth import authenticate, get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
+from core.resources.jwt_client import JWTClient
 from users.serializers.login import LoginPayloadSerializer, LoginSerializer
 from users.serializers.user import UserSerializer
 from utils.response import Response
@@ -13,6 +13,7 @@ from utils.response import Response
 class LoginView(GenericAPIView):
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
+    jwt_client = JWTClient
 
     @swagger_auto_schema(
         operation_description="Login User",
@@ -49,12 +50,13 @@ class LoginView(GenericAPIView):
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
-        token, _ = Token.objects.get_or_create(user=user)
+        user_id = user.id
+        token = self.jwt_client.sign(user_id)
         return Response(
             success=True,
             message="Login successful",
             data={
-                "token": token.key,
+                "token": token["access_token"],
                 "user": UserSerializer(user).data,
             },
             status_code=status.HTTP_200_OK,

@@ -4,25 +4,34 @@ from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 
-from users.serializers.user import UserSerializer
+from users.models.profile import UserProfile
+from users.serializers.profile import UserProfileSerializer
 from utils.response import Response
 
 User = get_user_model()
 
 
-class UserProfile(GenericAPIView):
-    serializer_class = UserSerializer
+class UserProfileView(GenericAPIView):
+    serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_description="Retrieve authenticated User",
+        operation_description="Retrieve Profile for Authenticated User",
     )
     def get(self, request):
-        user = User.objects.get(id=request.user.id)
-        serializer = self.serializer_class(user)
+        user_id = request.user.id
+        try:
+            profile = UserProfile.objects.get(user_id=user_id)
+        except UserProfile.DoesNotExist:
+            return Response(
+                success=False,
+                message="Profile not found",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.serializer_class(profile)
         return Response(
             success=True,
             message="Profile retrieved successfully",
-            status=status.HTTP_200_OK,
+            status_code=status.HTTP_200_OK,
             data=serializer.data,
         )
