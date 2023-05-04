@@ -166,6 +166,7 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.shared.exceptions.custom_handler",
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # 'rest_framework.authentication.TokenAuthentication',
     ),
     "DEFAULT_RENDERER_CLASSES": (
         "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
@@ -178,6 +179,11 @@ REST_FRAMEWORK = {
     ),
 }
 
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+    },
+}
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=3),
