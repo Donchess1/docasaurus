@@ -1,8 +1,14 @@
 import os
 
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (DynamicTemplateData, Email, Mail,
-                                   Substitution, TemplateId, To)
+from sendgrid.helpers.mail import (
+    DynamicTemplateData,
+    Email,
+    Mail,
+    Substitution,
+    TemplateId,
+    To,
+)
 
 
 class EmailClient:

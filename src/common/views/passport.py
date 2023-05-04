@@ -3,8 +3,10 @@ from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
-from common.serializers.passport import (ValidatedPassportPayloadSerializer,
-                                         ValidatePassportSerializer)
+from common.serializers.passport import (
+    ValidatedPassportPayloadSerializer,
+    ValidatePassportSerializer,
+)
 from core.resources.third_party.main import ThirdPartyAPI
 from utils.response import Response
 
