@@ -28,7 +28,7 @@ class JWTClient(User):
             refresh["business_id"] = business_id
 
         access_token = refresh.access_token
-        access_token.set_exp(lifetime=timedelta(minutes=50))
+        access_token.set_exp(lifetime=timedelta(minutes=120))
         if is_admin:
             access_token.set_exp(lifetime=timedelta(minutes=50))
 
