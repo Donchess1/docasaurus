@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.utils import timezone
 
 from business.models.business import Business
 from users.models.user import CustomUser
@@ -26,6 +27,7 @@ class UserProfile(models.Model):
     unlocked_amount = models.IntegerField(default=0, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_login_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.id}"

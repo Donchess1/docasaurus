@@ -1,10 +1,12 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
 from core.resources.jwt_client import JWTClient
+from users.models.profile import UserProfile
 from users.serializers.login import LoginPayloadSerializer, LoginSerializer
 from users.serializers.user import UserSerializer
 from utils.response import Response
@@ -51,6 +53,11 @@ class LoginView(GenericAPIView):
             )
 
         user_id = user.id
+
+        profile = UserProfile.objects.get(user_id=user_id)
+        profile.last_login_date = timezone.now()
+        profile.save()
+
         token = self.jwt_client.sign(user_id)
         return Response(
             success=True,
