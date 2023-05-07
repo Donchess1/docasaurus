@@ -74,6 +74,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
     bank_name = serializers.CharField()
     account_number = serializers.CharField()
     account_name = serializers.CharField()
+    bank_code = serializers.CharField()
     kyc_type = serializers.ChoiceField(choices=KYC_CHOICES)
     kyc_meta = serializers.JSONField()
 
@@ -92,6 +93,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             "business_description",
             "address",
             "bank_name",
+            "bank_code",
             "account_number",
             "account_name",
             "kyc_type",
@@ -119,6 +121,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
         bank_account_data = {
             "user_id": user,
             "bank_name": validated_data.get("bank_name"),
+            "bank_code": validated_data.get("bank_code"),
             "account_name": validated_data.get("account_name"),
             "account_number": validated_data.get("account_number"),
         }
@@ -140,7 +143,10 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
 
         # Create User profile
         profile_data = UserProfile.objects.create(
-            user_id=user, kyc_id=user_kyc, business_id=business
+            user_id=user,
+            kyc_id=user_kyc,
+            business_id=business,
+            bank_account_id=bank_account,
         )
 
         return user

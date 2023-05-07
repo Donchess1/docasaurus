@@ -7,7 +7,6 @@ from rest_framework.permissions import AllowAny
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from users import tasks
-from users.models import BankAccount, UserProfile
 from users.serializers.kyc import kyc_meta_map
 from users.serializers.register import (
     RegisteredUserPayloadSerializer,

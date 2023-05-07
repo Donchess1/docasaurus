@@ -6,6 +6,7 @@ from django.utils import timezone
 from business.models.business import Business
 from users.models.user import CustomUser
 
+from .bank_account import BankAccount
 from .kyc import UserKYC
 
 
@@ -19,6 +20,9 @@ class UserProfile(models.Model):
     )
     business_id = models.ForeignKey(
         Business, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    bank_account_id = models.ForeignKey(
+        BankAccount, on_delete=models.SET_NULL, null=True, blank=True
     )
     avatar = models.URLField(null=True, blank=True)
     profile_link = models.URLField(null=True, blank=True)
