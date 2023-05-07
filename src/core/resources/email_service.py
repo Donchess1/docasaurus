@@ -30,6 +30,21 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_reset_password_request_email_plain(cls, email: str, values: dict):
+        subject = "Reset User Password"
+        name = values.get("name", None)
+        reset_password_url = values.get("reset_password_url", None)
+        html_content = f"""<strong>Hi {name}!</strong> No need to worry, you can reset your MyBalance password by clicking <a href="{reset_password_url}" target="_blank">here</a>."""
+        return cls.send_plain_email(email, subject, html_content)
+
+    @classmethod
+    def send_reset_password_success_email_plain(cls, email: str, values: dict):
+        subject = "Password Reset Successful"
+        name = values.get("name", None)
+        html_content = f"""<strong>Hello {name}!</strong> Your password has been changed successfully! Thanks for using MyBalance"""
+        return cls.send_plain_email(email, subject, html_content)
+
+    @classmethod
     def send_email(cls, email: str, template_id: str, dynamic_template_data: dict):
         to_email = To(email)
         mail = Mail(cls.FROM_EMAIL, to_email)
@@ -37,6 +52,22 @@ class EmailClient:
         mail.dynamic_template_data = dynamic_template_data
         try:
             response = cls.sg_client.send(mail)
+            print("SUCCESSFUL -->", response.status_code == 202)
+            return response.status_code == 202
+        except Exception as e:
+            print(e)
+            return False
+
+    @classmethod
+    def send_plain_email(cls, email: str, subject: str, html_content: str):
+        message = Mail(
+            from_email=cls.FROM_EMAIL,
+            to_emails=email,
+            subject=subject,
+            html_content=html_content,
+        )
+        try:
+            response = cls.sg_client.send(message)
             print("SUCCESSFUL -->", response.status_code == 202)
             return response.status_code == 202
         except Exception as e:

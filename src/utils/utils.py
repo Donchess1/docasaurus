@@ -38,6 +38,12 @@ def get_lga_by_state_alias(lga_map, state_alias):
     return lga_map.get(state_alias, None)
 
 
+def generate_random_text(length):
+    return "".join(
+        random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for i in range(length)
+    )
+
+
 CUSTOM_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # e.g "1993-12-25"
 PHONE_NUMBER_SERIALIZER_REGEX_NGN = RegexValidator(
     regex=r"^\d{11}$", message="Phone number must be 11 digits only."
@@ -50,6 +56,7 @@ RECORD_NOT_FOUND_PAYLOAD = {
 EDIT_PROFILE_URL = "https://mybalanceapp.com/profile"
 GET_STARTED_BUYER_URL = "https://mybalanceapp.com/buyer/dashboard"
 GET_STARTED_SELLER_URL = "https://mybalanceapp.com/seller/dashboard"
+RESET_PASSWORD_URL = "https://mybalanceapp.com/reset-password/"
 
 TEST_NUBAN = "0234567890"
 TEST_BANK_CODE = "035"
