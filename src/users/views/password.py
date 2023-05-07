@@ -77,7 +77,7 @@ class ResetPasswordView(generics.GenericAPIView):
     @swagger_auto_schema(
         operation_description="Change User Password",
     )
-    def post(self, request, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(
