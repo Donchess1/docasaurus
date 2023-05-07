@@ -65,7 +65,6 @@ class ForgotPasswordView(generics.GenericAPIView):
         return Response(
             success=True,
             message="Password reset email has been sent.",
-            data={"key": otp_key},
             status_code=status.HTTP_200_OK,
         )
 
