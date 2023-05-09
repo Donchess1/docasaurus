@@ -74,3 +74,7 @@ test:
 bash:
 	docker exec -it {{CONTAINER_NAME}} bash
 
+format:
+	make isort
+	make black
+
