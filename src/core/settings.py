@@ -44,7 +44,7 @@ LOCAL_APPS = [
 
 INSTALLED_APPS = LOCAL_APPS + DJANGO_APPS + THIRD_PARTY_APPS
 
-MIDDLEWARE = [
+DEFAULT_MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -55,6 +55,12 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+CUSTOM_MIDDLEWARE = [
+    "common.middleware.CustomCorsMiddleware",
+]
+
+
+MIDDLEWARE = DEFAULT_MIDDLEWARE + CUSTOM_MIDDLEWARE
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -67,6 +73,10 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_EXPOSE_HEADERS = [
+    "Cross-Origin-Opener-Policy",
+]
 
 ROOT_URLCONF = "core.urls"
 
