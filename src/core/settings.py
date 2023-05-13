@@ -72,7 +72,6 @@ CORS_ALLOWED_ORIGINS = [
     "https://dapper-eclair-4a6866.netlify.app",
 ]
 
-# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_WHITELIST = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -86,6 +85,7 @@ CORS_ORIGIN_WHITELIST = [
 CORS_EXPOSE_HEADERS = [
     "Cross-Origin-Opener-Policy",
 ]
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "core.urls"
 
