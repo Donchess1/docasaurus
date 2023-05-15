@@ -151,5 +151,5 @@ class ResendAccountVerificationOTPView(GenericAPIView):
             success=True,
             message="OTP has been re-sent",
             data=payload,
-            status_code=status.HTTP_201_CREATED,
+            status_code=status.HTTP_200_OK,
         )
