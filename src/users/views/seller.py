@@ -60,6 +60,7 @@ class RegisterSellerView(CreateAPIView):
 
         payload = {
             "temp_id": otp_key,
+            "email": email,
         }
         value = {
             "otp": otp,

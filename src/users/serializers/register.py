@@ -64,6 +64,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
 class RegisteredUserPayloadSerializer(serializers.Serializer):
     temp_id = serializers.CharField()
+    email = serializers.EmailField()
 
 
 class RegisterSellerSerializer(serializers.ModelSerializer):
