@@ -15,7 +15,7 @@ class VerifiedOTPPayloadSerializer(serializers.Serializer):
 
 class ResendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    old_temp_id = serializers.CharField()
+    old_temp_id = serializers.CharField(required=False)
 
     def validate_email(self, value):
         try:

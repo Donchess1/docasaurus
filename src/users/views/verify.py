@@ -120,8 +120,9 @@ class ResendAccountVerificationOTPView(GenericAPIView):
                 message="This account has been verified!",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-
-        cache.delete(old_temp_id)
+        
+        if old_temp_id:
+            cache.delete(old_temp_id)
 
         otp = generate_otp()
         otp_key = generate_temp_id()
