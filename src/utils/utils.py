@@ -1,8 +1,19 @@
 import random
 import re
+import string
+from datetime import datetime
 from uuid import uuid4
 
 from django.core.validators import RegexValidator
+
+
+def calculate_payment_amount_to_charge(amount):
+    try:
+        amount = float(amount)
+        amount_to_charge = amount + (amount * 0.014)  # Add 1.4% to the amount
+        return amount_to_charge
+    except ValueError:
+        return None
 
 
 def convert_to_camel(snake_str):
@@ -42,6 +53,22 @@ def generate_random_text(length):
     return "".join(
         random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for i in range(length)
     )
+
+
+def generate_txn_reference():
+    random_text = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+    now = datetime.now()
+    year = str(now.year)
+    month = str(now.month).zfill(2)
+    day = str(now.day).zfill(2)
+    hour = str(now.hour).zfill(2)
+    minute = str(now.minute).zfill(2)
+    second = str(now.second).zfill(2)
+
+    txn_reference = random_text + year + month + day + hour + minute + second
+
+    return txn_reference
 
 
 CUSTOM_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # e.g "1993-12-25"

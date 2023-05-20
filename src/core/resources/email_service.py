@@ -45,6 +45,13 @@ class EmailClient:
         return cls.send_plain_email(email, subject, html_content)
 
     @classmethod
+    def send_webhook_notification_email_plain(cls, email: str, values: dict):
+        subject = "Webhook Notification"
+        webhook_html_content = values.get("webhook_html_content", None)
+        html_content = webhook_html_content
+        return cls.send_plain_email(email, subject, html_content)
+
+    @classmethod
     def send_email(cls, email: str, template_id: str, dynamic_template_data: dict):
         to_email = To(email)
         mail = Mail(cls.FROM_EMAIL, to_email)

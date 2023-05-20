@@ -3,6 +3,7 @@ from django.urls import path
 from common.views.banks import ListBanksView, ValidateBankAccountView
 from common.views.bvn import ValidateBVNView
 from common.views.driver_license import ValidateDriverLicenseView
+from common.views.fund_wallet import FundWalletView
 from common.views.nin import ValidateNINView
 from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
@@ -31,5 +32,10 @@ urlpatterns = [
         "lookup/nuban",
         ValidateBankAccountView.as_view(),
         name="validate-bank-account",
+    ),
+    path(
+        "deposit-money",
+        FundWalletView.as_view(),
+        name="deposit-money",
     ),
 ]
