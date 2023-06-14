@@ -22,7 +22,7 @@ services:
     image: postgres:14.5-alpine3.16
     restart: always
     ports:
-      - "5432:5432"
+      - "5435:5435"
     volumes:
       - myb-dev-db:/var/lib/postgresql/data
     env_file:

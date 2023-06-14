@@ -7,12 +7,12 @@ from rest_framework.permissions import AllowAny
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from users import tasks
+from users.serializers.register import RegisteredUserPayloadSerializer
 from users.serializers.verify_email import (
     ResendOTPSerializer,
     VerifiedOTPPayloadSerializer,
     VerifyOTPSerializer,
 )
-from users.serializers.register import RegisteredUserPayloadSerializer
 from utils.response import Response
 from utils.utils import (
     EDIT_PROFILE_URL,
@@ -120,7 +120,7 @@ class ResendAccountVerificationOTPView(GenericAPIView):
                 message="This account has been verified!",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         if old_temp_id:
             cache.delete(old_temp_id)
 

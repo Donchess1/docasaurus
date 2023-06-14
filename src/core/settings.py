@@ -40,6 +40,7 @@ LOCAL_APPS = [
     "apps.shared",
     "common",
     "business",
+    "console",
 ]
 
 INSTALLED_APPS = LOCAL_APPS + DJANGO_APPS + THIRD_PARTY_APPS
@@ -111,8 +112,9 @@ db_name = os.getenv("POSTGRES_DB")
 db_password = os.getenv("POSTGRES_PASSWORD")
 db_host = os.getenv("POSTGRES_HOST")
 db_user = os.getenv("POSTGRES_USER")
+db_port = os.getenv("POSTGRES_PORT")
 
-db_uri = f"postgres://{db_user}:{db_password}@{db_host}:5432/{db_name}"
+db_uri = f"postgres://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 DATABASES = {"default": dj_database_url.parse(db_uri, conn_max_age=600)}
 AUTH_USER_MODEL = "users.CustomUser"
 

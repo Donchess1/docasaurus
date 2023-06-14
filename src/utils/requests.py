@@ -1,12 +1,18 @@
 import requests
+from rest_framework import status
 
+from utils.response import Response
 from utils.utils import convert_to_camel
 
 
 class Requests:
     @classmethod
-    def make_get_request(cls, url):
-        response = requests.get(url)
+    def make_get_request(cls, url, flw_headers=None):
+        if flw_headers:
+            response = requests.get(url, headers=flw_headers)
+        else:
+            response = requests.get(url)
+
         if response.status_code in [503, 500]:
             return Response(
                 message="Service not available.",
@@ -19,10 +25,12 @@ class Requests:
         return data
 
     @classmethod
-    def make_post_request(cls, url, data=None, camelize=True):
+    def make_post_request(cls, url, data=None, camelize=True, flw_headers=None):
         if data and camelize:
             json_data = {convert_to_camel(k): v for k, v in data.items()}
             response = requests.post(url, json=json_data)
+        elif not camelize and flw_headers:
+            response = requests.post(url, json=data, headers=flw_headers)
         elif not camelize:
             response = requests.post(url, data)
         else:
@@ -32,7 +40,7 @@ class Requests:
             return Response(
                 message="Service not available.",
                 success=False,
-                status_code=503,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         data = response.json()

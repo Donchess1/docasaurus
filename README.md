@@ -28,7 +28,7 @@
 - Run `make up-dev`
 
   - Running the above command will Start up the following Servers:
-    - Postgres Server --> http://localhost:5432
+    - Postgres Server --> http://localhost:5435
     - Django Development Server --> http://localhost:8000
     - Redis Server --> http://localhost:6379
 
