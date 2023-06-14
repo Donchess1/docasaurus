@@ -112,7 +112,7 @@ db_name = os.getenv("POSTGRES_DB")
 db_password = os.getenv("POSTGRES_PASSWORD")
 db_host = os.getenv("POSTGRES_HOST")
 db_user = os.getenv("POSTGRES_USER")
-db_port = os.getenv("POSTGRES_PORT")
+db_port = os.getenv("POSTGRES_PORT", "5432")
 
 db_uri = f"postgres://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 DATABASES = {"default": dj_database_url.parse(db_uri, conn_max_age=600)}
