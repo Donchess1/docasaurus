@@ -1,3 +1,5 @@
+import os
+
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -5,7 +7,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
 from console import tasks
-from console.serializers.flutterwave import FlwBankTransferSerializer
+from console.serializers.flutterwave import FlwWebhookSerializer
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
@@ -14,13 +16,23 @@ User = get_user_model()
 
 
 class FlwBankTransferWebhookView(GenericAPIView):
-    serializer_class = FlwBankTransferSerializer
+    serializer_class = FlwWebhookSerializer
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
-        operation_description="Webhook for Fluttterwave to send BankTransfer Updates",
+        operation_description="Webhook for FLW Updates",
     )
     def post(self, request):
+        secret_hash = os.environ.get("FLW_SECRET_HASH")
+        verif_hash = request.headers.get("verif-hash", None)
+
+        if not verif_hash or verif_hash != secret_hash:
+            return Response(
+                success=False,
+                message="Invalid authorization token.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -33,10 +45,12 @@ class FlwBankTransferWebhookView(GenericAPIView):
         event = data.get("event", None)
         data = data.get("data", None)
 
+        html_content = generate_flw_payment_webhook_html(event, data)
+
         amount_charged = data["amount"]
         customer_email = data["customer"]["email"]
 
-        html_content = generate_flw_payment_webhook_html(event, data)
+        # LOG EVENT
 
         # tracking webhook payload
         dev_email = "devtosxn@gmail.com"
@@ -45,11 +59,10 @@ class FlwBankTransferWebhookView(GenericAPIView):
         }
         tasks.send_webhook_notification_email(dev_email, values)
 
-        # update user wallet
         if data["status"] == "failed":
             return Response(
                 success=True,
-                message="Webhook sent successfully: Failed Bank Transfer",
+                message="Webhook processed successfully.",
                 status_code=status.HTTP_200_OK,
             )
 
@@ -73,6 +86,6 @@ class FlwBankTransferWebhookView(GenericAPIView):
 
         return Response(
             success=True,
-            message="Webhook sent successfully: Successful Bank Transfer",
+            message="Webhook processed successfully.",
             status_code=status.HTTP_200_OK,
         )

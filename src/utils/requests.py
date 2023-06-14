@@ -7,8 +7,12 @@ from utils.utils import convert_to_camel
 
 class Requests:
     @classmethod
-    def make_get_request(cls, url):
-        response = requests.get(url)
+    def make_get_request(cls, url, flw_headers=None):
+        if flw_headers:
+            response = requests.get(url, headers=flw_headers)
+        else:
+            response = requests.get(url)
+
         if response.status_code in [503, 500]:
             return Response(
                 message="Service not available.",

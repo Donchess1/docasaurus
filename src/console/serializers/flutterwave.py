@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
 
-class FlwBankTransferSerializer(serializers.Serializer):
+class FlwWebhookSerializer(serializers.Serializer):
     event = serializers.CharField()
     data = serializers.JSONField()

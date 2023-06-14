@@ -1,16 +1,16 @@
 import random
 import re
 import string
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from django.core.validators import RegexValidator
 
 
-def calculate_payment_amount_to_charge(amount):
+def calculate_payment_amount_to_charge(amount, percent):
     try:
         amount = float(amount)
-        amount_to_charge = amount + (amount * 0.014)  # Add 1.4% to the amount
+        amount_to_charge = amount + (amount * (percent / 100))
         return amount_to_charge
     except ValueError:
         return None
@@ -53,6 +53,15 @@ def generate_random_text(length):
     return "".join(
         random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for i in range(length)
     )
+
+
+def add_60_minutes():
+    current_datetime = datetime.now()
+    new_datetime = current_datetime + timedelta(minutes=60)
+    formatted_datetime = new_datetime.strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )  # Formats the datetime as "YYYY-MM-DD HH:MM:SS"
+    return formatted_datetime
 
 
 def generate_txn_reference():
