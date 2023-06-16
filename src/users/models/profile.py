@@ -11,10 +11,16 @@ from .kyc import UserKYC
 
 
 class UserProfile(models.Model):
+    USER_TYPES = (
+        ("BUYER", "BUYER"),
+        ("SELLER", "SELLER"),
+        ("CONTRACTOR", "CONTRACTOR"),
+    )
     id = models.UUIDField(
         unique=True, primary_key=True, default=uuid.uuid4, editable=False
     )
     user_id = user_id = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user_type = models.CharField(max_length=255, choices=USER_TYPES)
     kyc_id = models.ForeignKey(
         UserKYC, on_delete=models.SET_NULL, null=True, blank=True
     )

@@ -9,6 +9,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "user_id",
+            "user_type",
             "avatar",
             "profile_link",
             "wallet_balance",

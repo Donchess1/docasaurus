@@ -148,6 +148,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             kyc_id=user_kyc,
             business_id=business,
             bank_account_id=bank_account,
+            user_type="SELLER",
         )
 
         return user
