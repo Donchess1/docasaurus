@@ -32,6 +32,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "rest_framework_simplejwt",
     "drf_yasg",
+    "drf_api_logger",
 ]
 
 LOCAL_APPS = [
@@ -58,6 +59,7 @@ DEFAULT_MIDDLEWARE = [
 ]
 CUSTOM_MIDDLEWARE = [
     "common.middleware.CustomCorsMiddleware",
+    'drf_api_logger.middleware.api_logger_middleware.APILoggerMiddleware',
 ]
 
 
@@ -241,3 +243,23 @@ SWAGGER_SETTINGS = {
 
 EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("FROM_EMAIL")
+
+# DRF API LOGGER SETTINGS
+DRF_API_LOGGER_DATABASE = True
+DRF_API_LOGGER_SIGNAL = True
+DRF_LOGGER_QUEUE_MAX_SIZE = 50
+DRF_LOGGER_INTERVAL = 10
+DRF_API_LOGGER_SKIP_NAMESPACE = []  # list of namespaces OR APPS to skip logging
+DRF_API_LOGGER_SKIP_URL_NAME = []  # list of url names to skip logging
+DRF_API_LOGGER_EXCLUDE_KEYS = [
+    "password",
+    "token",
+    "access",
+    "refresh",
+]  # Sensitive data will be replaced with "***FILTERED***".
+DRF_API_LOGGER_DEFAULT_DATABASE = "default"  # Database to use for logging
+DRF_API_LOGGER_SLOW_API_ABOVE = (
+    200  # Log slow API calls above this time in milliseconds
+)
+DRF_API_LOGGER_TIME_ZONE = "Africa/Lagos"  # see the API information in local timezone
+DRF_API_LOGGER_PATH_TYPE = "ABSOLUTE"
