@@ -40,29 +40,29 @@ class Transaction(models.Model):
         return f"{self.id}"
 
 
-class EscrowTransaction(models.Model):
-    STATUS = (
-        ("PENDING", "PENDING"),
-        ("PROGRESS", "PROGRESS"),
-        ("SUCCESSFUL", "SUCCESSFUL"),
-        ("FAILED", "FAILED"),
-    )
-    id = models.UUIDField(
-        unique=True, primary_key=True, default=uuid.uuid4, editable=False
-    )
-    buyer_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    seller_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    status = models.CharField(max_length=255, choices=STATUS)
-    purpose = models.TextField()
-    type_of_items = models.CharField(max_length=255)
-    number_of_items = models.IntegerField()
-    amount = models.IntegerField()
-    delivery_date = models.DateTimeField()
-    delivery_tolerance = models.IntegerField(null=True, blank=True, default=3)
-    charge = models.IntegerField(null=True, blank=True)
-    meta = models.JSONField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+# class EscrowTransaction(models.Model):
+#     STATUS = (
+#         ("PENDING", "PENDING"),
+#         ("PROGRESS", "PROGRESS"),
+#         ("SUCCESSFUL", "SUCCESSFUL"),
+#         ("FAILED", "FAILED"),
+#     )
+#     id = models.UUIDField(
+#         unique=True, primary_key=True, default=uuid.uuid4, editable=False
+#     )
+#     buyer_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+#     seller_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+#     status = models.CharField(max_length=255, choices=STATUS)
+#     purpose = models.TextField()
+#     type_of_items = models.CharField(max_length=255)
+#     number_of_items = models.IntegerField()
+#     amount = models.IntegerField()
+#     delivery_date = models.DateTimeField()
+#     delivery_tolerance = models.IntegerField(null=True, blank=True, default=3)
+#     charge = models.IntegerField(null=True, blank=True)
+#     meta = models.JSONField(null=True, blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.id}"
+#     def __str__(self):
+#         return f"{self.id}"
