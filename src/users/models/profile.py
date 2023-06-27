@@ -33,8 +33,16 @@ class UserProfile(models.Model):
     avatar = models.URLField(null=True, blank=True)
     profile_link = models.URLField(null=True, blank=True)
     wallet_balance = models.IntegerField(default=0, null=True, blank=True)
-    locked_amount = models.IntegerField(default=0, null=True, blank=True)
-    unlocked_amount = models.IntegerField(default=0, null=True, blank=True)
+    wallet_balance = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, null=True, blank=True
+    )
+
+    locked_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, null=True, blank=True
+    )
+    unlocked_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_login_date = models.DateTimeField(null=True, blank=True)

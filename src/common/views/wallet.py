@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
@@ -8,20 +9,26 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from common.serializers.wallet import (
     FundWalletBankTransferPayloadSerializer,
-    FundWalletSerializer,
+    WalletAmountSerializer,
+    WalletWithdrawalAmountSerializer,
 )
 from console.models import Transaction
 from core.resources.flutterwave import FlwAPI
 from users.models import UserProfile
 from utils.response import Response
-from utils.utils import calculate_payment_amount_to_charge, generate_txn_reference
+from utils.utils import (
+    calculate_payment_amount_to_charge,
+    generate_txn_reference,
+    get_withdrawal_fee,
+)
 
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
 class FundWalletView(GenericAPIView):
-    serializer_class = FundWalletSerializer
+    serializer_class = WalletAmountSerializer
     permission_classes = [IsAuthenticated]
     flw_api = FlwAPI
 
@@ -90,8 +97,137 @@ class FundWalletView(GenericAPIView):
         )
 
 
+class WalletWithdrawalView(GenericAPIView):
+    serializer_class = WalletWithdrawalAmountSerializer
+    permission_classes = [IsAuthenticated]
+    flw_api = FlwAPI
+
+    @swagger_auto_schema(
+        operation_description="Initiate withdrawal from user wallet",
+    )
+    def post(self, request):
+        user_id = request.user.id
+        user = User.objects.get(id=user_id)
+        profile = UserProfile.objects.get(user_id=user)
+
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        amount = data.get("amount", None)
+        bank_code = data.get("bank_code", None)
+        account_number = data.get("account_number", None)
+        description = data.get("description", None)
+
+        charge, total_amount = get_withdrawal_fee(int(amount))
+
+        if total_amount >= profile.wallet_balance:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Insufficient funds.",
+            )
+
+        tx_ref = generate_txn_reference()
+        email = user.email
+
+        txn = Transaction.objects.create(
+            user_id=request.user,
+            type="WITHDRAW",
+            amount=amount,
+            charge=charge,
+            status="PENDING",
+            reference=tx_ref,
+            currency="NGN",
+            provider="FLUTTERWAVE",
+        )
+        txn.save()
+
+        tx_data = {
+            "account_bank": bank_code,
+            "account_number": account_number,
+            "amount": int(amount),
+            "narration": description,
+            "reference": tx_ref,
+            "currency": "NGN",
+            "callback_url": f"{BACKEND_BASE_URL}/v1/shared/payment-callback",
+        }
+
+        obj = self.flw_api.initiate_payout(tx_data)
+        if obj["status"] == "error":
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=obj["message"],
+            )
+        print("PAYOUT", obj)
+        profile.wallet_balance -= Decimal(str(total_amount))
+        profile.save()
+
+        # TODO: Send email notification
+
+        return Response(
+            success=True,
+            message="Withdrawal successfully initialized",
+            status_code=status.HTTP_200_OK,
+            # data=payload,
+        )
+
+
+class WalletWithdrawalFeeView(GenericAPIView):
+    serializer_class = WalletAmountSerializer
+    permission_classes = [IsAuthenticated]
+    flw_api = FlwAPI
+
+    @swagger_auto_schema(
+        operation_description="Get fees for withdrawal",
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        temp_amount = data.get("amount", None)
+        amount = get_withdrawal_fee(temp_amount)
+
+        # obj = self.flw_api.get_transfer_fee(amount)
+        # if obj["status"] == "error":
+        #     return Response(
+        #         success=False,
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         message=obj["message"],
+        #     )
+        # {
+        #     "status": "success",
+        #     "message": "Transfer fee fetched",
+        #     "data": [{"currency": "NGN", "fee_type": "value", "fee": 10.75}],
+        #     "status_code": 200,
+        # }
+        # payload = {
+        #     "currency": obj["data"][0]["currency"],
+        #     "fee": obj["data"][0]["fee"],
+        # }
+        payload = {"currency": "NGN", "fee": amount[0], "total": amount[1]}
+        # TODO: Send email notification
+
+        return Response(
+            success=True,
+            message="Withdrawal fee retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=payload,
+        )
+
+
 class FundWalletCallbackView(GenericAPIView):
-    serializer_class = FundWalletSerializer
+    serializer_class = WalletAmountSerializer
     permission_classes = [AllowAny]
     flw_api = FlwAPI
 
@@ -105,7 +241,7 @@ class FundWalletCallbackView(GenericAPIView):
         except Transaction.DoesNotExist:
             return Response(
                 success=False,
-                message="Transaction not found",
+                message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 

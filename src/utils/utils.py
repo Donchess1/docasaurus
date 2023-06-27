@@ -80,6 +80,19 @@ def generate_txn_reference():
     return txn_reference
 
 
+def get_withdrawal_fee(amount):
+    fee = (amount * 0.02)
+    if amount <= 5000:
+        charge = 10.75 + fee
+    elif amount <= 50000:
+        charge = 26.875 + fee
+    else:
+        charge = 53.75 + fee
+
+    amount_payable = amount + charge
+    return charge, amount_payable
+
+
 CUSTOM_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # e.g "1993-12-25"
 PHONE_NUMBER_SERIALIZER_REGEX_NGN = RegexValidator(
     regex=r"^\d{11}$", message="Phone number must be 11 digits only."
