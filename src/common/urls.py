@@ -3,11 +3,16 @@ from django.urls import path
 from common.views.banks import ListBanksView, ValidateBankAccountView
 from common.views.bvn import ValidateBVNView
 from common.views.driver_license import ValidateDriverLicenseView
-from common.views.fund_wallet import FundWalletCallbackView, FundWalletView
 from common.views.nin import ValidateNINView
 from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
 from common.views.voter_card import ValidateVoterCardView
+from common.views.wallet import (
+    FundWalletCallbackView,
+    FundWalletView,
+    WalletWithdrawalFeeView,
+    WalletWithdrawalView,
+)
 
 urlpatterns = [
     path("banks", ListBanksView.as_view(), name="list-banks"),
@@ -36,6 +41,16 @@ urlpatterns = [
     path(
         "deposit-money",
         FundWalletView.as_view(),
+        name="deposit-money",
+    ),
+    path(
+        "withdrawal-fee",
+        WalletWithdrawalFeeView.as_view(),
+        name="deposit-money",
+    ),
+    path(
+        "withdraw",
+        WalletWithdrawalView.as_view(),
         name="deposit-money",
     ),
     path(
