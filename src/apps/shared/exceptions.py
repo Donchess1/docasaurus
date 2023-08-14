@@ -43,6 +43,11 @@ def custom_handler(exc, context):
             data = exc.detail
         else:
             data = {"detail": exc.detail}
+            return CustomResponse(
+                message=data["detail"],
+                success=False,
+                status_code=exc.status_code,
+            )
 
         return Response(data, status=exc.status_code, headers=headers)
 
