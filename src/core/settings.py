@@ -42,6 +42,7 @@ LOCAL_APPS = [
     "common",
     "business",
     "console",
+    "transaction",
 ]
 
 INSTALLED_APPS = LOCAL_APPS + DJANGO_APPS + THIRD_PARTY_APPS
@@ -68,6 +69,8 @@ MIDDLEWARE = DEFAULT_MIDDLEWARE + CUSTOM_MIDDLEWARE
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
     "http://127.0.0.1:5173",
     "http://localhost:5173",
     "http://mybalanceapp.com",
@@ -196,6 +199,8 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         # 'rest_framework.authentication.TokenAuthentication',
     ),
+    # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    # "PAGE_SIZE": 50,
     "DEFAULT_RENDERER_CLASSES": (
         "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
         "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",

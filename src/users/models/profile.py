@@ -32,7 +32,6 @@ class UserProfile(models.Model):
     )
     avatar = models.URLField(null=True, blank=True)
     profile_link = models.URLField(null=True, blank=True)
-    wallet_balance = models.IntegerField(default=0, null=True, blank=True)
     wallet_balance = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )

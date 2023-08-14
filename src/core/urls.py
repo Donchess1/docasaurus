@@ -26,4 +26,5 @@ urlpatterns = [
     path("v1/auth/", include("users.urls")),
     path("v1/shared/", include("common.urls")),
     path("v1/console/", include("console.urls")),
+    path("v1/transaction/", include("transaction.urls")),
 ]
