@@ -32,3 +32,14 @@ class FlutterwaveService(FlutterwaveBaseService):
     def get_transfer_fee(cls, amount):
         url = f"{cls.FLW_BASE_URL}/transfers/fee?amount={amount}&currency=NGN"
         return cls.make_get_request(url, flw_headers=cls.FLW_HEADERS)
+
+    @classmethod
+    def validate_bank_account(cls, bank_code, account_number):
+        url = f"{cls.FLW_BASE_URL}/accounts/resolve"
+        data = {
+            "account_number": account_number,
+            "account_bank": bank_code,
+        }
+        return cls.make_post_request(
+            url, data, camelize=False, flw_headers=cls.FLW_HEADERS
+        )
