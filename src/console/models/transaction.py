@@ -13,6 +13,8 @@ class Transaction(models.Model):
         ("CANCELLED", "CANCELLED"),
         ("PAUSED", "PAUSED"),
         ("FUFILLED", "FUFILLED"),
+        ("APPROVED", "APPROVED"),
+        ("REJECTED", "REJECTED"),
     )
     TYPES = (
         ("DEPOSIT", "DEPOSIT"),
@@ -58,13 +60,8 @@ class EscrowMeta(models.Model):
         unique=True, primary_key=True, default=uuid.uuid4, editable=False
     )
     author = models.CharField(max_length=255, choices=AUTHOR)
-    transation_id = models.OneToOneField(Transaction, on_delete=models.CASCADE)
-    buyer_id = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="buyer_escrow_meta"
-    )
-    seller_id = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="seller_escrow_meta"
-    )
+    transaction_id = models.OneToOneField(Transaction, on_delete=models.CASCADE)
+    partner_email = models.EmailField()
     purpose = models.TextField()
     item_type = models.CharField(max_length=255)
     item_quantity = models.IntegerField()

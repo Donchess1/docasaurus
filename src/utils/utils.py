@@ -6,6 +6,12 @@ from uuid import uuid4
 
 from django.core.validators import RegexValidator
 
+from users.models import BankAccount
+
+# from core.resources.flutterwave import FlwAPI
+
+# flw_api = FlwAPI
+
 
 def calculate_payment_amount_to_charge(amount, percent):
     try:
@@ -91,6 +97,41 @@ def get_withdrawal_fee(amount):
 
     amount_payable = amount + charge
     return charge, amount_payable
+
+
+def get_escrow_fees(amount):
+    if amount < 100000:
+        charge_percentage = 0.015  # 1.5%
+    elif amount <= 500000:
+        charge_percentage = 0.01  # 1%
+    else:
+        charge_percentage = 0.008  # 0.8%
+
+    charge = amount * charge_percentage
+    amount_payable = amount + charge
+
+    return charge, amount_payable
+
+
+def validate_bank_account(bank_code, account_number, user_id=None):
+    existing_account = BankAccount.objects.filter(
+        bank_code=bank_code, account_number=account_number
+    ).first()
+
+    if existing_account:
+        return existing_account
+
+    # is_valid = flw_api.validate_bank_account(bank_code, account_number)
+
+    # if is_valid and is_valid["status"] == "success":
+    #     new_bank_account = BankAccount.objects.create(
+    #         user_id=user_id,
+    #         bank_code=bank_code,
+    #         account_number=account_number
+    #     )
+    #     return new_bank_account
+
+    return None
 
 
 CUSTOM_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # e.g "1993-12-25"

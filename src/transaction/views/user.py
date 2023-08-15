@@ -3,12 +3,13 @@ import os
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, status
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import CreateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 
 from console import tasks
 from console.models.transaction import Transaction
+from transaction.serializers.transaction import EscrowTransactionSerializer
 from transaction.serializers.user import UserTransactionSerializer
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
@@ -99,10 +100,16 @@ class CustomTransactionPermission(BasePermission):
         return obj.user_id == request.user.id
 
 
+class LargeResultsSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = "size"
+    max_page_size = 10
+
+
 class UserTransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = (IsAuthenticated, CustomTransactionPermission)
-    pagination_class = PageNumberPagination
+    pagination_class = LargeResultsSetPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ["reference", "provider"]
 
@@ -111,21 +118,47 @@ class UserTransactionListView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page:
-            serializer = self.get_serializer(page, many=True)
-            response = self.get_paginated_response(serializer.data)
-            return Response(
-                success=True,
-                message="Paginated transactions retrieved successfully.",
-                status_code=status.HTTP_200_OK,
-                data=response.data,
-            )
+        qs = self.paginate_queryset(queryset)
 
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = self.get_serializer(qs, many=True)
+        response = self.get_paginated_response(serializer.data)
         return Response(
             success=True,
             message="Transactions retrieved successfully.",
             status_code=status.HTTP_200_OK,
-            data=serializer.data,
+            data=response.data,
+        )
+
+
+class InitiateEscrowTransactionView(CreateAPIView):
+    serializer_class = EscrowTransactionSerializer
+    permission_classes = (IsAuthenticated,)
+
+    @swagger_auto_schema(
+        operation_description="Initiate Escrow Transaction",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
+    def perform_create(self, serializer):
+        return serializer.save()
+
+    def post(self, request):
+        serializer = self.serializer_class(
+            data=request.data, context={"request": request}
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+
+        instance = self.perform_create(serializer)
+        obj = UserTransactionSerializer(instance)
+        return Response(
+            success=True,
+            message="Escrow transaction created successfully.",
+            status_code=status.HTTP_200_OK,
+            data=obj.data,
         )

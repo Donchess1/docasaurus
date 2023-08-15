@@ -164,7 +164,6 @@ class WalletWithdrawalView(GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=obj["message"],
             )
-        print("PAYOUT", obj)
         profile.wallet_balance -= Decimal(str(total_amount))
         profile.save()
 
