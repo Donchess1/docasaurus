@@ -47,6 +47,7 @@ class UserProfileView(GenericAPIView):
         del ser_data["bank_account_id"]
         del ser_data["kyc_id"]
         del ser_data["business_id"]
+        ser_data["name"] = request.user.name
 
         data = {
             **ser_data,
