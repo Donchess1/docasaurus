@@ -13,7 +13,7 @@ from common.serializers.wallet import (
     WalletWithdrawalAmountSerializer,
 )
 from console.models import Transaction
-from console.serializers.flutterwave import FlwWebhookSerializer
+from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
@@ -373,7 +373,7 @@ class WalletWithdrawalView(GenericAPIView):
 
 
 class WalletWithdrawalCallbackView(GenericAPIView):
-    serializer_class = FlwWebhookSerializer
+    serializer_class = FlwTransferCallbackSerializer
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
@@ -389,7 +389,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             )
         data = serializer.validated_data
         event = data.get("event", None)
-        data = data.get("data", None)
+        data = data.get("transfer", None)
 
         amount_charged = data["amount"]
         msg = data["complete_message"]
