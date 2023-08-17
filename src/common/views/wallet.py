@@ -362,7 +362,7 @@ class WalletWithdrawalView(GenericAPIView):
         txn.save()
 
         # TODO: Send email notification
-        print("DATA FOR TRANSFER:", obj["message"])
+        print("DATA FOR WALLET DEBIT:", obj["data"])
 
         return Response(
             success=True,
