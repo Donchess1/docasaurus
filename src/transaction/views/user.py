@@ -111,7 +111,7 @@ class UserTransactionListView(generics.ListAPIView):
     permission_classes = (IsAuthenticated, CustomTransactionPermission)
     pagination_class = LargeResultsSetPagination
     filter_backends = [filters.SearchFilter]
-    search_fields = ["reference", "provider"]
+    search_fields = ["reference", "provider", "type"]
 
     def get_queryset(self):
         return Transaction.objects.filter(user_id=self.request.user.id)

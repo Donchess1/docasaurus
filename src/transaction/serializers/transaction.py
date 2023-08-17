@@ -19,7 +19,9 @@ class EscrowTransactionSerializer(serializers.Serializer):
     def create(self, validated_data):
         user = self.context["request"].user
         author = "BUYER" if user.is_buyer else "SELLER"
-        amount = validated_data["amount"]
+        amount = validated_data.get("amount")
+        purpose = validated_data.get("purpose")
+        title = validated_data.get("item_type")
         charge, amount_payable = get_escrow_fees(amount)
         tx_ref = generate_random_text(length=12)
 
@@ -31,6 +33,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             "mode": "Web",
             "amount": amount,
             "charge": charge,
+            "meta": {"title": title, "description": purpose},
             "reference": tx_ref,
             "provider_tx_reference": tx_ref,
         }

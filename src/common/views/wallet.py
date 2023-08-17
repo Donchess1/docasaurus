@@ -60,6 +60,7 @@ class FundWalletView(GenericAPIView):
             reference=tx_ref,
             currency="NGN",
             provider="FLUTTERWAVE",
+            meta={"title": "Wallet credited"},
         )
         txn.save()
 
@@ -141,31 +142,39 @@ class WalletWithdrawalView(GenericAPIView):
             amount=amount,
             charge=charge,
             status="PENDING",
-            reference=tx_ref,
+            reference=f"{tx_ref}_PMCKDU_1",
             currency="NGN",
             provider="FLUTTERWAVE",
+            meta={"title": "Wallet debited"},
         )
         txn.save()
-
+        # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
+        # HASH: %6g2gdf@34512uhOPHSGf445RDTSdr&&^%%$&hgdhjdhhg
         tx_data = {
             "account_bank": bank_code,
             "account_number": account_number,
             "amount": int(amount),
             "narration": description,
-            "reference": tx_ref,
+            "reference": f"{tx_ref}_PMCKDU_1",
             "currency": "NGN",
             "callback_url": f"{BACKEND_BASE_URL}/v1/shared/payment-callback",
         }
 
         obj = self.flw_api.initiate_payout(tx_data)
         if obj["status"] == "error":
+            msg = obj["message"]
+            txn.meta.update({"description": f"FLW Transaction {msg}"})
+            txn.save()
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=obj["message"],
+                message=msg,
             )
         profile.wallet_balance -= Decimal(str(total_amount))
         profile.save()
+        msg = obj["message"]
+        txn.meta.update({"description": f"FLW Transaction {msg}"})
+        txn.save()
 
         # TODO: Send email notification
 
@@ -254,6 +263,7 @@ class FundWalletCallbackView(GenericAPIView):
         if flw_status == "cancelled":
             txn.verified = True
             txn.status = "CANCELLED"
+            txn.meta.update({"description": f"FLW Transaction cancelled"})
             txn.save()
             return Response(
                 success=False,
@@ -264,13 +274,14 @@ class FundWalletCallbackView(GenericAPIView):
         if flw_status == "failed":
             txn.verified = True
             txn.status = "FAILED"
+            txn.meta.update({"description": f"FLW Transaction failed"})
             txn.save()
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Payment failed",
             )
-        if flw_status != "completed":
+        if flw_status not in ["completed", "successful"]:
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -281,6 +292,8 @@ class FundWalletCallbackView(GenericAPIView):
 
         if obj["status"] == "error":
             msg = obj["message"]
+            txn.meta.update({"description": f"FLW Transaction {msg}"})
+            txn.save()
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -289,6 +302,8 @@ class FundWalletCallbackView(GenericAPIView):
 
         if obj["data"]["status"] == "failed":
             msg = obj["data"]["processor_response"]
+            txn.meta.update({"description": f"FLW Transaction {msg}"})
+            txn.save()
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -301,17 +316,22 @@ class FundWalletCallbackView(GenericAPIView):
             and obj["data"]["currency"] == txn.currency
             and obj["data"]["charged_amount"] >= txn.amount
         ):
+            flw_ref = obj["data"]["flw_ref"]
+            narration = obj["data"]["narration"]
             txn.verified = True
             txn.status = "SUCCESSFUL"
             txn.mode = obj["data"]["auth_model"]
             txn.charge = obj["data"]["app_fee"]
             txn.remitted_amount = obj["data"]["amount_settled"]
-            txn.provider_tx_reference = obj["data"]["flw_ref"]
-            txn.narration = obj["data"]["narration"]
-            txn.meta = {
-                "payment_method": obj["data"]["payment_type"],
-                "provider_txn_id": obj["data"]["id"],
-            }
+            txn.provider_tx_reference = flw_ref
+            txn.narration = narration
+            txn.meta.update(
+                {
+                    "payment_method": obj["data"]["payment_type"],
+                    "provider_txn_id": obj["data"]["id"],
+                    "description": f"FLW Transaction {narration}_{flw_ref}",
+                }
+            )
             txn.save()
 
             customer_email = obj["data"]["customer"]["email"]
