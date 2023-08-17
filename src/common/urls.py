@@ -8,8 +8,9 @@ from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
 from common.views.voter_card import ValidateVoterCardView
 from common.views.wallet import (
-    FundWalletCallbackView,
+    FundWalletRedirectView,
     FundWalletView,
+    WalletWithdrawalCallbackView,
     WalletWithdrawalFeeView,
     WalletWithdrawalView,
 )
@@ -41,21 +42,26 @@ urlpatterns = [
     path(
         "deposit-money",
         FundWalletView.as_view(),
-        name="deposit-money",
+        name="fund-wallet",
+    ),
+    path(
+        "payment-redirect",
+        FundWalletRedirectView.as_view(),
+        name="fund-wallet-redirect",
     ),
     path(
         "withdrawal-fee",
         WalletWithdrawalFeeView.as_view(),
-        name="deposit-money",
+        name="withdrawal-fee",
     ),
     path(
         "withdraw",
         WalletWithdrawalView.as_view(),
-        name="deposit-money",
+        name="withdraw-funds",
     ),
     path(
-        "payment-callback",
-        FundWalletCallbackView.as_view(),
-        name="deposit-money",
+        "withdraw-callback",
+        WalletWithdrawalCallbackView.as_view(),
+        name="withdraw-funds-callback",
     ),
 ]

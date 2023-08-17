@@ -13,8 +13,10 @@ from common.serializers.wallet import (
     WalletWithdrawalAmountSerializer,
 )
 from console.models import Transaction
+from console.serializers.flutterwave import FlwWebhookSerializer
 from core.resources.flutterwave import FlwAPI
 from users.models import UserProfile
+from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
 from utils.utils import (
     calculate_payment_amount_to_charge,
@@ -60,7 +62,7 @@ class FundWalletView(GenericAPIView):
             reference=tx_ref,
             currency="NGN",
             provider="FLUTTERWAVE",
-            meta={"title": "Wallet credited"},
+            meta={"title": "Wallet credit"},
         )
         txn.save()
 
@@ -68,7 +70,7 @@ class FundWalletView(GenericAPIView):
             "tx_ref": tx_ref,
             "amount": amount,
             "currency": "NGN",
-            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/payment-callback",
+            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/payment-redirect",
             "customer": {
                 "email": user.email,
                 "phone_number": user.phone,
@@ -98,143 +100,7 @@ class FundWalletView(GenericAPIView):
         )
 
 
-class WalletWithdrawalView(GenericAPIView):
-    serializer_class = WalletWithdrawalAmountSerializer
-    permission_classes = [IsAuthenticated]
-    flw_api = FlwAPI
-
-    @swagger_auto_schema(
-        operation_description="Initiate withdrawal from user wallet",
-    )
-    def post(self, request):
-        user_id = request.user.id
-        user = User.objects.get(id=user_id)
-        profile = UserProfile.objects.get(user_id=user)
-
-        serializer = self.serializer_class(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                errors=serializer.errors,
-            )
-        data = serializer.validated_data
-        amount = data.get("amount", None)
-        bank_code = data.get("bank_code", None)
-        account_number = data.get("account_number", None)
-        description = data.get("description", None)
-
-        charge, total_amount = get_withdrawal_fee(int(amount))
-
-        if total_amount >= profile.wallet_balance:
-            return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Insufficient funds.",
-            )
-
-        tx_ref = generate_txn_reference()
-        email = user.email
-
-        txn = Transaction.objects.create(
-            user_id=request.user,
-            type="WITHDRAW",
-            amount=amount,
-            charge=charge,
-            status="PENDING",
-            reference=f"{tx_ref}_PMCKDU_1",
-            currency="NGN",
-            provider="FLUTTERWAVE",
-            meta={"title": "Wallet debited"},
-        )
-        txn.save()
-        # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
-        # HASH: %6g2gdf@34512uhOPHSGf445RDTSdr&&^%%$&hgdhjdhhg
-        tx_data = {
-            "account_bank": bank_code,
-            "account_number": account_number,
-            "amount": int(amount),
-            "narration": description,
-            "reference": f"{tx_ref}_PMCKDU_1",
-            "currency": "NGN",
-            "callback_url": f"{BACKEND_BASE_URL}/v1/shared/payment-callback",
-        }
-
-        obj = self.flw_api.initiate_payout(tx_data)
-        if obj["status"] == "error":
-            msg = obj["message"]
-            txn.meta.update({"description": f"FLW Transaction {msg}"})
-            txn.save()
-            return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message=msg,
-            )
-        profile.wallet_balance -= Decimal(str(total_amount))
-        profile.save()
-        msg = obj["message"]
-        txn.meta.update({"description": f"FLW Transaction {msg}"})
-        txn.save()
-
-        # TODO: Send email notification
-
-        return Response(
-            success=True,
-            message="Withdrawal successfully initialized",
-            status_code=status.HTTP_200_OK,
-            # data=payload,
-        )
-
-
-class WalletWithdrawalFeeView(GenericAPIView):
-    serializer_class = WalletAmountSerializer
-    permission_classes = [IsAuthenticated]
-    flw_api = FlwAPI
-
-    @swagger_auto_schema(
-        operation_description="Get fees for withdrawal",
-    )
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                errors=serializer.errors,
-            )
-        data = serializer.validated_data
-        temp_amount = data.get("amount", None)
-        amount = get_withdrawal_fee(temp_amount)
-
-        # obj = self.flw_api.get_transfer_fee(amount)
-        # if obj["status"] == "error":
-        #     return Response(
-        #         success=False,
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         message=obj["message"],
-        #     )
-        # {
-        #     "status": "success",
-        #     "message": "Transfer fee fetched",
-        #     "data": [{"currency": "NGN", "fee_type": "value", "fee": 10.75}],
-        #     "status_code": 200,
-        # }
-        # payload = {
-        #     "currency": obj["data"][0]["currency"],
-        #     "fee": obj["data"][0]["fee"],
-        # }
-        payload = {"currency": "NGN", "fee": amount[0], "total": amount[1]}
-        # TODO: Send email notification
-
-        return Response(
-            success=True,
-            message="Withdrawal fee retrieved successfully.",
-            status_code=status.HTTP_200_OK,
-            data=payload,
-        )
-
-
-class FundWalletCallbackView(GenericAPIView):
+class FundWalletRedirectView(GenericAPIView):
     serializer_class = WalletAmountSerializer
     permission_classes = [AllowAny]
     flw_api = FlwAPI
@@ -363,5 +229,231 @@ class FundWalletCallbackView(GenericAPIView):
         return Response(
             success=True,
             message="Payment successfully verified",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class WalletWithdrawalFeeView(GenericAPIView):
+    serializer_class = WalletAmountSerializer
+    permission_classes = [IsAuthenticated]
+    flw_api = FlwAPI
+
+    @swagger_auto_schema(
+        operation_description="Get fees for withdrawal",
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        temp_amount = data.get("amount", None)
+        amount = get_withdrawal_fee(temp_amount)
+
+        # obj = self.flw_api.get_transfer_fee(amount)
+        # if obj["status"] == "error":
+        #     return Response(
+        #         success=False,
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         message=obj["message"],
+        #     )
+        # {
+        #     "status": "success",
+        #     "message": "Transfer fee fetched",
+        #     "data": [{"currency": "NGN", "fee_type": "value", "fee": 10.75}],
+        #     "status_code": 200,
+        # }
+        # payload = {
+        #     "currency": obj["data"][0]["currency"],
+        #     "fee": obj["data"][0]["fee"],
+        # }
+        payload = {"currency": "NGN", "fee": amount[0], "total": amount[1]}
+        # TODO: Send email notification
+
+        return Response(
+            success=True,
+            message="Withdrawal fee retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=payload,
+        )
+
+
+class WalletWithdrawalView(GenericAPIView):
+    serializer_class = WalletWithdrawalAmountSerializer
+    permission_classes = [IsAuthenticated]
+    flw_api = FlwAPI
+
+    @swagger_auto_schema(
+        operation_description="Initiate withdrawal from user wallet",
+    )
+    def post(self, request):
+        user_id = request.user.id
+        user = User.objects.get(id=user_id)
+        profile = UserProfile.objects.get(user_id=user)
+
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        amount = data.get("amount", None)
+        bank_code = data.get("bank_code", None)
+        account_number = data.get("account_number", None)
+        description = data.get("description", None)
+
+        charge, total_amount = get_withdrawal_fee(int(amount))
+
+        if total_amount >= profile.wallet_balance:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Insufficient funds.",
+            )
+
+        tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
+        email = user.email
+
+        txn = Transaction.objects.create(
+            user_id=request.user,
+            type="WITHDRAW",
+            amount=amount,
+            charge=charge,
+            status="PENDING",
+            reference=tx_ref,
+            currency="NGN",
+            provider="FLUTTERWAVE",
+            meta={"title": "Wallet debit"},
+        )
+        txn.save()
+        # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
+        tx_data = {
+            "account_bank": bank_code,
+            "account_number": account_number,
+            "amount": int(amount),
+            "narration": description,
+            "reference": tx_ref,
+            "currency": "NGN",
+            "meta": {
+                "amount_to_debit": total_amount,
+                "customer_email": user.email,
+                "tx_ref": tx_ref,
+            },
+            "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
+        }
+
+        obj = self.flw_api.initiate_payout(tx_data)
+        if obj["status"] == "error":
+            msg = obj["message"]
+            txn.meta.update({"description": f"FLW Transaction: {tx_ref}", "note": msg})
+            txn.save()
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=msg,
+            )
+        msg = obj["message"]
+        txn.meta.update({"description": f"FLW Transaction {tx_ref}", "note": msg})
+        txn.save()
+
+        # TODO: Send email notification
+        print("DATA FOR TRANSFER:", obj["message"])
+
+        return Response(
+            success=True,
+            message="Withdrawal is currently being processed",
+            status_code=status.HTTP_200_OK,
+            # data=obj["data"],
+        )
+
+
+class WalletWithdrawalCallbackView(GenericAPIView):
+    serializer_class = FlwWebhookSerializer
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Callback for FLW Transfer to Bank Account",
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        event = data.get("event", None)
+        data = data.get("data", None)
+
+        amount_charged = data["amount"]
+        msg = data["complete_message"]
+        amount_to_debit = data["meta"]["amount_to_debit"]
+        customer_email = data["meta"]["customer_email"]
+        tx_ref = data["meta"]["tx_ref"]
+
+        try:
+            txn = Transaction.objects.get(reference=tx_ref)
+        except Transaction.DoesNotExist:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if txn.verified:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Withdrawal transaction already verified",
+            )
+
+        # TODO: LOG EVENT
+        print("================================================")
+        print("DATA", data)
+        print("================================================")
+
+        if data["status"] == "FAILED":
+            txn.status = "FAILED"
+            txn.meta.update({"note": msg})
+            txn.verified = True
+            txn.save()
+            return Response(
+                success=True,
+                message="Callback processed successfully.",
+                status_code=status.HTTP_200_OK,
+            )
+
+        try:
+            user = User.objects.get(email=customer_email)
+            profile = UserProfile.objects.get(user_id=user)
+            # profile.wallet_balance -= int(amount_to_debit)
+            profile.wallet_balance -= Decimal(str(amount_to_debit))
+            profile.save()
+
+            txn.status = "SUCCESSFUL"
+            txn.meta.update({"note": msg})
+            txn.verified = True
+            txn.save()
+        except User.DoesNotExist:
+            return Response(
+                success=False,
+                message="User not found",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        except UserProfile.DoesNotExist:
+            return Response(
+                success=False,
+                message="Profile not found",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(
+            success=True,
+            message="Withdrawal callback processed successfully.",
             status_code=status.HTTP_200_OK,
         )
