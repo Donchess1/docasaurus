@@ -78,7 +78,7 @@ class ValidateBankAccountView(GenericAPIView):
             serializer = BankAccountSerializer(instance)
             return Response(
                 success=True,
-                message=obj["Bank Account Information retrieved"],
+                message="Bank Account Information retrieved",
                 status_code=status.HTTP_200_OK,
                 data=serializer.data,
             )
