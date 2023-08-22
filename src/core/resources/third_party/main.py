@@ -141,12 +141,12 @@ class ThirdPartyAPI(BaseThirdPartyService):
         #     "lastName": "AYODELE",
         #     "otherNames": "LORDSON"
         # }
-        # if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
-        #     return {
-        #         "message": "Bank Account verified successfully",
-        #         "status": True,
-        #         "payload": BANK_ACCOUNT_DATA,
-        #     }
+        if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
+            return {
+                "message": "Bank Account verified successfully",
+                "status": True,
+                "payload": BANK_ACCOUNT_DATA,
+            }
         return RECORD_NOT_FOUND_PAYLOAD
         url = f"{cls.Third_Party_API_URL}/account_number"
         json_data = {"account_number": account_number, "bank_code": bank_code}
