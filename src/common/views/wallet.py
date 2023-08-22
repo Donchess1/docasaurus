@@ -12,7 +12,7 @@ from common.serializers.wallet import (
     WalletAmountSerializer,
     WalletWithdrawalAmountSerializer,
 )
-from console.models import Transaction
+from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
 from users.models import UserProfile
@@ -208,6 +208,161 @@ class FundWalletRedirectView(GenericAPIView):
                 profile = UserProfile.objects.get(user_id=user)
                 profile.wallet_balance += int(amount_charged)
                 profile.save()
+            except User.DoesNotExist:
+                return Response(
+                    success=False,
+                    message="User not found",
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+            except UserProfile.DoesNotExist:
+                return Response(
+                    success=False,
+                    message="Profile not found",
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+            return Response(
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Transaction verified.",
+            )
+
+        return Response(
+            success=True,
+            message="Payment successfully verified",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class FundEscrowTransactionRedirectView(GenericAPIView):
+    serializer_class = WalletAmountSerializer
+    permission_classes = [AllowAny]
+    flw_api = FlwAPI
+
+    def get(self, request):
+        flw_status = request.query_params.get("status", None)
+        tx_ref = request.query_params.get("tx_ref", None)
+        flw_transaction_id = request.query_params.get("transaction_id", None)
+
+        try:
+            txn = Transaction.objects.get(reference=tx_ref)
+        except Transaction.DoesNotExist:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        if txn.verified:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Transaction already verified",
+            )
+
+        if flw_status == "cancelled":
+            txn.verified = True
+            txn.status = "CANCELLED"
+            txn.meta.update({"description": f"FLW Escrow Transaction cancelled"})
+            txn.save()
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Payment was cancelled.",
+            )
+
+        if flw_status == "failed":
+            txn.verified = True
+            txn.status = "FAILED"
+            txn.meta.update({"description": f"FLW Escrow Transaction failed"})
+            txn.save()
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Payment failed",
+            )
+        if flw_status not in ["completed", "successful"]:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid payment status",
+            )
+
+        obj = self.flw_api.verify_transaction(flw_transaction_id)
+
+        if obj["status"] == "error":
+            msg = obj["message"]
+            txn.meta.update({"description": f"FLW Escrow Transaction {msg}"})
+            txn.save()
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=f"{msg}[]",
+            )
+
+        if obj["data"]["status"] == "failed":
+            msg = obj["data"]["processor_response"]
+            txn.meta.update({"description": f"FLW Escrow Transaction {msg}"})
+            txn.save()
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=f"{msg}",
+            )
+
+        if (
+            obj["data"]["tx_ref"] == txn.reference
+            and obj["data"]["status"] == "successful"
+            and obj["data"]["currency"] == txn.currency
+            and obj["data"]["charged_amount"] >= txn.amount
+        ):
+            escrow_txn_ref = obj["data"]["meta"]["escrow_transaction_reference"]
+            escrow_txn = Transaction.objects.filter(reference=escrow_txn_ref).first()
+            escrow_txn.verified = True
+            escrow_txn.status = "SUCCESSFUL"
+            escrow_txn.save()
+            escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
+
+            # TODO: Notify Buyer and Seller that the transaction amount has been locked
+
+            flw_ref = obj["data"]["flw_ref"]
+            narration = obj["data"]["narration"]
+            txn.verified = True
+            txn.status = "SUCCESSFUL"
+            txn.mode = obj["data"]["auth_model"]
+            txn.charge = obj["data"]["app_fee"]
+            txn.remitted_amount = obj["data"]["amount_settled"]
+            txn.provider_tx_reference = flw_ref
+            txn.narration = narration
+            txn.meta.update(
+                {
+                    "payment_method": obj["data"]["payment_type"],
+                    "provider_txn_id": obj["data"]["id"],
+                    "description": f"FLW Escrow Transaction {narration}_{flw_ref}",
+                }
+            )
+            txn.save()
+
+            customer_email = obj["data"]["customer"]["email"]
+            amount_charged = obj["data"]["charged_amount"]
+
+            try:
+                user = User.objects.get(email=customer_email)
+                profile = UserProfile.objects.get(user_id=user)
+                profile.wallet_balance += int(amount_charged)
+                profile.locked_amount += int(escrow_txn.amount)
+                profile.save()
+                profile.wallet_balance -= Decimal(str(escrow_amount_to_charge))
+                profile.save()
+
+                instance = LockedAmount.objects.create(
+                    transaction=escrow_txn,
+                    user=user,
+                    seller_email=escrow_txn.escrowmeta.partner_email,
+                    amount=escrow_txn.amount,
+                    status="ESCROW",
+                )
+                instance.save()
+
             except User.DoesNotExist:
                 return Response(
                     success=False,

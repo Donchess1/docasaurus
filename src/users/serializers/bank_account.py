@@ -8,6 +8,7 @@ class BankAccountSerializer(serializers.ModelSerializer):
         model = BankAccount
         fields = (
             "id",
+            "user_id",
             "bank_name",
             "bank_code",
             "account_name",

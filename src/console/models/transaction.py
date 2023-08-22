@@ -34,7 +34,7 @@ class Transaction(models.Model):
     status = models.CharField(max_length=255, choices=STATUS)
     type = models.CharField(max_length=255, choices=TYPES)
     mode = models.CharField(max_length=255)
-    reference = models.CharField(max_length=255)
+    reference = models.CharField(max_length=255, unique=True)
     narration = models.CharField(max_length=255, null=True, blank=True)
     amount = models.IntegerField(default=0, null=True, blank=True)
     charge = models.IntegerField(default=0, null=True, blank=True)
@@ -74,3 +74,24 @@ class EscrowMeta(models.Model):
 
     def __str__(self):
         return f"{self.id}"
+
+
+class LockedAmount(models.Model):
+    STATUS_CHOICES = (
+        ("ESCROW", "ESCROW"),
+        ("SETTLED", "SETTLED"),
+        ("DISPUTE_RAISED", "DISPUTE_RAISED"),
+    )
+    id = models.UUIDField(
+        unique=True, primary_key=True, default=uuid.uuid4, editable=False
+    )
+    transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="locked_amounts"
+    )
+    seller_email = models.EmailField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+
+    def __str__(self):
+        return f"LockedAmount - Transaction ID: {self.transaction_id}"

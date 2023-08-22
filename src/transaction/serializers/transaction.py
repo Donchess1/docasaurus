@@ -6,6 +6,28 @@ from console.models.transaction import EscrowMeta, Transaction
 from utils.utils import generate_random_text, get_escrow_fees, validate_bank_account
 
 
+class EscrowTransactionPaymentSerializer(serializers.Serializer):
+    transaction_reference = serializers.CharField()
+
+    def validate_transaction_reference(self, value):
+        instance = Transaction.objects.filter(reference=value).first()
+        if not instance:
+            raise serializers.ValidationError("Transaction reference is not valid")
+        if instance.type != "ESCROW":
+            raise serializers.ValidationError(
+                "Invalide transaction type. Must be ESCROW"
+            )
+        if instance.verified:
+            raise serializers.ValidationError(
+                "Transaction has been verified or paid for"
+            )
+        if instance.status != "APPROVED":
+            raise serializers.ValidationError(
+                "Transaction must be approved before payment"
+            )
+        return value
+
+
 class EscrowTransactionSerializer(serializers.Serializer):
     purpose = serializers.CharField()
     item_type = serializers.CharField(max_length=255)
@@ -51,3 +73,52 @@ class EscrowTransactionSerializer(serializers.Serializer):
         }
         escrow_meta = EscrowMeta.objects.create(**escrow_meta_data)
         return transaction
+
+
+class FundEscrowTransactionSerializer(serializers.Serializer):
+    transaction_reference = serializers.CharField()
+    amount_to_charge = serializers.IntegerField()
+
+    def validate_transaction_reference(self, value):
+        instance = Transaction.objects.filter(reference=value).first()
+        if not instance:
+            raise serializers.ValidationError("Transaction reference is not valid")
+        if instance.type != "ESCROW":
+            raise serializers.ValidationError(
+                "Invalide transaction type. Must be ESCROW"
+            )
+        if instance.verified:
+            raise serializers.ValidationError(
+                "Transaction has been verified or paid for"
+            )
+        if instance.status != "APPROVED":
+            raise serializers.ValidationError(
+                "Transaction must be approved before payment"
+            )
+        return value
+
+    def validate_amount_to_charge(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount to charge must be greater than 0")
+        return value
+
+    def validate(self, data):
+        user = self.context.get("user")
+        transaction_reference = data.get("transaction_reference")
+        amount_to_charge = data.get("amount_to_charge")
+        transaction = Transaction.objects.get(reference=transaction_reference)
+
+        deficit = (
+            transaction.amount + transaction.charge
+        ) - user.userprofile.wallet_balance
+
+        if amount_to_charge < deficit:
+            raise serializers.ValidationError(
+                {
+                    "amount_to_charge": [
+                        "Amount to charge must be greater than or equal to the deficit"
+                    ]
+                }
+            )
+
+        return data
