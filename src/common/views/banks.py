@@ -5,11 +5,13 @@ from rest_framework.permissions import AllowAny
 
 from common.serializers.banks import (
     BankAccountPayloadSerializer,
+    BankAccountSerializer,
     BankListSerializer,
     ValidateBankAccountSerializer,
 )
 from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
+from users.models.bank_account import BankAccount
 from utils.response import Response
 from utils.utils import hours_to_seconds
 
@@ -67,6 +69,19 @@ class ValidateBankAccountView(GenericAPIView):
             )
 
         data = serializer.validated_data
+        bank_code = data.get("bank_code")
+        account_number = data.get("account_number")
+        instance = BankAccount.objects.filter(
+            bank_code=bank_code, account_number=account_number
+        ).first()
+        if instance:
+            serializer = BankAccountSerializer(instance)
+            return Response(
+                success=True,
+                message=obj["Bank Account Information retrieved"],
+                status_code=status.HTTP_200_OK,
+                data=serializer.data,
+            )
 
         obj = self.third_party.validate_bank_account(data)
         if not obj["status"]:

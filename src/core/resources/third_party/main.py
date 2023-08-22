@@ -9,6 +9,8 @@ from core.resources.third_party.data.store import (
     PASSPORT_DATA,
     VOTER_CARD_DATA,
 )
+from users.models.bank_account import BankAccount
+from users.serializers.bank_account import BankAccountSerializer
 from utils.utils import (
     RECORD_NOT_FOUND_PAYLOAD,
     TEST_BANK_CODE,
@@ -129,12 +131,22 @@ class ThirdPartyAPI(BaseThirdPartyService):
     def validate_bank_account(cls, data):
         account_number = data.get("account_number", None)
         bank_code = data.get("bank_code", None)
-        if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
-            return {
-                "message": "Bank Account verified successfully",
-                "status": True,
-                "payload": BANK_ACCOUNT_DATA,
-            }
+        #     {
+        #     "nuban": "769922001",
+        #     "accountName": "OLUWATOSIN LORDSON AYODELE",
+        #     "identityNumber": "22353288951",
+        #     "identityType": "BVN",
+        #     "bank": "Access Bank",
+        #     "firstName": "OLUWATOSIN",
+        #     "lastName": "AYODELE",
+        #     "otherNames": "LORDSON"
+        # }
+        # if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
+        #     return {
+        #         "message": "Bank Account verified successfully",
+        #         "status": True,
+        #         "payload": BANK_ACCOUNT_DATA,
+        #     }
         return RECORD_NOT_FOUND_PAYLOAD
         url = f"{cls.Third_Party_API_URL}/account_number"
         json_data = {"account_number": account_number, "bank_code": bank_code}

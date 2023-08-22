@@ -1,114 +1,36 @@
 import os
+import uuid
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import filters, generics, status
-from rest_framework.generics import CreateAPIView, GenericAPIView
-from rest_framework.pagination import PageNumberPagination
+from rest_framework import filters, generics, status, views
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 
 from console import tasks
-from console.models.transaction import Transaction
-from transaction.serializers.transaction import EscrowTransactionSerializer
+from console.models.transaction import LockedAmount, Transaction
+from core.resources.flutterwave import FlwAPI
+from transaction.pagination import LargeResultsSetPagination
+from transaction.permissions import IsTransactionStakeholder, TransactionHistoryOwner
+from transaction.serializers.transaction import (
+    EscrowTransactionPaymentSerializer,
+    EscrowTransactionSerializer,
+    FundEscrowTransactionSerializer,
+)
 from transaction.serializers.user import UserTransactionSerializer
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
+from utils.utils import generate_txn_reference
 
 User = get_user_model()
-
-
-# class UserTransactionView(GenericAPIView):
-#     serializer_class = UserTransactionSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     @swagger_auto_schema(
-#         operation_description="Webhook for FLW Updates",
-#     )
-#     def get(self, request):
-#         secret_hash = os.environ.get("FLW_SECRET_HASH")
-#         verif_hash = request.headers.get("verif-hash", None)
-
-#         if not verif_hash or verif_hash != secret_hash:
-#             return Response(
-#                 success=False,
-#                 message="Invalid authorization token.",
-#                 status_code=status.HTTP_403_FORBIDDEN,
-#             )
-
-#         serializer = self.serializer_class(data=request.data)
-#         if not serializer.is_valid():
-#             return Response(
-#                 success=False,
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 errors=serializer.errors,
-#             )
-
-#         data = serializer.validated_data
-#         event = data.get("event", None)
-#         data = data.get("data", None)
-
-#         html_content = generate_flw_payment_webhook_html(event, data)
-
-#         amount_charged = data["amount"]
-#         customer_email = data["customer"]["email"]
-
-#         # LOG EVENT
-
-#         # tracking webhook payload
-#         dev_email = "devtosxn@gmail.com"
-#         values = {
-#             "webhook_html_content": html_content,
-#         }
-#         tasks.send_webhook_notification_email(dev_email, values)
-
-#         if data["status"] == "failed":
-#             return Response(
-#                 success=True,
-#                 message="Webhook processed successfully.",
-#                 status_code=status.HTTP_200_OK,
-#             )
-
-#         try:
-#             user = User.objects.get(email=customer_email)
-#             profile = UserProfile.objects.get(user_id=user)
-#             profile.wallet_balance += int(amount_charged)
-#             profile.save()
-#         except User.DoesNotExist:
-#             return Response(
-#                 success=False,
-#                 message="User not found",
-#                 status_code=status.HTTP_404_NOT_FOUND,
-#             )
-#         except UserProfile.DoesNotExist:
-#             return Response(
-#                 success=False,
-#                 message="Profile not found",
-#                 status_code=status.HTTP_404_NOT_FOUND,
-#             )
-
-#         return Response(
-#             success=True,
-#             message="Webhook processed successfully.",
-#             status_code=status.HTTP_200_OK,
-#         )
-
-
-class CustomTransactionPermission(BasePermission):
-    def has_object_permission(self, request, view, obj):
-        # Check if the user is the owner of the transaction
-        return obj.user_id == request.user.id
-
-
-class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 5
-    page_size_query_param = "size"
-    max_page_size = 10
+BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
 class UserTransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
-    permission_classes = (IsAuthenticated, CustomTransactionPermission)
+    permission_classes = (IsAuthenticated, TransactionHistoryOwner)
     pagination_class = LargeResultsSetPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ["reference", "provider", "type"]
@@ -130,7 +52,79 @@ class UserTransactionListView(generics.ListAPIView):
         )
 
 
-class InitiateEscrowTransactionView(CreateAPIView):
+class TransactionDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserTransactionSerializer
+    permission_classes = (IsAuthenticated, IsTransactionStakeholder)
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    def get_transaction_instance(self, ref_or_id):
+        instance = self.get_queryset().filter(reference=ref_or_id).first()
+        if instance is None:
+            try:
+                instance = self.get_queryset().filter(id=ref_or_id).first()
+            except Exception as e:
+                instance = None
+        return instance
+
+    def retrieve(self, request, id, *args, **kwargs):
+        instance = self.get_transaction_instance(id)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = self.get_serializer(instance)
+        return Response(
+            success=True,
+            message="Transaction detail retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=serializer.data,
+        )
+
+    def update(self, request, id, *args, **kwargs):
+        instance = self.get_transaction_instance(id)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.type != "ESCROW":
+            return Response(
+                success=False,
+                message=f"{instance.type} transactions cannot be updated",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if "status" in serializer.validated_data:
+            new_status = serializer.validated_data["status"]
+            if new_status not in ["APPROVED", "REJECTED"]:
+                return Response(
+                    success=False,
+                    message="Invalid status value",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+        serializer.save()
+        return Response(
+            success=True,
+            message="Transaction detail updated successfully.",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class InitiateEscrowTransactionView(generics.CreateAPIView):
     serializer_class = EscrowTransactionSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -161,4 +155,145 @@ class InitiateEscrowTransactionView(CreateAPIView):
             message="Escrow transaction created successfully.",
             status_code=status.HTTP_200_OK,
             data=obj.data,
+        )
+
+
+class LockEscrowFundsView(generics.CreateAPIView):
+    serializer_class = EscrowTransactionPaymentSerializer
+    # TODO: Only buyer who has authorized transaction can access
+    permission_classes = (IsAuthenticated,)
+
+    @swagger_auto_schema(
+        operation_description="Lock funds for a Escrow Transaction",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
+    def post(self, request):
+        user = request.user
+        try:
+            profile = UserProfile.objects.get(user_id=user)
+        except UserProfile.DoesNotExist:
+            return Response(
+                success=False,
+                message="Profile does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        reference = serializer.validated_data.get("transaction_reference")
+        txn = Transaction.objects.get(reference=reference)
+
+        deficit = (txn.amount + txn.charge) - profile.wallet_balance
+        if deficit <= 0:
+            txn.status = "SUCCESSFUL"
+            txn.verified = True
+            txn.save()
+
+            instance = LockedAmount.objects.create(
+                transaction=txn,
+                user=user,
+                seller_email=txn.escrowmeta.partner_email,
+                amount=txn.amount,
+                status="ESCROW",
+            )
+            instance.save()
+
+            amount_to_debit = int(txn.amount + txn.charge)
+            profile.wallet_balance -= Decimal(str(amount_to_debit))
+            profile.locked_amount += int(txn.amount)
+            profile.save()
+            # TODO: Notify Buyer & Seller that funds has been locked in escrow.
+            return Response(
+                status=True,
+                message="Funds locked successfully",
+                status_code=status.HTTP_200_OK,
+            )
+        return Response(
+            success=False,
+            message="Insufficient funds in wallet.",
+            status_code=status.HTTP_200_OK,
+            errors={
+                "deficit": abs(deficit),
+                "message": "Insufficient funds in wallet.",
+            },
+        )
+
+
+class FundEscrowTransactionView(generics.GenericAPIView):
+    serializer_class = FundEscrowTransactionSerializer
+    # TODO: Only a buyer has authorized can access
+    permission_classes = [IsAuthenticated]
+    flw_api = FlwAPI
+
+    @swagger_auto_schema(
+        operation_description="Fund escrow transaction with Payment Gateway",
+    )
+    def post(self, request):
+        user = request.user
+        serializer = self.serializer_class(data=request.data, context={"user": user})
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        amount = data.get("amount_to_charge")
+        escrow_transaction_reference = data.get("transaction_reference")
+
+        tx_ref = generate_txn_reference()
+        email = user.email
+
+        txn = Transaction.objects.create(
+            user_id=request.user,
+            type="DEPOSIT",
+            amount=amount,
+            status="PENDING",
+            reference=tx_ref,
+            currency="NGN",
+            provider="FLUTTERWAVE",
+            meta={"title": "Wallet credit"},
+        )
+        txn.save()
+
+        tx_data = {
+            "tx_ref": tx_ref,
+            "amount": amount,
+            "currency": "NGN",
+            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/escrow-payment-redirect",
+            "customer": {
+                "email": user.email,
+                "phone_number": user.phone,
+                "name": user.name,
+            },
+            "customizations": {
+                "title": "MyBalance",
+                "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
+            },
+            "meta": {
+                "escrow_transaction_reference": escrow_transaction_reference,
+            },
+        }
+
+        obj = self.flw_api.initiate_payment_link(tx_data)
+        if obj["status"] == "error":
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=obj["message"],
+            )
+
+        payload = {"link": obj["data"]["link"]}
+        return Response(
+            success=True,
+            message="Escrow payment successfully initialized",
+            status_code=status.HTTP_200_OK,
+            data=payload,
         )

@@ -46,3 +46,25 @@ class UserTransactionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+        read_only_fields = (
+            "created_at",
+            "updated_at",
+            "provider_tx_reference",
+            "meta",
+            "verified",
+            "user_id",
+            "type",
+            "mode",
+            "reference",
+            "narration",
+            "amount",
+            "charge",
+            "remitted_amount",
+            "currency",
+            "provider",
+        )
+
+    def validate_status(self, value):
+        if value not in ["APPROVED", "REJECTED"]:
+            raise serializers.ValidationError("Invalid status value")
+        return value

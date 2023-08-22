@@ -8,6 +8,7 @@ from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
 from common.views.voter_card import ValidateVoterCardView
 from common.views.wallet import (
+    FundEscrowTransactionRedirectView,
     FundWalletRedirectView,
     FundWalletView,
     WalletWithdrawalCallbackView,
@@ -40,7 +41,7 @@ urlpatterns = [
         name="validate-bank-account",
     ),
     path(
-        "deposit-money",
+        "fund-wallet",
         FundWalletView.as_view(),
         name="fund-wallet",
     ),
@@ -48,6 +49,11 @@ urlpatterns = [
         "payment-redirect",
         FundWalletRedirectView.as_view(),
         name="fund-wallet-redirect",
+    ),
+    path(
+        "escrow-payment-redirect",
+        FundEscrowTransactionRedirectView.as_view(),
+        name="fund-escrow-redirect",
     ),
     path(
         "withdrawal-fee",
