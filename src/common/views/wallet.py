@@ -15,6 +15,7 @@ from common.serializers.wallet import (
 from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
+from core.resources.sockets.pusher import PusherSocket
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
@@ -524,12 +525,14 @@ class WalletWithdrawalView(GenericAPIView):
             message="Withdrawal is currently being processed",
             status_code=status.HTTP_200_OK,
             # data=obj["data"],
+            data={"transaction_reference": tx_ref},
         )
 
 
 class WalletWithdrawalCallbackView(GenericAPIView):
     serializer_class = FlwTransferCallbackSerializer
     permission_classes = [AllowAny]
+    pusher = PusherSocket()
 
     @swagger_auto_schema(
         operation_description="Callback for FLW Transfer to Bank Account",
@@ -569,7 +572,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
 
         # TODO: LOG EVENT
         print("================================================")
-        print("DATA", data)
+        print("WITHDRAWAL DATA", data)
         print("================================================")
 
         if data["status"] == "FAILED":
@@ -577,6 +580,13 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             txn.meta.update({"note": msg})
             txn.verified = True
             txn.save()
+
+            self.pusher.trigger(
+                f"WALLET_WITHDRAWAL_{tx_ref}",
+                "WALLET_WITHDRAWAL_FAILURE",
+                {"status": "FAILED", "message": msg, "amount": txn.amount},
+            )
+
             return Response(
                 success=True,
                 message="Callback processed successfully.",
@@ -586,9 +596,14 @@ class WalletWithdrawalCallbackView(GenericAPIView):
         try:
             user = User.objects.get(email=customer_email)
             profile = UserProfile.objects.get(user_id=user)
-            # profile.wallet_balance -= int(amount_to_debit)
             profile.wallet_balance -= Decimal(str(amount_to_debit))
             profile.save()
+
+            self.pusher.trigger(
+                f"WALLET_WITHDRAWAL_{tx_ref}",
+                "WALLET_WITHDRAWAL_SUCCESS",
+                {"status": "SUCCESSFUL", "message": msg, "amount": txn.amount},
+            )
 
             txn.status = "SUCCESSFUL"
             txn.meta.update({"note": msg})

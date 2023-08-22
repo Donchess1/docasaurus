@@ -73,6 +73,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
     "http://127.0.0.1:5173",
     "http://localhost:5173",
+    "http://127.0.0.1:5500",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
     "https://dapper-eclair-4a6866.netlify.app",
