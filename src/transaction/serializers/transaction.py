@@ -80,10 +80,10 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
-        if instance.status != "APPROVED":
-            raise serializers.ValidationError(
-                "Transaction must be approved before payment"
-            )
+        # if instance.status != "APPROVED":
+        #     raise serializers.ValidationError(
+        #         "Transaction must be approved before payment"
+        #     )
         return value
 
     def validate_amount_to_charge(self, value):
@@ -128,10 +128,10 @@ class EscrowTransactionPaymentSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
-        if instance.status != "APPROVED":
-            raise serializers.ValidationError(
-                "Transaction must be approved before payment"
-            )
+        # if instance.status != "APPROVED":
+        #     raise serializers.ValidationError(
+        #         "Transaction must be approved before payment"
+        #     )
         return value
 
 
