@@ -10,10 +10,10 @@ from rest_framework.permissions import AllowAny
 from console import tasks
 from console.models.transaction import Transaction
 from console.serializers.flutterwave import FlwPayoutSerializer, FlwWebhookSerializer
+from core.resources.sockets.pusher import PusherSocket
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
-from core.resources.sockets.pusher import PusherSocket
 
 User = get_user_model()
 

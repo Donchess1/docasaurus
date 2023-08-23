@@ -1,18 +1,16 @@
 from django.urls import path
 
-from transaction.views.transaction import TransactionListView
 from transaction.views.user import (
     FundEscrowTransactionView,
     InitiateEscrowTransactionView,
     LockEscrowFundsView,
-    TransactionDetailView,
     UnlockEscrowFundsView,
+    UserTransactionDetailView,
     UserTransactionListView,
 )
 
 urlpatterns = [
-    path("", TransactionListView.as_view(), name="transactions"),
-    path("user", UserTransactionListView.as_view(), name="user-transactions"),
+    path("", UserTransactionListView.as_view(), name="user-transactions"),
     path(
         "initiate-escrow",
         InitiateEscrowTransactionView.as_view(),
@@ -35,7 +33,7 @@ urlpatterns = [
     ),
     path(
         "link/<str:id>",
-        TransactionDetailView.as_view(),
-        name="transaction-detail-view",
+        UserTransactionDetailView.as_view(),
+        name="user-transaction-detail-view",
     ),
 ]

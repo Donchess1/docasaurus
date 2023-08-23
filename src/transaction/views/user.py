@@ -12,7 +12,7 @@ from console import tasks
 from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
 from transaction.pagination import LargeResultsSetPagination
-from transaction.permissions import IsTransactionStakeholder, TransactionHistoryOwner
+from transaction.permissions import IsTransactionStakeholder
 from transaction.serializers.transaction import (
     EscrowTransactionPaymentSerializer,
     EscrowTransactionSerializer,
@@ -32,7 +32,7 @@ FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 class UserTransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
-    permission_classes = (IsAuthenticated, TransactionHistoryOwner)
+    permission_classes = (IsAuthenticated,)
     pagination_class = LargeResultsSetPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ["reference", "provider", "type"]
@@ -47,7 +47,7 @@ class UserTransactionListView(generics.ListAPIView):
         return queryset
 
     @swagger_auto_schema(
-        operation_description="List all transactions for Authenticated User",
+        operation_description="List all transactions for an Authenticated User",
         responses={
             200: UserTransactionSerializer,
         },
@@ -60,13 +60,13 @@ class UserTransactionListView(generics.ListAPIView):
         response = self.get_paginated_response(serializer.data)
         return Response(
             success=True,
-            message="Transactions retrieved successfully.",
+            message="User's transactions retrieved successfully",
             status_code=status.HTTP_200_OK,
             data=response.data,
         )
 
 
-class TransactionDetailView(generics.GenericAPIView):
+class UserTransactionDetailView(generics.GenericAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = (IsAuthenticated, IsTransactionStakeholder)
 
@@ -106,7 +106,7 @@ class TransactionDetailView(generics.GenericAPIView):
         )
 
     @swagger_auto_schema(
-        operation_description="Update ESCROW transactio status to 'APPROVED' or 'REJECTED'",
+        operation_description="Update ESCROW transaction status to 'APPROVED' or 'REJECTED'",
     )
     def patch(self, request, id, *args, **kwargs):
         instance = self.get_transaction_instance(id)
@@ -144,6 +144,46 @@ class TransactionDetailView(generics.GenericAPIView):
             success=True,
             message="Transaction detail updated successfully.",
             status_code=status.HTTP_200_OK,
+        )
+
+
+class TransactionDetailView(generics.GenericAPIView):
+    serializer_class = UserTransactionSerializer
+    permission_classes = (AllowAny,)
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    def get_transaction_instance(self, ref_or_id):
+        instance = self.get_queryset().filter(reference=ref_or_id).first()
+        if instance is None:
+            try:
+                instance = self.get_queryset().filter(id=ref_or_id).first()
+            except Exception as e:
+                instance = None
+        return instance
+
+    @swagger_auto_schema(
+        operation_description="Console: Get a transaction detail by ID or Reference",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
+    def get(self, request, id, *args, **kwargs):
+        instance = self.get_transaction_instance(id)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = self.get_serializer(instance)
+        return Response(
+            success=True,
+            message="Transaction detail retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=serializer.data,
         )
 
 
@@ -251,7 +291,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
 class FundEscrowTransactionView(generics.GenericAPIView):
     serializer_class = FundEscrowTransactionSerializer
     # TODO: Only a buyer has authorized can access
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
     flw_api = FlwAPI
 
     @swagger_auto_schema(
