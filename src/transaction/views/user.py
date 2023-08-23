@@ -46,6 +46,12 @@ class UserTransactionListView(generics.ListAPIView):
 
         return queryset
 
+    @swagger_auto_schema(
+        operation_description="List all transactions for Authenticated User",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         qs = self.paginate_queryset(queryset)
@@ -76,6 +82,12 @@ class TransactionDetailView(generics.GenericAPIView):
                 instance = None
         return instance
 
+    @swagger_auto_schema(
+        operation_description="Get a transaction detail by ID or Reference",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
     def get(self, request, id, *args, **kwargs):
         instance = self.get_transaction_instance(id)
         if not instance:
@@ -93,6 +105,9 @@ class TransactionDetailView(generics.GenericAPIView):
             data=serializer.data,
         )
 
+    @swagger_auto_schema(
+        operation_description="Update ESCROW transactio status to 'APPROVED' or 'REJECTED'",
+    )
     def patch(self, request, id, *args, **kwargs):
         instance = self.get_transaction_instance(id)
         if not instance:
