@@ -6,5 +6,9 @@ class FlwWebhookSerializer(serializers.Serializer):
     data = serializers.JSONField()
 
 
+class FlwPayoutSerializer(serializers.Serializer):
+    transfer = serializers.JSONField()
+
+
 class FlwTransferCallbackSerializer(serializers.Serializer):
     transfer = serializers.JSONField()
