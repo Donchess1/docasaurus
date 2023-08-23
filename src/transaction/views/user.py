@@ -369,7 +369,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             seller = User.objects.get(email=instance.seller_email)
             amount_to_credit_seller = int(txn.amount - txn.charge)
             seller_profile = UserProfile.objects.get(user_id=seller)
-            seller_profile.wallet_balance += int(txn.amount)
+            seller_profile.wallet_balance += int(amount_to_credit_seller)
             seller_profile.save()
 
             instance.status = "SETTLED"
