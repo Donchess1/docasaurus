@@ -10,6 +10,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "author",
+            "partner_email",
             "purpose",
             "item_type",
             "item_quantity",
