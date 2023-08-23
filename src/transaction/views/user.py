@@ -216,8 +216,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
             txn.verified = True
             txn.save()
 
-            txn.escrowmeta.author = "SELLER" or "BUYER"
-
             instance = LockedAmount.objects.create(
                 transaction=txn,
                 user=user,
