@@ -19,6 +19,14 @@ class EscrowTransactionSerializer(serializers.Serializer):
     bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()
 
+    def validate_partner_email(self, value):
+        request = self.context.get("request")
+        if value == request.user.email:
+            raise serializers.ValidationError(
+                "Partner's email cannot be the same as your email"
+            )
+        return value
+
     def create(self, validated_data):
         user = self.context["request"].user
         author = "BUYER" if user.is_buyer else "SELLER"
