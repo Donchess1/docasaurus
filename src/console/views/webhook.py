@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
