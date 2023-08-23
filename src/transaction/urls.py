@@ -5,19 +5,25 @@ from transaction.views.user import (
     InitiateEscrowTransactionView,
     LockEscrowFundsView,
     TransactionDetailView,
+    UnlockEscrowFundsView,
     UserTransactionListView,
 )
 
 urlpatterns = [
     path("user", UserTransactionListView.as_view(), name="user-transactions"),
     path(
-        "escrow",
+        "initiate-escrow",
         InitiateEscrowTransactionView.as_view(),
         name="initiate-escrow-transaction",
     ),
     path(
         "lock-funds",
         LockEscrowFundsView.as_view(),
+        name="lock-escrow-funds",
+    ),
+    path(
+        "unlock-funds",
+        UnlockEscrowFundsView.as_view(),
         name="lock-escrow-funds",
     ),
     path(

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from console.models.transaction import EscrowMeta, Transaction
+from console.models.transaction import EscrowMeta, LockedAmount, Transaction
+from transaction.serializers.locked_amount import LockedAmountSerializer
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
@@ -9,9 +10,6 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "author",
-            "transaction_id",
-            "buyer_id",
-            "seller_id",
             "purpose",
             "item_type",
             "item_quantity",
@@ -25,6 +23,9 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
 
 
 class UserTransactionSerializer(serializers.ModelSerializer):
+    locked_amount = serializers.SerializerMethodField()
+    escrow_metadata = serializers.SerializerMethodField()
+
     class Meta:
         model = Transaction
         fields = (
@@ -43,6 +44,8 @@ class UserTransactionSerializer(serializers.ModelSerializer):
             "provider_tx_reference",
             "meta",
             "verified",
+            "locked_amount",
+            "escrow_metadata",
             "created_at",
             "updated_at",
         )
@@ -61,8 +64,24 @@ class UserTransactionSerializer(serializers.ModelSerializer):
             "charge",
             "remitted_amount",
             "currency",
+            "locked_amount",
+            "escrow_metadata",
             "provider",
         )
+
+    def get_locked_amount(self, obj):
+        instance = LockedAmount.objects.filter(transaction=obj).first()
+        if not instance:
+            return None
+        serializer = LockedAmountSerializer(instance=instance)
+        return serializer.data
+
+    def get_escrow_metadata(self, obj):
+        instance = EscrowMeta.objects.filter(transaction_id=obj).first()
+        if not instance:
+            return None
+        serializer = EscrowTransactionMetaSerializer(instance=instance)
+        return serializer.data
 
     def validate_status(self, value):
         if value not in ["APPROVED", "REJECTED"]:
