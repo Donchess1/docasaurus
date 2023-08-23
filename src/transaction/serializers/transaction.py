@@ -1,31 +1,12 @@
 import uuid
 
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from console.models.transaction import EscrowMeta, Transaction
+from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from utils.utils import generate_random_text, get_escrow_fees, validate_bank_account
 
-
-class EscrowTransactionPaymentSerializer(serializers.Serializer):
-    transaction_reference = serializers.CharField()
-
-    def validate_transaction_reference(self, value):
-        instance = Transaction.objects.filter(reference=value).first()
-        if not instance:
-            raise serializers.ValidationError("Transaction reference is not valid")
-        if instance.type != "ESCROW":
-            raise serializers.ValidationError(
-                "Invalide transaction type. Must be ESCROW"
-            )
-        if instance.verified:
-            raise serializers.ValidationError(
-                "Transaction has been verified or paid for"
-            )
-        if instance.status != "APPROVED":
-            raise serializers.ValidationError(
-                "Transaction must be approved before payment"
-            )
-        return value
+User = get_user_model()
 
 
 class EscrowTransactionSerializer(serializers.Serializer):
@@ -85,7 +66,7 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError("Transaction reference is not valid")
         if instance.type != "ESCROW":
             raise serializers.ValidationError(
-                "Invalide transaction type. Must be ESCROW"
+                "Invalid transaction type. Must be ESCROW"
             )
         if instance.verified:
             raise serializers.ValidationError(
@@ -122,3 +103,55 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
             )
 
         return data
+
+
+class EscrowTransactionPaymentSerializer(serializers.Serializer):
+    transaction_reference = serializers.CharField()
+
+    def validate_transaction_reference(self, value):
+        instance = Transaction.objects.filter(reference=value).first()
+        if not instance:
+            raise serializers.ValidationError("Transaction reference is not valid")
+        if instance.type != "ESCROW":
+            raise serializers.ValidationError(
+                "Invalid transaction type. Must be ESCROW"
+            )
+        if instance.verified:
+            raise serializers.ValidationError(
+                "Transaction has been verified or paid for"
+            )
+        if instance.status != "APPROVED":
+            raise serializers.ValidationError(
+                "Transaction must be approved before payment"
+            )
+        return value
+
+
+class UnlockEscrowTransactionSerializer(serializers.Serializer):
+    transaction_reference = serializers.CharField()
+
+    def validate_transaction_reference(self, value):
+        instance = Transaction.objects.filter(reference=value).first()
+        if not instance:
+            raise serializers.ValidationError("Transaction reference is not valid")
+        if instance.type != "ESCROW":
+            raise serializers.ValidationError(
+                "Invalid transaction type. Must be ESCROW"
+            )
+        obj = LockedAmount.objects.get(transaction=instance)
+        if obj.status == "SETTLED":
+            raise serializers.ValidationError(
+                {"transaction": "Funds have already been unlocked to seller"}
+            )
+        seller_obj = User.objects.filter(
+            email=obj.seller_email, is_verified=True
+        ).first()
+        if not seller_obj:
+            raise serializers.ValidationError(
+                {"seller": "Seller has not created or activated account on platform"}
+            )
+        if instance.status != "SUCCESSFUL":
+            raise serializers.ValidationError(
+                "Transaction must be paid for before unlocking"
+            )
+        return value

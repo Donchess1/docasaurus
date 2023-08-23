@@ -68,7 +68,7 @@ class EscrowMeta(models.Model):
     delivery_date = models.DateField()
     delivery_tolerance = models.IntegerField(null=True, blank=True, default=3)
     charge = models.IntegerField(null=True, blank=True)
-    meta = models.JSONField(null=True, blank=True)  # ["buyer_charge", "seller_charge",]
+    meta = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -92,6 +92,8 @@ class LockedAmount(models.Model):
     seller_email = models.EmailField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"LockedAmount - Transaction ID: {self.transaction_id}"
