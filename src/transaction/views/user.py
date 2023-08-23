@@ -276,6 +276,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status=True,
                 message="Funds locked successfully",
                 status_code=status.HTTP_200_OK,
+                data={"transaction_reference": reference},
             )
         return Response(
             success=False,

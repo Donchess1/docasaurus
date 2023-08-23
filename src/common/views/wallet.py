@@ -388,6 +388,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             success=True,
             message="Payment successfully verified",
             status_code=status.HTTP_200_OK,
+            data={"transaction_reference": tx_ref},
         )
 
 
