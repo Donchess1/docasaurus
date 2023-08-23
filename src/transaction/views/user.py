@@ -188,9 +188,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
     @swagger_auto_schema(
         operation_description="Lock funds for a Escrow Transaction",
-        responses={
-            200: UserTransactionSerializer,
-        },
     )
     def post(self, request):
         user = request.user
@@ -219,10 +216,14 @@ class LockEscrowFundsView(generics.CreateAPIView):
             txn.verified = True
             txn.save()
 
+            txn.escrowmeta.author = "SELLER" or "BUYER"
+
             instance = LockedAmount.objects.create(
                 transaction=txn,
                 user=user,
-                seller_email=txn.escrowmeta.partner_email,
+                seller_email=txn.escrowmeta.partner_email
+                if txn.escrowmeta.author == "BUYER"
+                else txn.user_id.email,
                 amount=txn.amount,
                 status="ESCROW",
             )

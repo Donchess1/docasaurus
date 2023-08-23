@@ -358,7 +358,9 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 instance = LockedAmount.objects.create(
                     transaction=escrow_txn,
                     user=user,
-                    seller_email=escrow_txn.escrowmeta.partner_email,
+                    seller_email=escrow_txn.escrowmeta.partner_email
+                    if escrow_txn.escrowmeta.author == "BUYER"
+                    else escrow_txn.user_id.email,
                     amount=escrow_txn.amount,
                     status="ESCROW",
                 )

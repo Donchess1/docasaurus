@@ -24,14 +24,14 @@ urlpatterns = [
         name="lock-escrow-funds",
     ),
     path(
-        "unlock-funds",
-        UnlockEscrowFundsView.as_view(),
-        name="lock-escrow-funds",
-    ),
-    path(
         "fund-escrow",
         FundEscrowTransactionView.as_view(),
         name="fund-escrow",
+    ),
+    path(
+        "unlock-funds",
+        UnlockEscrowFundsView.as_view(),
+        name="lock-escrow-funds",
     ),
     path(
         "link/<str:id>",
