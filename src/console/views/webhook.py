@@ -7,11 +7,12 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
 from console import tasks
+from console.models.transaction import Transaction
 from console.serializers.flutterwave import FlwPayoutSerializer, FlwWebhookSerializer
-from core.resources.sockets.pusher import PusherSocket
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
+from core.resources.sockets.pusher import PusherSocket
 
 User = get_user_model()
 
@@ -119,11 +120,7 @@ class FlwPayoutWebhookView(GenericAPIView):
                 errors=serializer.errors,
             )
 
-        data = serializer.validated_data
-        # event = data.get("event", None)
-        data = data.get("transfer")
-
-        # html_content = generate_flw_payment_webhook_html(event, data)
+        data = serializer.validated_data.get("transfer")
 
         amount_charged = data["amount"]
         msg = data["complete_message"]
