@@ -180,6 +180,13 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_403_FORBIDDEN,
                 message="You do not have permission to update this escrow transaction",
             )
+        escrow_action = instance.meta.get("escrow_action", None)
+        if escrow_action:
+            return Response(
+                success=False,
+                message=f"Escrow transaction cannot be updated again",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if not serializer.is_valid():
@@ -197,6 +204,8 @@ class UserTransactionDetailView(generics.GenericAPIView):
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
         serializer.save()
+        instance.meta.update({"escrow_action": new_status})
+        instance.save()
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",

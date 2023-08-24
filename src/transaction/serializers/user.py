@@ -86,5 +86,7 @@ class UserTransactionSerializer(serializers.ModelSerializer):
 
     def validate_status(self, value):
         if value not in ["APPROVED", "REJECTED"]:
-            raise serializers.ValidationError("Invalid status value")
+            raise serializers.ValidationError(
+                "Invalid status value. Must be 'APPROVED' or 'REJECTED'"
+            )
         return value
