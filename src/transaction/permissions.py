@@ -7,6 +7,16 @@ class TransactionHistoryOwner(BasePermission):
         return obj.user_id == request.user.id
 
 
+class IsBuyer(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return request.user.is_authenticated and request.user.is_buyer
+
+
+class IsSeller(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return request.user.is_authenticated and request.user.is_seller
+
+
 class IsTransactionStakeholder(BasePermission):
     def has_object_permission(self, request, view, obj):
         # Check if the user is the owner of the transaction or partner_email matches

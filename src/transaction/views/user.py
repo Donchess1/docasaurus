@@ -12,7 +12,7 @@ from console import tasks
 from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
 from transaction.pagination import LargeResultsSetPagination
-from transaction.permissions import IsTransactionStakeholder
+from transaction.permissions import IsBuyer, IsTransactionStakeholder
 from transaction.serializers.transaction import (
     EscrowTransactionPaymentSerializer,
     EscrowTransactionSerializer,
@@ -66,9 +66,51 @@ class UserTransactionListView(generics.ListAPIView):
         )
 
 
+class UserLockedEscrowTransactionListView(generics.ListAPIView):
+    serializer_class = UserTransactionSerializer
+    permission_classes = [IsBuyer]
+    pagination_class = LargeResultsSetPagination
+
+    def get_queryset(self):
+        user = self.request.user
+        # Escow Transactions locked by the Buyer
+        queryset = Transaction.objects.filter(
+            Q(user_id=user) | Q(escrowmeta__partner_email=user.email),
+            type="ESCROW",
+            status="SUCCESSFUL",
+        ).order_by("created_at")
+
+        return queryset
+
+    @swagger_auto_schema(
+        operation_description="List all transactions locked in escrow for a Buyer",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
+    def list(self, request, *args, **kwargs):
+        if not request.user.is_buyer:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to perform this action",
+            )
+        queryset = self.filter_queryset(self.get_queryset())
+        qs = self.paginate_queryset(queryset)
+
+        serializer = self.get_serializer(qs, many=True)
+        response = self.get_paginated_response(serializer.data)
+        return Response(
+            success=True,
+            message="User's transactions retrieved successfully",
+            status_code=status.HTTP_200_OK,
+            data=response.data,
+        )
+
+
 class UserTransactionDetailView(generics.GenericAPIView):
     serializer_class = UserTransactionSerializer
-    permission_classes = (IsAuthenticated, IsTransactionStakeholder)
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Transaction.objects.all()
