@@ -154,6 +154,10 @@ class UnlockEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Invalid transaction type. Must be ESCROW"
             )
+        if instance.status != "SUCCESSFUL":
+            raise serializers.ValidationError(
+                "Transaction must be paid for before unlocking"
+            )
         obj = LockedAmount.objects.get(transaction=instance)
         if obj.status == "SETTLED":
             raise serializers.ValidationError(
@@ -165,9 +169,5 @@ class UnlockEscrowTransactionSerializer(serializers.Serializer):
         if not seller_obj:
             raise serializers.ValidationError(
                 {"seller": "Seller has not created or activated account on platform"}
-            )
-        if instance.status != "SUCCESSFUL":
-            raise serializers.ValidationError(
-                "Transaction must be paid for before unlocking"
             )
         return value
