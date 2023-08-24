@@ -23,6 +23,7 @@ from transaction.serializers.user import UserTransactionSerializer
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
+from utils.transaction import get_escrow_transaction_stakeholders
 from utils.utils import generate_txn_reference
 
 User = get_user_model()
@@ -139,6 +140,15 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
+        if instance.status == "ESCROW":
+            stakeholders = get_escrow_transaction_stakeholders(id)
+            if request.user.email not in stakeholders.values():
+                return Response(
+                    success=False,
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    message="You do not have permission to perform this action",
+                )
+
         serializer = self.get_serializer(instance)
         return Response(
             success=True,
@@ -164,6 +174,12 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 message=f"{instance.type} transactions cannot be updated",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        if request.user.email != instance.escrowmeta.partner_email:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to update this escrow transaction",
+            )
 
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if not serializer.is_valid():
@@ -180,11 +196,10 @@ class UserTransactionDetailView(generics.GenericAPIView):
                     message="Invalid status value. Must be one of 'APPROVED' or 'REJECTED'",
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
-
         serializer.save()
         return Response(
             success=True,
-            message="Transaction detail updated successfully.",
+            message=f"Escrow transaction {new_status.lower()}",
             status_code=status.HTTP_200_OK,
         )
 
@@ -265,11 +280,10 @@ class InitiateEscrowTransactionView(generics.CreateAPIView):
 
 class LockEscrowFundsView(generics.CreateAPIView):
     serializer_class = EscrowTransactionPaymentSerializer
-    # TODO: Only buyer who has authorized transaction can access
     permission_classes = (IsAuthenticated,)
 
     @swagger_auto_schema(
-        operation_description="Lock funds for a Escrow Transaction",
+        operation_description="Lock funds for a Escrow Transaction as a Buyer",
     )
     def post(self, request):
         user = request.user
@@ -278,7 +292,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
         except UserProfile.DoesNotExist:
             return Response(
                 success=False,
-                message="Profile does not exist",
+                message="User Profile does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
@@ -290,6 +304,15 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 errors=serializer.errors,
             )
         reference = serializer.validated_data.get("transaction_reference")
+
+        stakeholders = get_escrow_transaction_stakeholders(reference)
+        if request.user.email != stakeholders["BUYER"]:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to perform this action",
+            )
+
         txn = Transaction.objects.get(reference=reference)
 
         deficit = (txn.amount + txn.charge) - profile.wallet_balance
@@ -333,15 +356,43 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
 class FundEscrowTransactionView(generics.GenericAPIView):
     serializer_class = FundEscrowTransactionSerializer
-    # TODO: Only a buyer has authorized can access
     permission_classes = (IsAuthenticated,)
     flw_api = FlwAPI
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    def get_transaction_instance(self, ref_or_id):
+        instance = self.get_queryset().filter(reference=ref_or_id).first()
+        if instance is None:
+            try:
+                instance = self.get_queryset().filter(id=ref_or_id).first()
+            except Exception as e:
+                instance = None
+        return instance
 
     @swagger_auto_schema(
         operation_description="Fund escrow transaction with Payment Gateway",
     )
     def post(self, request):
         user = request.user
+        ref = request.data.get("transaction_reference", None)
+        instance = self.get_transaction_instance(ref)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        stakeholders = get_escrow_transaction_stakeholders(ref)
+        if request.user.email != stakeholders["BUYER"]:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to perform this action",
+            )
+
         serializer = self.serializer_class(data=request.data, context={"user": user})
         if not serializer.is_valid():
             return Response(
@@ -406,8 +457,19 @@ class FundEscrowTransactionView(generics.GenericAPIView):
 
 class UnlockEscrowFundsView(generics.CreateAPIView):
     serializer_class = UnlockEscrowTransactionSerializer
-    # TODO: Only buyer who has authorized transaction can access
     permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    def get_transaction_instance(self, ref_or_id):
+        instance = self.get_queryset().filter(reference=ref_or_id).first()
+        if instance is None:
+            try:
+                instance = self.get_queryset().filter(id=ref_or_id).first()
+            except Exception as e:
+                instance = None
+        return instance
 
     @swagger_auto_schema(
         operation_description="Unlock funds for a Escrow Transaction as a Buyer",
@@ -417,12 +479,28 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
     )
     def post(self, request):
         user = request.user
+        ref = request.data.get("transaction_reference", None)
+        instance = self.get_transaction_instance(ref)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        stakeholders = get_escrow_transaction_stakeholders(ref)
+        if request.user.email != stakeholders["BUYER"]:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to perform this action",
+            )
         try:
             profile = UserProfile.objects.get(user_id=user)
         except UserProfile.DoesNotExist:
             return Response(
                 success=False,
-                message="Profile does not exist",
+                message="User Profile does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
