@@ -80,6 +80,10 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
+        if instance.status == "REJECTED":
+            raise serializers.ValidationError(
+                "Unable to process payments for rejected escrow transaction"
+            )
         # if instance.status != "APPROVED":
         #     raise serializers.ValidationError(
         #         "Transaction must be approved before payment"
@@ -127,6 +131,10 @@ class EscrowTransactionPaymentSerializer(serializers.Serializer):
         if instance.verified:
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
+            )
+        if instance.status == "REJECTED":
+            raise serializers.ValidationError(
+                "Unable to process payments for rejected escrow transaction"
             )
         # if instance.status != "APPROVED":
         #     raise serializers.ValidationError(
