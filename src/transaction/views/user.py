@@ -19,7 +19,10 @@ from transaction.serializers.transaction import (
     FundEscrowTransactionSerializer,
     UnlockEscrowTransactionSerializer,
 )
-from transaction.serializers.user import UserTransactionSerializer
+from transaction.serializers.user import (
+    UpdateEscrowTransactionSerializer,
+    UserTransactionSerializer,
+)
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
@@ -113,6 +116,11 @@ class UserTransactionDetailView(generics.GenericAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_class(self, *args, **kwargs):
+        if self.request.method == "PATCH":
+            return UpdateEscrowTransactionSerializer
+        return self.serializer_class
+
     def get_queryset(self):
         return Transaction.objects.all()
 
@@ -188,24 +196,22 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(
                 success=False,
                 errors=serializer.errors,
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        if "status" in serializer.validated_data:
-            new_status = serializer.validated_data["status"]
-            if new_status not in ["APPROVED", "REJECTED"]:
-                return Response(
-                    success=False,
-                    message="Invalid status value. Must be one of 'APPROVED' or 'REJECTED'",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-        serializer.save()
-        instance.meta.update({"escrow_action": new_status})
+        new_status = serializer.validated_data.get("status")
+        rejected_reason = serializer.validated_data.get("rejected_reason")
+
+        instance.status = new_status
+        instance.meta.update(
+            {"escrow_action": new_status, "rejected_reason": list(rejected_reason)}
+        )
         instance.save()
+        # If status is REJECTED and the author is buyer, refund the escrow funds to the buyer.
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",

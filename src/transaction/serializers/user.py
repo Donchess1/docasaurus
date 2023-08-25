@@ -90,3 +90,31 @@ class UserTransactionSerializer(serializers.ModelSerializer):
                 "Invalid status value. Must be 'APPROVED' or 'REJECTED'"
             )
         return value
+
+
+class UpdateEscrowTransactionSerializer(serializers.Serializer):
+    REJECTED_REASONS_CHOICES = (
+        ("WRONG_AMOUNT", "WRONG_AMOUNT"),
+        ("WRONG_DESCRIPTION", "WRONG_DESCRIPTION"),
+        ("WRONG_ITEM_CHOICE", "WRONG_ITEM_CHOICE"),
+        ("WRONG_QUANTITY", "WRONG_QUANTITY"),
+        ("WRONG_DELIVERY_DATE", "WRONG_DELIVERY_DATE"),
+    )
+
+    status = serializers.ChoiceField(choices=("APPROVED", "REJECTED"))
+    rejected_reason = serializers.MultipleChoiceField(
+        choices=REJECTED_REASONS_CHOICES, allow_null=True, required=False
+    )
+
+    def validate(self, data):
+        status = data.get("status")
+        rejected_reason = data.get("rejected_reason")
+
+        if status == "REJECTED" and not rejected_reason:
+            raise serializers.ValidationError(
+                {
+                    "rejected_reason": "Rejected reason is required when status is 'REJECTED'."
+                }
+            )
+
+        return data
