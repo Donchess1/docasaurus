@@ -20,19 +20,19 @@
   - `cp env.example .env`
   - You will also need to create an account with [SendGrid](https://sendgrid.com/) and get an API Key. You will need to add this to the .env file
 
-- Run `make build-dev`
+- Run `make build`
 
   - Running the above command for the first time will download all docker-images and third party packages needed for the app.
   - **NB: This will take several minutes for the first build**
 
-- Run `make up-dev`
+- Run `make up`
 
   - Running the above command will Start up the following Servers:
     - Postgres Server --> http://localhost:5435
     - Django Development Server --> http://localhost:8000
     - Redis Server --> http://localhost:6379
 
-- Run `make down-dev` to stop the servers
+- Run `make down` to stop the servers
 
 - Run `make test` to run tests
 
