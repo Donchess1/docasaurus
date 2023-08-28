@@ -47,7 +47,6 @@ class UserTransactionListView(generics.ListAPIView):
         queryset = Transaction.objects.filter(
             Q(user_id=user) | Q(escrowmeta__partner_email=user.email)
         ).order_by("created_at")
-
         return queryset
 
     @swagger_auto_schema(
