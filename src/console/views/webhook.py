@@ -14,6 +14,7 @@ from core.resources.sockets.pusher import PusherSocket
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
+from utils.utils import parse_datetime
 
 User = get_user_model()
 
@@ -99,9 +100,9 @@ class FlwPayoutWebhookView(GenericAPIView):
     permission_classes = [AllowAny]
     pusher = PusherSocket()
 
-    @swagger_auto_schema(
-        operation_description="Webhook for FLW Updates: Payout v1",
-    )
+    # @swagger_auto_schema(
+    #     operation_description="Webhook for FLW Updates [Wallet Withdrawal]: Payout v1",
+    # )
     def post(self, request):
         secret_hash = os.environ.get("FLW_SECRET_HASH")
         verif_hash = request.headers.get("verif-hash", None)
@@ -183,7 +184,18 @@ class FlwPayoutWebhookView(GenericAPIView):
             txn.meta.update({"note": msg})
             txn.verified = True
             txn.save()
-            # TODO: Send email to User Account of Wallet Withdrawal
+
+            email = user.email
+            values = {
+                "first_name": user.name.split(" ")[0],
+                "recipient": email,
+                "amount_funded": str(txn.amount),
+                "date": parse_datetime(txn.created_at),
+                "bank_name": data.get("bank_name"),
+                "account_name": data.get("full_name"),
+                "account_number": data.get("account_number"),
+            }
+            tasks.send_wallet_withdrawal_email(email, values)
         except User.DoesNotExist:
             return Response(
                 success=False,

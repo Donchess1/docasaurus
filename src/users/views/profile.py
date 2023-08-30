@@ -1,11 +1,16 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 
+from business.models.business import Business
 from business.serializers.business import BusinessSerializer
-from core.resources.model_retriever import ModelRetriever
+from console.models.transaction import Transaction
+from core.resources.model_retriever import ModelInstanceRetriever
+from users.models.bank_account import BankAccount
+from users.models.kyc import UserKYC
 from users.models.profile import UserProfile
 from users.serializers.bank_account import BankAccountSerializer
 from users.serializers.kyc import UserKYCSerializer
@@ -18,7 +23,7 @@ User = get_user_model()
 class UserProfileView(GenericAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
-    mr = ModelRetriever
+    mr = ModelInstanceRetriever
 
     @swagger_auto_schema(
         operation_description="Retrieve Profile for Authenticated User",
@@ -39,9 +44,16 @@ class UserProfileView(GenericAPIView):
         kyc_id = serializer.data.get("kyc_id", None)
         business_id = serializer.data.get("business_id", None)
 
-        bank_account = self.mr.get_object("BankAccount", bank_account_id)
-        kyc = self.mr.get_object("UserKYC", kyc_id)
-        business = self.mr.get_object("Business", business_id)
+        bank_account = self.mr.get_object(BankAccount, bank_account_id)
+        kyc = self.mr.get_object(UserKYC, kyc_id)
+        business = self.mr.get_object(Business, business_id)
+
+        queryset = Transaction.objects.filter(
+            Q(type="ESCROW")
+            & Q(status="PENDING")
+            & Q(escrowmeta__partner_email=request.user.email)
+        ).order_by("-created_at")
+        pending_escrows = [transaction.reference for transaction in queryset]
 
         ser_data = dict(serializer.data)
         del ser_data["bank_account_id"]
@@ -50,6 +62,7 @@ class UserProfileView(GenericAPIView):
         ser_data["full_name"] = request.user.name
         ser_data["phone_number"] = request.user.phone
         ser_data["email"] = request.user.email
+        ser_data["pending_escrows"] = pending_escrows
 
         data = {
             **ser_data,

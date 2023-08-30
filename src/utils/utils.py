@@ -13,6 +13,12 @@ from users.models import BankAccount
 # flw_api = FlwAPI
 
 
+def parse_datetime(datetime_input):
+    val = str(datetime_input)[:-6]
+    parsed_datetime = datetime.fromisoformat(val)  # Removed the timezone offset
+    return parsed_datetime.strftime("%B %d, %Y %I:%M%p")
+
+
 def calculate_payment_amount_to_charge(amount, percent):
     try:
         amount = float(amount)

@@ -6,7 +6,7 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-
+from console import tasks
 from common.serializers.wallet import (
     FundWalletBankTransferPayloadSerializer,
     WalletAmountSerializer,
@@ -209,6 +209,18 @@ class FundWalletRedirectView(GenericAPIView):
                 profile = UserProfile.objects.get(user_id=user)
                 profile.wallet_balance += int(amount_charged)
                 profile.save()
+
+            #     email = user.email
+            #     values = {
+            #     "first_name": user.name.split(" ")[0],
+            #     "recipient": email,
+            #     "amount_funded": str(txn.amount),
+            #     "date": parse_datetime(txn.created_at),
+            #     "bank_name": data.get("bank_name"),
+            #     "account_name": data.get("full_name"),
+            #     "account_number": data.get("account_number"),
+            # }
+            #     tasks.send_wallet_funding_email(email, values)
             except User.DoesNotExist:
                 return Response(
                     success=False,

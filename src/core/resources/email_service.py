@@ -30,6 +30,18 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_wallet_withdrawal_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-abcbf3f7f9da4a689bc23d04bb25d617")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_wallet_funding_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-125b68d79ed148ae84281f37d7cafbf1")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_reset_password_request_email_plain(cls, email: str, values: dict):
         subject = "Reset User Password"
         name = values.get("name", None)
@@ -51,6 +63,7 @@ class EmailClient:
         html_content = webhook_html_content
         return cls.send_plain_email(email, subject, html_content)
 
+    # BASE HANDLERS
     @classmethod
     def send_email(cls, email: str, template_id: str, dynamic_template_data: dict):
         to_email = To(email)
