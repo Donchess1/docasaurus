@@ -14,7 +14,6 @@ from sendgrid.helpers.mail import (
 class EmailClient:
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", None)
     FROM_EMAIL = os.environ.get("FROM_EMAIL", None)
-
     sg_client = SendGridAPIClient(SENDGRID_API_KEY)
 
     @classmethod
@@ -26,6 +25,18 @@ class EmailClient:
     @classmethod
     def send_welcome_email(cls, email: str, values: dict):
         template_id = TemplateId("d-e045a73225224c4c83b59ffe6d565bb6")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_reset_password_request_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-6562061135c44c959c43c08e5bc9cc7d")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_reset_password_success_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-506c4b99dde94ee7a58d28cf7ba166d3")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
@@ -42,14 +53,14 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
-    def send_reset_password_request_email(cls, email: str, values: dict):
-        template_id = TemplateId("d-6562061135c44c959c43c08e5bc9cc7d")
+    def send_lock_funds_buyer_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-1840ebd4e7ee4281bc18dd8f2b00731e")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
-    def send_reset_password_success_email(cls, email: str, values: dict):
-        template_id = TemplateId("d-506c4b99dde94ee7a58d28cf7ba166d3")
+    def send_lock_funds_seller_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-0fba8d742e884212ad73b35ed81b9c95")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 

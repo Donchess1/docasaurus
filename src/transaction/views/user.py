@@ -8,9 +8,9 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, status, views
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 
-from console import tasks
 from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
+from transaction import tasks
 from transaction.pagination import LargeResultsSetPagination
 from transaction.permissions import IsBuyer, IsTransactionStakeholder
 from transaction.serializers.transaction import (
@@ -27,7 +27,7 @@ from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
 from utils.transaction import get_escrow_transaction_stakeholders
-from utils.utils import generate_txn_reference
+from utils.utils import generate_txn_reference, parse_datetime
 
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
@@ -297,7 +297,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
     permission_classes = (IsAuthenticated,)
 
     @swagger_auto_schema(
-        operation_description="Lock funds for a Escrow Transaction as a Buyer",
+        operation_description="Lock funds for escrow transaction as a buyer",
     )
     def post(self, request):
         user = request.user
@@ -319,6 +319,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
             )
         reference = serializer.validated_data.get("transaction_reference")
 
+        # Validate permissions: Only the associated buyer can lock funds
         stakeholders = get_escrow_transaction_stakeholders(reference)
         if request.user.email != stakeholders["BUYER"]:
             return Response(
@@ -328,7 +329,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
             )
 
         txn = Transaction.objects.get(reference=reference)
-
         deficit = (txn.amount + txn.charge) - profile.wallet_balance
         if deficit <= 0:
             txn.status = "SUCCESSFUL"
@@ -350,7 +350,28 @@ class LockEscrowFundsView(generics.CreateAPIView):
             profile.wallet_balance -= Decimal(str(amount_to_debit))
             profile.locked_amount += int(txn.amount)
             profile.save()
-            # TODO: Notify Buyer & Seller that funds has been locked in escrow.
+
+            seller = User.objects.get(email=txn.escrowmeta.partner_email)
+            buyer_values = {
+                "first_name": user.name.split(" ")[0],
+                "recipient": user.email,
+                "date": parse_datetime(txn.updated_at),
+                "amount_funded": f"N{txn.amount}",
+                "transaction_id": reference,
+                "item_name": txn.meta["title"],
+                "seller_name": seller.name,
+            }
+            seller_values = {
+                "first_name": seller.name.split(" ")[0],
+                "recipient": seller.email,
+                "date": parse_datetime(txn.updated_at),
+                "amount_funded": f"N{txn.amount}",
+                "transaction_id": reference,
+                "item_name": txn.meta["title"],
+                "buyer_name": user.name,
+            }
+            tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+            tasks.send_lock_funds_seller_email(seller.email, seller_values)
             return Response(
                 status=True,
                 message="Funds locked successfully",

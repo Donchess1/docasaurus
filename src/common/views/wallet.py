@@ -12,11 +12,12 @@ from common.serializers.wallet import (
     WalletAmountSerializer,
     WalletWithdrawalAmountSerializer,
 )
-from console import tasks
+from console import tasks as console_tasks
 from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
+from transaction import tasks as txn_tasks
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
@@ -220,7 +221,7 @@ class FundWalletRedirectView(GenericAPIView):
                     "amount_funded": f"N{str(txn.amount)}",
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
-                tasks.send_wallet_funding_email(email, values)
+                console_tasks.send_wallet_funding_email(email, values)
             except User.DoesNotExist:
                 return Response(
                     success=False,
@@ -335,8 +336,6 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             escrow_txn.save()
             escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
 
-            # TODO: Notify Buyer and Seller that the transaction amount has been locked
-
             flw_ref = obj["data"]["flw_ref"]
             narration = obj["data"]["narration"]
             txn.verified = True
@@ -377,6 +376,28 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     status="ESCROW",
                 )
                 instance.save()
+
+                seller = User.objects.get(email=escrow_txn.escrowmeta.partner_email)
+                buyer_values = {
+                    "first_name": user.name.split(" ")[0],
+                    "recipient": user.email,
+                    "date": parse_datetime(escrow_txn.updated_at),
+                    "amount_funded": f"N{escrow_txn.amount}",
+                    "transaction_id": escrow_txn.reference,
+                    "item_name": escrow_txn.meta["title"],
+                    "seller_name": seller.name,
+                }
+                seller_values = {
+                    "first_name": seller.name.split(" ")[0],
+                    "recipient": seller.email,
+                    "date": parse_datetime(escrow_txn.updated_at),
+                    "amount_funded": f"N{escrow_txn.amount}",
+                    "transaction_id": escrow_txn.reference,
+                    "item_name": escrow_txn.meta["title"],
+                    "buyer_name": user.name,
+                }
+                txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
 
             except User.DoesNotExist:
                 return Response(
