@@ -26,7 +26,7 @@ class ForgotPasswordView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
-        operation_description="Request to Reset User Password",
+        operation_description="Request to reset User Password",
     )
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -55,11 +55,10 @@ class ForgotPasswordView(generics.GenericAPIView):
         cache.set(otp_key, value, 60 * 60 * 15)  # OTP/Token expires in 15 minutes
 
         dynamic_values = {
-            "name": name,
+            "first_name": name.split(" ")[0],
             "recipient": email,
-            "reset_password_url": f"{RESET_PASSWORD_URL}{otp_key}",
+            "password_reset_link": f"{RESET_PASSWORD_URL}/{otp_key}",
         }
-
         tasks.send_reset_password_request_email(email, dynamic_values)
 
         return Response(
@@ -108,7 +107,7 @@ class ResetPasswordView(generics.GenericAPIView):
         name = user.name
 
         dynamic_values = {
-            "name": name,
+            "first_name": name.split(" ")[0],
             "recipient": email,
         }
 

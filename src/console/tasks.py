@@ -12,6 +12,7 @@ def send_webhook_notification_email(email, values):
 def send_wallet_withdrawal_email(email, values):
     EmailClient.send_wallet_withdrawal_email(email, values)
 
+
 @shared_task
 def send_wallet_funding_email(email, values):
     EmailClient.send_wallet_funding_email(email, values)

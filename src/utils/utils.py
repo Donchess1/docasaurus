@@ -149,10 +149,11 @@ RECORD_NOT_FOUND_PAYLOAD = {
     "status": False,
     "payload": None,
 }
-EDIT_PROFILE_URL = "https://mybalanceapp.com/profile"
-GET_STARTED_BUYER_URL = "https://mybalanceapp.com/buyer/dashboard"
-GET_STARTED_SELLER_URL = "https://mybalanceapp.com/seller/dashboard"
-RESET_PASSWORD_URL = "https://mybalanceapp.com/reset-password/"
+FRONTEND_BASE_URL = "http://localhost:5173"
+EDIT_PROFILE_URL = f"{FRONTEND_BASE_URL}/profile"
+GET_STARTED_BUYER_URL = f"{FRONTEND_BASE_URL}/buyer/dashboard"
+GET_STARTED_SELLER_URL = f"{FRONTEND_BASE_URL}/seller/dashboard"
+RESET_PASSWORD_URL = f"{FRONTEND_BASE_URL}/reset-password"
 
 TEST_NUBAN = "0234567890"
 TEST_BANK_CODE = "035"

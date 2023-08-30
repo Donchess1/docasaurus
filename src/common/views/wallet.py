@@ -6,12 +6,13 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from console import tasks
+
 from common.serializers.wallet import (
     FundWalletBankTransferPayloadSerializer,
     WalletAmountSerializer,
     WalletWithdrawalAmountSerializer,
 )
+from console import tasks
 from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
@@ -23,6 +24,7 @@ from utils.utils import (
     calculate_payment_amount_to_charge,
     generate_txn_reference,
     get_withdrawal_fee,
+    parse_datetime,
 )
 
 User = get_user_model()
@@ -210,17 +212,15 @@ class FundWalletRedirectView(GenericAPIView):
                 profile.wallet_balance += int(amount_charged)
                 profile.save()
 
-            #     email = user.email
-            #     values = {
-            #     "first_name": user.name.split(" ")[0],
-            #     "recipient": email,
-            #     "amount_funded": str(txn.amount),
-            #     "date": parse_datetime(txn.created_at),
-            #     "bank_name": data.get("bank_name"),
-            #     "account_name": data.get("full_name"),
-            #     "account_number": data.get("account_number"),
-            # }
-            #     tasks.send_wallet_funding_email(email, values)
+                email = user.email
+                values = {
+                    "first_name": user.name.split(" ")[0],
+                    "recipient": email,
+                    "date": parse_datetime(txn.created_at),
+                    "amount_funded": f"N{str(txn.amount)}",
+                    "wallet_balance": f"N{str(profile.wallet_balance)}",
+                }
+                tasks.send_wallet_funding_email(email, values)
             except User.DoesNotExist:
                 return Response(
                     success=False,

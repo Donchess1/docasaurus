@@ -42,19 +42,16 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
-    def send_reset_password_request_email_plain(cls, email: str, values: dict):
-        subject = "Reset User Password"
-        name = values.get("name", None)
-        reset_password_url = values.get("reset_password_url", None)
-        html_content = f"""<strong>Hi {name}!</strong> No need to worry, you can reset your MyBalance password by clicking <a href="{reset_password_url}" target="_blank">here</a>."""
-        return cls.send_plain_email(email, subject, html_content)
+    def send_reset_password_request_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-6562061135c44c959c43c08e5bc9cc7d")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
-    def send_reset_password_success_email_plain(cls, email: str, values: dict):
-        subject = "Password Reset Successful"
-        name = values.get("name", None)
-        html_content = f"""<strong>Hello {name}!</strong> Your password has been changed successfully! Thanks for using MyBalance"""
-        return cls.send_plain_email(email, subject, html_content)
+    def send_reset_password_success_email(cls, email: str, values: dict):
+        template_id = TemplateId("d-506c4b99dde94ee7a58d28cf7ba166d3")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_webhook_notification_email_plain(cls, email: str, values: dict):
