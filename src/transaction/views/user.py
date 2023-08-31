@@ -207,9 +207,13 @@ class UserTransactionDetailView(generics.GenericAPIView):
 
         instance.status = new_status
         instance.meta.update(
-            {"escrow_action": new_status, "rejected_reason": list(rejected_reason)}
+            {
+                "escrow_action": new_status,
+                "rejected_reason": list(rejected_reason) if rejected_reason else None,
+            }
         )
         instance.save()
+        # If status is approved, then
         # If status is REJECTED and the author is buyer, refund the escrow funds to the buyer.
         return Response(
             success=True,
@@ -351,7 +355,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
             profile.locked_amount += int(txn.amount)
             profile.save()
 
-            seller = User.objects.get(email=txn.escrowmeta.partner_email)
             buyer_values = {
                 "first_name": user.name.split(" ")[0],
                 "recipient": user.email,
@@ -359,19 +362,25 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 "amount_funded": f"N{txn.amount}",
                 "transaction_id": reference,
                 "item_name": txn.meta["title"],
-                "seller_name": seller.name,
+                # "seller_name": seller.name,
             }
-            seller_values = {
-                "first_name": seller.name.split(" ")[0],
-                "recipient": seller.email,
-                "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"N{txn.amount}",
-                "transaction_id": reference,
-                "item_name": txn.meta["title"],
-                "buyer_name": user.name,
-            }
-            tasks.send_lock_funds_buyer_email(user.email, buyer_values)
-            tasks.send_lock_funds_seller_email(seller.email, seller_values)
+
+            if txn.escrowmeta.author == "SELLER":
+                seller = txn.user_id
+                seller_values = {
+                    "first_name": seller.name.split(" ")[0],
+                    "recipient": seller.email,
+                    "date": parse_datetime(txn.updated_at),
+                    "amount_funded": f"N{txn.amount}",
+                    "transaction_id": reference,
+                    "item_name": txn.meta["title"],
+                    "buyer_name": user.name,
+                }
+                # Notify both buyer and seller of payment details
+                tasks.send_lock_funds_seller_email(seller.email, seller_values)
+                tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+            else:
+                tasks.send_lock_funds_buyer_email(user.email, buyer_values)
             return Response(
                 status=True,
                 message="Funds locked successfully",

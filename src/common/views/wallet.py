@@ -377,7 +377,6 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 )
                 instance.save()
 
-                seller = User.objects.get(email=escrow_txn.escrowmeta.partner_email)
                 buyer_values = {
                     "first_name": user.name.split(" ")[0],
                     "recipient": user.email,
@@ -385,19 +384,24 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     "amount_funded": f"N{escrow_txn.amount}",
                     "transaction_id": escrow_txn.reference,
                     "item_name": escrow_txn.meta["title"],
-                    "seller_name": seller.name,
+                    # "seller_name": seller.name,
                 }
-                seller_values = {
-                    "first_name": seller.name.split(" ")[0],
-                    "recipient": seller.email,
-                    "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"N{escrow_txn.amount}",
-                    "transaction_id": escrow_txn.reference,
-                    "item_name": escrow_txn.meta["title"],
-                    "buyer_name": user.name,
-                }
-                txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
-                txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
+
+                if escrow_txn.escrowmeta.author == "SELLER":
+                    seller = escrow_txn.user_id
+                    seller_values = {
+                        "first_name": seller.name.split(" ")[0],
+                        "recipient": seller.email,
+                        "date": parse_datetime(escrow_txn.updated_at),
+                        "amount_funded": f"N{escrow_txn.amount}",
+                        "transaction_id": escrow_txn.reference,
+                        "item_name": escrow_txn.meta["title"],
+                        "buyer_name": user.name,
+                    }
+                    txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
+                    txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                else:
+                    txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
 
             except User.DoesNotExist:
                 return Response(

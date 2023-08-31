@@ -88,6 +88,10 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
         #     raise serializers.ValidationError(
         #         "Transaction must be approved before payment"
         #     )
+        if instance.status == "PENDING" and instance.escrowmeta.author == "SELLER":
+            raise serializers.ValidationError(
+                "Approve transaction before locking funds"
+            )
         return value
 
     def validate_amount_to_charge(self, value):
@@ -140,6 +144,10 @@ class EscrowTransactionPaymentSerializer(serializers.Serializer):
         #     raise serializers.ValidationError(
         #         "Transaction must be approved before payment"
         #     )
+        if instance.status == "PENDING" and instance.escrowmeta.author == "SELLER":
+            raise serializers.ValidationError(
+                "Approve transaction before locking funds"
+            )
         return value
 
 
