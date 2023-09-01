@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from console.models.dispute import Dispute
-from console.models.transaction import LockedAmount, Transaction
+from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 
 User = get_user_model()
 
@@ -76,29 +76,6 @@ class DisputeSerializer(serializers.ModelSerializer):
 
         seller = User.objects.filter(email=locked_amount.seller_email).first()
         if not seller:
-            raise serializers.ValidationError("User does not exist")
+            raise serializers.ValidationError("Seller does not exist")
 
         return value
-
-    def create(self, validated_data):
-        user = self.context.get("user")
-        transaction = validated_data.pop("transaction")
-        locked_amount = LockedAmount.objects.filter(transaction=transaction).first()
-        buyer = locked_amount.user
-        seller = User.objects.filter(email=locked_amount.seller_email).first()
-        author = "BUYER" if user.is_buyer else "SELLER"
-        priority = validated_data.get("priority")
-        reason = validated_data.get("reason")
-        description = validated_data.get("description")
-        dispute = Dispute.objects.create(
-            buyer=buyer,
-            seller=seller,
-            author=author,
-            status="PENDING",
-            transaction=transaction,
-            priority=priority,
-            description=description,
-            reason=reason,
-        )
-
-        return dispute

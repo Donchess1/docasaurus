@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from console import tasks
 from console.models.dispute import Dispute
+from console.models.transaction import Transaction
 from dispute.serializers.dispute import DisputeSerializer
 from transaction.pagination import LargeResultsSetPagination
 from utils.response import Response
@@ -52,6 +53,7 @@ class UserDisputeView(generics.ListCreateAPIView):
         },
     )
     def create(self, request, *args, **kwargs):
+        user = request.user
         serializer = self.get_serializer(
             data=request.data, context={"user": request.user}
         )
@@ -61,7 +63,31 @@ class UserDisputeView(generics.ListCreateAPIView):
                 errors=serializer.errors,
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        dispute = serializer.save()
+        transaction_id = serializer.validated_data.get("transaction")
+        transaction = Transaction.objects.filter(id=str(transaction_id)).first()
+        escrow_meta = transaction.escrowmeta
+        locked_amount = transaction.lockedamount
+        buyer = (
+            transaction.user_id
+            if escrow_meta.author == "BUYER"
+            else User.objects.filter(email=escrow_meta.partner_email).first()
+        )
+        seller = User.objects.filter(email=locked_amount.seller_email).first()
+        author = "BUYER" if user.is_buyer else "SELLER"
+        priority = serializer.validated_data.get("priority")
+        reason = serializer.validated_data.get("reason")
+        description = serializer.validated_data.get("description")
+        dispute = Dispute.objects.create(
+            buyer=buyer,
+            seller=seller,
+            author=author,
+            status="PENDING",
+            transaction=transaction,
+            priority=priority,
+            description=description,
+            reason=reason,
+        )
+
         # TODO: Send appropriate notification to the seller and buyer
 
         return Response(
