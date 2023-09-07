@@ -8,7 +8,7 @@ from console import tasks
 from console.models.dispute import Dispute
 from console.models.transaction import Transaction
 from dispute.serializers.dispute import DisputeSerializer
-from transaction.pagination import LargeResultsSetPagination
+from utils.pagination import CustomPagination
 from utils.response import Response
 
 User = get_user_model()
@@ -17,7 +17,7 @@ User = get_user_model()
 class UserDisputeView(generics.ListCreateAPIView):
     serializer_class = DisputeSerializer
     permission_classes = (IsAuthenticated,)
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -35,15 +35,12 @@ class UserDisputeView(generics.ListCreateAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         qs = self.paginate_queryset(queryset)
-
         serializer = self.get_serializer(qs, many=True)
-        response = self.get_paginated_response(serializer.data)
-        return Response(
-            success=True,
-            message="User's disputes retrieved successfully",
-            status_code=status.HTTP_200_OK,
-            data=response.data,
+        self.pagination_class.message = "User's disputes retrieved successfully"
+        response = self.get_paginated_response(
+            serializer.data,
         )
+        return response
 
     @swagger_auto_schema(
         operation_description="Create a new dispute for an Authenticated User",

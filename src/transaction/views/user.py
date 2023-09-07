@@ -11,7 +11,6 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
 from transaction import tasks
-from transaction.pagination import LargeResultsSetPagination
 from transaction.permissions import IsBuyer, IsTransactionStakeholder
 from transaction.serializers.transaction import (
     EscrowTransactionPaymentSerializer,
@@ -25,6 +24,7 @@ from transaction.serializers.user import (
 )
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
+from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_escrow_transaction_stakeholders
 from utils.utils import generate_txn_reference, parse_datetime
@@ -37,7 +37,7 @@ FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 class UserTransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = (IsAuthenticated,)
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ["reference", "provider", "type"]
 
@@ -58,21 +58,16 @@ class UserTransactionListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         qs = self.paginate_queryset(queryset)
-
         serializer = self.get_serializer(qs, many=True)
+        self.pagination_class.message = "User's transactions retrieved successfully"
         response = self.get_paginated_response(serializer.data)
-        return Response(
-            success=True,
-            message="User's transactions retrieved successfully",
-            status_code=status.HTTP_200_OK,
-            data=response.data,
-        )
+        return response
 
 
 class UserLockedEscrowTransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = [IsBuyer]
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -100,15 +95,10 @@ class UserLockedEscrowTransactionListView(generics.ListAPIView):
             )
         queryset = self.filter_queryset(self.get_queryset())
         qs = self.paginate_queryset(queryset)
-
         serializer = self.get_serializer(qs, many=True)
+        self.pagination_class.message = ("User's transactions retrieved successfully",)
         response = self.get_paginated_response(serializer.data)
-        return Response(
-            success=True,
-            message="User's transactions retrieved successfully",
-            status_code=status.HTTP_200_OK,
-            data=response.data,
-        )
+        return response
 
 
 class UserTransactionDetailView(generics.GenericAPIView):
