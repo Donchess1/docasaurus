@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import mixins, permissions, status, viewsets
 
 from users.serializers.user import UserSerializer
+from utils.pagination import CustomPagination
 from utils.response import Response
 
 User = get_user_model()
@@ -16,17 +17,15 @@ class UserViewSet(
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = CustomPagination
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(
-            success=True,
-            message="Users fetched successfully",
-            data=serializer.data,
-            meta={"count": queryset.count()},
-            status_code=status.HTTP_200_OK,
-        )
+        qs = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(qs, many=True)
+        self.pagination_class.message = "Users retrieved successfully"
+        response = self.get_paginated_response(serializer.data)
+        return response
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         user = User.objects.filter(pk=pk).first()
