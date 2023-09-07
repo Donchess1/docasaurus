@@ -14,13 +14,11 @@ class UserViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by("-created_at")
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = CustomPagination
-
-    def get_queryset(self):
-        return User.objects.all().order_by("-created_at")
+    http_method_names = ["get", "post", "delete", "put"]
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -55,9 +53,16 @@ class UserViewSet(
                 message=f"User with id {pk} does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
-        partial = kwargs.pop("partial", False)
         instance = self.get_object()
+        for field in request.data.keys():
+            if field not in ["name", "phone"]:
+                return Response(
+                    success=False,
+                    message="Only name and phone number can be updated",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                )
+
+        partial = True  # Allow partial updates
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -68,10 +73,6 @@ class UserViewSet(
             data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
-
-    def partial_update(self, request, *args, **kwargs):
-        kwargs["partial"] = True
-        return self.update(request, *args, **kwargs)
 
     def destroy(self, request, pk=None, *args, **kwargs):
         user = User.objects.filter(pk=pk).first()
