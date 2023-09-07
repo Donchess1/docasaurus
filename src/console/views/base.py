@@ -19,6 +19,9 @@ class UserViewSet(
     permission_classes = [permissions.AllowAny]
     pagination_class = CustomPagination
 
+    def get_queryset(self):
+        return User.objects.all().order_by("-created_at")
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         qs = self.paginate_queryset(queryset)
