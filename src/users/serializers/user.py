@@ -18,3 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+
+class UploadUserAvatarSerializer(serializers.Serializer):
+    image = serializers.FileField()
