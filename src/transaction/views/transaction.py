@@ -15,8 +15,8 @@ class TransactionListView(generics.ListAPIView):
     filter_backends = [filters.SearchFilter]
     search_fields = ["reference", "provider", "type"]
 
-    def get_queryset(self):return Transaction.objects.all().order_by("-created_at")
-        
+    def get_queryset(self):
+        return Transaction.objects.all().order_by("-created_at")
 
     @swagger_auto_schema(
         operation_description="List all the transaction in the Database",
