@@ -78,3 +78,8 @@ format:
 	make isort
 	make black
 
+build-api:
+	docker build -t mybapi:dev -f docker/runner/Dockerfile .
+
+start-api:
+	docker run -it --name myb-api --env-file=./.env --network=host mybapi:dev
