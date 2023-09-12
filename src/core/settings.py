@@ -81,6 +81,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://dapper-eclair-4a6866.netlify.app",
     "https://main--fastidious-bombolone-2dabe2.netlify.app",
     "http://main--fastidious-bombolone-2dabe2.netlify.app",
+    "https://mybalanceapp.netlify.app",
 ]
 
 CORS_ORIGIN_WHITELIST = [
