@@ -1,10 +1,11 @@
 version: '3.8'
 
 services:
-  api: &api
+  # api: &api
+  api:
     build:
       context: .
-      dockerfile: ./docker/dev/Dockerfile
+      dockerfile: ./docker/runner/Dockerfile
     volumes:
       - ./src:/app
       - myb-dev-static-data:/vol/web
@@ -12,47 +13,47 @@ services:
       - "80:8000"
     env_file:
       - ./.env
-    depends_on:
-      - db
-      - redis
-    networks:
-      - myb
+    # depends_on:
+    #   - db
+    #   - redis
+    # networks:
+    #   - myb
 
-  db:
-    image: postgres:14.5-alpine3.16
-    restart: always
-    ports:
-      - "5432:5432"
-    volumes:
-      - myb-dev-db:/var/lib/postgresql/data
-    env_file:
-      - ./.env
-    networks:
-      - myb
+  # db:
+  #   image: postgres:14.5-alpine3.16
+  #   restart: always
+  #   ports:
+  #     - "5435:5435"
+  #   volumes:
+  #     - myb-dev-db:/var/lib/postgresql/data
+  #   env_file:
+  #     - ./.env
+  #   networks:
+  #     - myb
 
-  redis:
-    image: redis:alpine
-    networks:
-      - myb
+  # redis:
+  #   image: redis:alpine
+  #   networks:
+  #     - myb
 
-  celery:
-    <<: *api
-    command: >
-      sh -c "celery -A core worker -l INFO --logfile=celery.log"
-    ports: []
-    volumes:
-      - ./src:/app
-    env_file:
-      - ./.env
-    depends_on:
-      - api
-    networks:
-      - myb
+  # celery:
+  #   <<: *api
+  #   command: >
+  #     sh -c "celery -A core worker -l INFO --logfile=celery.log"
+  #   ports: []
+  #   volumes:
+  #     - ./src:/app
+  #   env_file:
+  #     - ./.env
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - myb
 
 volumes:
   myb-dev-static-data:
   myb-dev-db:
 
-networks:
-    myb:
-      driver: bridge
+# networks:
+#     myb:
+#       driver: bridge
