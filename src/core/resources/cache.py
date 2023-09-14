@@ -10,7 +10,10 @@ class Cache:
         #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
         # )
         self._redis = redis.Redis(
-            host=settings.REDIS_HOST, port=settings.REDIS_PORT, password=settings.REDIS_PASSWORD, db=0
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD,
+            db=0,
         )
 
     def set(self, key, value, ttl=3600):

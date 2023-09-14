@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
+from core.resources.jwt_client import JWTClient
 from users import tasks
 from users.serializers.register import RegisteredUserPayloadSerializer
 from users.serializers.verify_email import (
@@ -29,6 +30,7 @@ cache = Cache()
 class VerifyOTPView(GenericAPIView):
     serializer_class = VerifyOTPSerializer
     permission_classes = [AllowAny]
+    jwt_client = JWTClient
 
     @swagger_auto_schema(
         operation_description="Verify OTP sent to Email",
@@ -81,10 +83,14 @@ class VerifyOTPView(GenericAPIView):
         }
         tasks.send_welcome_email(email, dynamic_values)
 
+        token = self.jwt_client.sign(user.id)
         return Response(
             success=True,
             message="Email verified!",
-            data={"email": email},
+            data={
+                "email": email,
+                "token": token["access_token"],
+            },
             status_code=status.HTTP_200_OK,
         )
 
