@@ -77,6 +77,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
+    "https://api.mybalanceapp.com",
+    "http://staging-api.mybalanceapp.com",
+    "https://staging-api.mybalanceapp.com",
     "https://dapper-eclair-4a6866.netlify.app",
 ]
 
@@ -87,6 +90,9 @@ CORS_ORIGIN_WHITELIST = [
     "http://localhost:5173",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
+    "https://api.mybalanceapp.com",
+    "http://staging-api.mybalanceapp.com",
+    "https://staging-api.mybalanceapp.com",
     "https://dapper-eclair-4a6866.netlify.app",
 ]
 
