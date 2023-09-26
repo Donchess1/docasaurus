@@ -96,10 +96,10 @@ CORS_ORIGIN_WHITELIST = [
     "https://dapper-eclair-4a6866.netlify.app",
 ]
 
-CORS_EXPOSE_HEADERS = [
-    "Cross-Origin-Opener-Policy",
-]
-CORS_ALLOW_CREDENTIALS = True
+# CORS_EXPOSE_HEADERS = [
+#     "Cross-Origin-Opener-Policy",
+# ]
+# CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "core.urls"
 
