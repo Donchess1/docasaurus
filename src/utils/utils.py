@@ -146,7 +146,7 @@ PHONE_NUMBER_SERIALIZER_REGEX_NGN = RegexValidator(
     regex=r"^\d{11}$", message="Phone number must be 11 digits only."
 )
 RECORD_NOT_FOUND_PAYLOAD = {
-    "message": "Verification unsuccessful. Record not found!",
+    "message": "Account resolve unsuccessful.",
     "status": False,
     "data": None,
 }
