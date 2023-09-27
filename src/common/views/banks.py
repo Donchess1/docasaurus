@@ -75,7 +75,7 @@ class ValidateBankAccountView(GenericAPIView):
         account_number = data.get("account_number")
 
         obj = self.third_party.validate_bank_account(bank_code, account_number)
-        if obj["status"] == "error":
+        if obj["status"] == "error" or not obj["status"]:
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,

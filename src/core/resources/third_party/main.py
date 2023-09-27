@@ -33,8 +33,8 @@ from utils.utils import (
 
 from .base import BaseThirdPartyService
 
-ENVIRONMENT = os.environ.get("ENVIRONMENT")
-
+# ENVIRONMENT = os.environ.get("ENVIRONMENT")
+ENVIRONMENT = "staging"
 class ThirdPartyAPI(BaseThirdPartyService):
     @classmethod
     def validate_BVN(cls, number):
