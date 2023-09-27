@@ -33,7 +33,7 @@ from utils.utils import (
 
 from .base import BaseThirdPartyService
 
-ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+ENVIRONMENT = os.environ.get("ENVIRONMENT")
 
 class ThirdPartyAPI(BaseThirdPartyService):
     @classmethod
@@ -145,13 +145,6 @@ class ThirdPartyAPI(BaseThirdPartyService):
 
     @classmethod
     def list_banks(cls, read_from_file=False):
-        # read_from_file == True if ENVIRONMENT in ("development", "staging") else False
-        # if read_from_file:
-        #     return {
-        #         "message": "Successfull9y fetched banks",
-        #         "status": True,
-        #         "data": BANKS,
-        #     }
         return FlwAPI.list_banks()
 
     @classmethod
