@@ -1,3 +1,4 @@
+import os
 import random
 import re
 import string
@@ -147,9 +148,10 @@ PHONE_NUMBER_SERIALIZER_REGEX_NGN = RegexValidator(
 RECORD_NOT_FOUND_PAYLOAD = {
     "message": "Verification unsuccessful. Record not found!",
     "status": False,
-    "payload": None,
+    "data": None,
 }
-FRONTEND_BASE_URL = "http://localhost:5173"
+
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 EDIT_PROFILE_URL = f"{FRONTEND_BASE_URL}/profile"
 GET_STARTED_BUYER_URL = f"{FRONTEND_BASE_URL}/buyer/dashboard"
 GET_STARTED_SELLER_URL = f"{FRONTEND_BASE_URL}/seller/dashboard"
