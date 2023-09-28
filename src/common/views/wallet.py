@@ -418,6 +418,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
+                data={
+                    "transaction_reference": escrow_txn_ref,
+                    "amount": escrow_amount_to_charge,
+                },
                 message="Transaction verified.",
             )
 

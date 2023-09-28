@@ -35,8 +35,7 @@ from utils.utils import (
 
 from .base import BaseThirdPartyService
 
-# ENVIRONMENT = os.environ.get("ENVIRONMENT")
-ENVIRONMENT = "staging"
+ENVIRONMENT = os.environ.get("ENVIRONMENT")
 
 
 class ThirdPartyAPI(BaseThirdPartyService):
@@ -139,7 +138,7 @@ class ThirdPartyAPI(BaseThirdPartyService):
 
     @classmethod
     def validate_bank_account(cls, bank_code, account_number):
-        if ENVIRONMENT == "staging":
+        if ENVIRONMENT in ("staging", "development"):
             if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
                 return {
                     "message": "Account details fetched",

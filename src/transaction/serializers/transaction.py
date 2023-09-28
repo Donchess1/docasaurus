@@ -6,12 +6,7 @@ from rest_framework import serializers
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
-from utils.utils import (
-    PHONE_NUMBER_SERIALIZER_REGEX_NGN,
-    generate_random_text,
-    get_escrow_fees,
-    validate_bank_account,
-)
+from utils.utils import generate_random_text, get_escrow_fees, validate_bank_account
 
 User = get_user_model()
 cache = Cache()
@@ -26,9 +21,6 @@ class EscrowTransactionSerializer(serializers.Serializer):
     bank_code = serializers.CharField(max_length=255)
     bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()
-    phone_number = serializers.CharField(
-        validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], default="08090009000"
-    )
 
     def validate_partner_email(self, value):
         request = self.context.get("request")
@@ -61,7 +53,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
         obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)
         if obj["status"] in ["error", False]:
             raise serializers.ValidationError(
-                {"bank": ["Please provide bank account details"]}
+                {"bank": ["Please provide valid bank account details"]}
             )
 
         data["bank_name"] = bank_name
@@ -104,7 +96,6 @@ class EscrowTransactionSerializer(serializers.Serializer):
                 "bank_name": validated_data.get("bank_name"),
                 "account_number": validated_data.get("bank_account_number"),
                 "account_name": validated_data.get("account_name"),
-                "seller_phone_number": validated_data.get("phone_number"),
             },
         }
         escrow_meta = EscrowMeta.objects.create(**escrow_meta_data)
