@@ -4,9 +4,17 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
-from utils.utils import generate_random_text, get_escrow_fees, validate_bank_account
+from core.resources.cache import Cache
+from core.resources.third_party.main import ThirdPartyAPI
+from utils.utils import (
+    PHONE_NUMBER_SERIALIZER_REGEX_NGN,
+    generate_random_text,
+    get_escrow_fees,
+    validate_bank_account,
+)
 
 User = get_user_model()
+cache = Cache()
 
 
 class EscrowTransactionSerializer(serializers.Serializer):
@@ -18,6 +26,9 @@ class EscrowTransactionSerializer(serializers.Serializer):
     bank_code = serializers.CharField(max_length=255)
     bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()
+    phone_number = serializers.CharField(
+        validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], default="08090009000"
+    )
 
     def validate_partner_email(self, value):
         request = self.context.get("request")
@@ -26,6 +37,36 @@ class EscrowTransactionSerializer(serializers.Serializer):
                 "Partner's email cannot be the same as your email"
             )
         return value
+
+    def validate_bank_code(self, value):
+        banks = cache.get("banks")
+        if banks is None:
+            banks = ThirdPartyAPI.list_banks()
+            if banks["status"] == "error":
+                raise serializers.ValidationError(
+                    "Error occurred while retrieving list of banks"
+                )
+        bank_codes = [item["code"] for item in banks.get("sorted_banks")]
+        if value not in bank_codes:
+            raise serializers.ValidationError("Provide a valid bank code")
+        return value
+
+    def validate(self, data):
+        bank_code = data.get("bank_code")
+        bank_account_number = data.get("bank_account_number")
+
+        banks = ThirdPartyAPI.list_banks()
+        bank_name = banks["banks_map"].get(bank_code)
+
+        obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)
+        if obj["status"] in ["error", False]:
+            raise serializers.ValidationError(
+                {"bank": ["Please provide bank account details"]}
+            )
+
+        data["bank_name"] = bank_name
+        data["account_name"] = obj["data"]["accountName"]
+        return data
 
     def create(self, validated_data):
         user = self.context["request"].user
@@ -59,6 +100,12 @@ class EscrowTransactionSerializer(serializers.Serializer):
             "item_quantity": validated_data.get("item_quantity"),
             "delivery_date": validated_data.get("delivery_date"),
             "delivery_tolerance": 3,
+            "meta": {
+                "bank_name": validated_data.get("bank_name"),
+                "account_number": validated_data.get("bank_account_number"),
+                "account_name": validated_data.get("account_name"),
+                "seller_phone_number": validated_data.get("phone_number"),
+            },
         }
         escrow_meta = EscrowMeta.objects.create(**escrow_meta_data)
         return transaction

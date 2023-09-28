@@ -13,7 +13,6 @@ from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from users.models.bank_account import BankAccount
 from utils.response import Response
-from utils.utils import hours_to_seconds
 
 
 class ListBanksView(GenericAPIView):
@@ -30,22 +29,14 @@ class ListBanksView(GenericAPIView):
         banks = self.cache.get("banks")
         if banks is None:
             banks = self.third_party.list_banks()
-            if banks["status"] == "error":
+            if not banks:
                 return Response(
                     success=False,
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    message=banks["message"],
+                    message="ERR005: Error occured while listing banks",
                 )
 
-        sorted_banks = sorted(
-            banks.get("data"),
-            key=lambda x: (not x["name"][0].isdigit(), x["name"].lower()),
-        )
-        banks["data"] = sorted_banks
-        cache_exp = hours_to_seconds(6)
-        self.cache.set("banks", banks, cache_exp)
-
-        serializer = self.serializer_class(banks["data"], many=True)
+        serializer = self.serializer_class(banks["sorted_banks"], many=True)
         return Response(
             success=True,
             message="Banks fetched successfully",

@@ -1,5 +1,6 @@
 import os
 
+from core.resources.cache import Cache
 from core.resources.flutterwave import FlwAPI
 from core.resources.third_party.data.banks import BANKS
 from core.resources.third_party.data.lga import LGAS
@@ -29,6 +30,7 @@ from utils.utils import (
     TEST_VOTER_LGA,
     TEST_VOTER_STATE,
     get_lga_by_state_alias,
+    hours_to_seconds,
 )
 
 from .base import BaseThirdPartyService
@@ -38,6 +40,8 @@ ENVIRONMENT = "staging"
 
 
 class ThirdPartyAPI(BaseThirdPartyService):
+    cache = Cache()
+
     @classmethod
     def validate_BVN(cls, number):
         if number != TEST_BVN:
@@ -147,7 +151,21 @@ class ThirdPartyAPI(BaseThirdPartyService):
 
     @classmethod
     def list_banks(cls, read_from_file=False):
-        return FlwAPI.list_banks()
+        obj = FlwAPI.list_banks()
+        status = obj["status"]
+        if status == "error":
+            return None
+
+        sorted_banks = sorted(
+            obj.get("data"),
+            key=lambda x: (not x["name"][0].isdigit(), x["name"].lower()),
+        )
+        banks_map = {item["code"]: item["name"] for item in sorted_banks}
+        banks = {"sorted_banks": sorted_banks, "banks_map": banks_map}
+
+        cache_exp = hours_to_seconds(6)
+        cls.cache.set("banks", banks, cache_exp)
+        return banks
 
     @classmethod
     def list_states(cls):
