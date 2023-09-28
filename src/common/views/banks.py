@@ -37,6 +37,11 @@ class ListBanksView(GenericAPIView):
                     message=banks["message"],
                 )
 
+        sorted_banks = sorted(
+            banks.get("data"),
+            key=lambda x: (not x["name"][0].isdigit(), x["name"].lower()),
+        )
+        banks["data"] = sorted_banks
         cache_exp = hours_to_seconds(6)
         self.cache.set("banks", banks, cache_exp)
 
