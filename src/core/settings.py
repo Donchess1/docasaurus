@@ -102,6 +102,7 @@ CORS_EXPOSE_HEADERS = [
     "Cross-Origin-Opener-Policy",
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = "core.urls"
 
