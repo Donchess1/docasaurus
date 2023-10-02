@@ -1,10 +1,7 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from transaction.serializers.locked_amount import LockedAmountSerializer
-
-User = get_user_model()
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
