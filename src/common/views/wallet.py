@@ -582,15 +582,15 @@ class WalletWithdrawalCallbackView(GenericAPIView):
         operation_description="Callback for FLW PAYOUT to Bank Account",
     )
     def post(self, request):
-        # secret_hash = os.environ.get("FLW_SECRET_HASH")
-        # verif_hash = request.headers.get("verif-hash", None)
+        secret_hash = os.environ.get("FLW_SECRET_HASH")
+        verif_hash = request.headers.get("verif-hash", None)
 
-        # if not verif_hash or verif_hash != secret_hash:
-        #     return Response(
-        #         success=False,
-        #         message="Invalid authorization token.",
-        #         status_code=status.HTTP_403_FORBIDDEN,
-        #     )
+        if not verif_hash or verif_hash != secret_hash:
+            return Response(
+                success=False,
+                message="Invalid authorization token.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
 
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
