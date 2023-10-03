@@ -5,11 +5,14 @@ from transaction.serializers.locked_amount import LockedAmountSerializer
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+
     class Meta:
         model = EscrowMeta
         fields = (
             "id",
             "author",
+            "author_name",
             "partner_email",
             "purpose",
             "item_type",
@@ -21,6 +24,9 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def get_author_name(self, obj):
+        return obj.transaction_id.user_id.name
 
 
 class UserTransactionSerializer(serializers.ModelSerializer):

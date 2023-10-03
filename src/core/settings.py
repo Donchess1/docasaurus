@@ -15,7 +15,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = int(os.getenv("DJANGO_DEBUG"))
 
 hosts = os.getenv("DJANGO_ALLOWED_HOSTS")
-ALLOWED_HOSTS = hosts.split(", ") if hosts else []
+ALLOWED_HOSTS = hosts.split(", ") if hosts else ["*"]
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -77,6 +77,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
+    "https://mybalanceapp.netlify.app",
+    "https://api.mybalanceapp.com",
+    "http://staging-api.mybalanceapp.com",
+    "https://staging-api.mybalanceapp.com",
     "https://dapper-eclair-4a6866.netlify.app",
     "http://dapper-eclair-4a6866.netlify.app",
     "https://main--fastidious-bombolone-2dabe2.netlify.app",
@@ -91,6 +95,10 @@ CORS_ORIGIN_WHITELIST = [
     "http://localhost:5173",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
+    "https://mybalanceapp.netlify.app",
+    "https://api.mybalanceapp.com",
+    "http://staging-api.mybalanceapp.com",
+    "https://staging-api.mybalanceapp.com",
     "https://dapper-eclair-4a6866.netlify.app",
 ]
 
@@ -98,6 +106,7 @@ CORS_EXPOSE_HEADERS = [
     "Cross-Origin-Opener-Policy",
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = "core.urls"
 
@@ -123,7 +132,7 @@ db_name = os.getenv("POSTGRES_DB")
 db_password = os.getenv("POSTGRES_PASSWORD")
 db_host = os.getenv("POSTGRES_HOST")
 db_user = os.getenv("POSTGRES_USER")
-db_port = os.getenv("POSTGRES_PORT", "5432")
+db_port = os.getenv("POSTGRES_PORT")
 
 db_uri = f"postgres://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 DATABASES = {"default": dj_database_url.parse(db_uri, conn_max_age=600)}
@@ -190,6 +199,7 @@ LOGGING = {
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", 6379)
 
 CELERY_BROKER_URL = os.environ.get(
     "CELERY_BROKER", f"redis://{REDIS_HOST}:{REDIS_PORT}"

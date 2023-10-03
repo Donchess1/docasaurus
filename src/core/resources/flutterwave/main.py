@@ -43,3 +43,8 @@ class FlutterwaveService(FlutterwaveBaseService):
         return cls.make_post_request(
             url, data, camelize=False, flw_headers=cls.FLW_HEADERS
         )
+
+    @classmethod
+    def list_banks(cls):
+        url = f"{cls.FLW_BASE_URL}/banks/NG"
+        return cls.make_get_request(url, flw_headers=cls.FLW_HEADERS)

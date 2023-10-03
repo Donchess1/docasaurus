@@ -5,7 +5,7 @@ from users.models.bank_account import BankAccount
 
 class BankListSerializer(serializers.Serializer):
     name = serializers.CharField()
-    slug = serializers.CharField()
+    # slug = serializers.CharField()
     code = serializers.CharField()
 
 

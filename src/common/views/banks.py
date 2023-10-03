@@ -13,7 +13,6 @@ from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from users.models.bank_account import BankAccount
 from utils.response import Response
-from utils.utils import hours_to_seconds
 
 
 class ListBanksView(GenericAPIView):
@@ -29,19 +28,18 @@ class ListBanksView(GenericAPIView):
         banks = None
         banks = self.cache.get("banks")
         if banks is None:
-            banks = self.third_party.list_banks(read_from_file=True)
-            if not banks["status"]:
-                return Response(**banks)
+            banks = self.third_party.list_banks()
+            if not banks:
+                return Response(
+                    success=False,
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message="ERR005: Error occured while listing banks",
+                )
 
-        cache_exp = hours_to_seconds(6)
-        self.cache.set("banks", banks, cache_exp)
-
-        serializer = self.serializer_class(banks["payload"], many=True)
-        banks["payload"] = serializer.data
-
+        serializer = self.serializer_class(banks["sorted_banks"], many=True)
         return Response(
             success=True,
-            message="List of banks retrieved successfully",
+            message="Banks fetched successfully",
             status_code=status.HTTP_200_OK,
             data=serializer.data,
             meta={"count": len(serializer.data)},
@@ -71,29 +69,17 @@ class ValidateBankAccountView(GenericAPIView):
         data = serializer.validated_data
         bank_code = data.get("bank_code")
         account_number = data.get("account_number")
-        instance = BankAccount.objects.filter(
-            bank_code=bank_code, account_number=account_number
-        ).first()
-        if instance:
-            serializer = BankAccountSerializer(instance)
-            return Response(
-                success=True,
-                message="Bank Account Information retrieved",
-                status_code=status.HTTP_200_OK,
-                data=serializer.data,
-            )
 
-        obj = self.third_party.validate_bank_account(data)
-        if not obj["status"]:
+        obj = self.third_party.validate_bank_account(bank_code, account_number)
+        if obj["status"] == "error" or not obj["status"]:
             return Response(
                 success=False,
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 message=obj["message"],
             )
-
         return Response(
             success=True,
             message=obj["message"],
             status_code=status.HTTP_200_OK,
-            data=obj["payload"],
+            data=obj["data"],
         )

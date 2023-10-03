@@ -1,3 +1,4 @@
+import math
 import os
 import uuid
 from decimal import Decimal
@@ -375,14 +376,15 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status=True,
                 message="Funds locked successfully",
                 status_code=status.HTTP_200_OK,
-                data={"transaction_reference": reference},
+                data={"transaction_reference": reference, "amount": amount_to_debit},
             )
         return Response(
             success=False,
             message="Insufficient funds in wallet.",
-            status_code=status.HTTP_200_OK,
+            status_code=status.HTTP_400_BAD_REQUEST,
             errors={
-                "deficit": abs(deficit),
+                # "deficit": abs(deficit),
+                "deficit": math.ceil(deficit),
                 "message": "Insufficient funds in wallet.",
             },
         )

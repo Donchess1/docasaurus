@@ -1,3 +1,7 @@
+import os
+
+from core.resources.cache import Cache
+from core.resources.flutterwave import FlwAPI
 from core.resources.third_party.data.banks import BANKS
 from core.resources.third_party.data.lga import LGAS
 from core.resources.third_party.data.states import STATES
@@ -26,12 +30,17 @@ from utils.utils import (
     TEST_VOTER_LGA,
     TEST_VOTER_STATE,
     get_lga_by_state_alias,
+    hours_to_seconds,
 )
 
 from .base import BaseThirdPartyService
 
+ENVIRONMENT = os.environ.get("ENVIRONMENT")
+
 
 class ThirdPartyAPI(BaseThirdPartyService):
+    cache = Cache()
+
     @classmethod
     def validate_BVN(cls, number):
         if number != TEST_BVN:
@@ -128,41 +137,33 @@ class ThirdPartyAPI(BaseThirdPartyService):
         return cls.make_post_request(url, json_data)
 
     @classmethod
-    def validate_bank_account(cls, data):
-        account_number = data.get("account_number", None)
-        bank_code = data.get("bank_code", None)
-        #     {
-        #     "nuban": "769922001",
-        #     "accountName": "OLUWATOSIN LORDSON AYODELE",
-        #     "identityNumber": "22353288951",
-        #     "identityType": "BVN",
-        #     "bank": "Access Bank",
-        #     "firstName": "OLUWATOSIN",
-        #     "lastName": "AYODELE",
-        #     "otherNames": "LORDSON"
-        # }
-        if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
-            return {
-                "message": "Bank Account verified successfully",
-                "status": True,
-                "payload": BANK_ACCOUNT_DATA,
-            }
-        return RECORD_NOT_FOUND_PAYLOAD
-        url = f"{cls.Third_Party_API_URL}/account_number"
-        json_data = {"account_number": account_number, "bank_code": bank_code}
-        return cls.make_post_request(url, json_data)
+    def validate_bank_account(cls, bank_code, account_number):
+        if ENVIRONMENT in ("staging", "development"):
+            if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
+                return {
+                    "message": "Account details fetched",
+                    "status": True,
+                    "data": BANK_ACCOUNT_DATA,
+                }
+            return RECORD_NOT_FOUND_PAYLOAD
+        return FlwAPI.validate_bank_account(bank_code, account_number)
 
     @classmethod
     def list_banks(cls, read_from_file=False):
-        if read_from_file:
-            return {
-                "message": "Successfully fetched banks",
-                "status": True,
-                "payload": BANKS,
-            }
-        url = f"{cls.Third_Party_API_URL}/banks"
-        response = cls.make_get_request(url)
-        banks = response.json()
+        obj = FlwAPI.list_banks()
+        status = obj["status"]
+        if status == "error":
+            return None
+
+        sorted_banks = sorted(
+            obj.get("data"),
+            key=lambda x: (not x["name"][0].isdigit(), x["name"].lower()),
+        )
+        banks_map = {item["code"]: item["name"] for item in sorted_banks}
+        banks = {"sorted_banks": sorted_banks, "banks_map": banks_map}
+
+        cache_exp = hours_to_seconds(6)
+        cls.cache.set("banks", banks, cache_exp)
         return banks
 
     @classmethod
