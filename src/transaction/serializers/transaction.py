@@ -55,7 +55,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"bank": ["Please provide valid bank account details"]}
             )
-        print(data, "INITIATE!!!")
+        print(obj, "INITIATE!!!")
         data["bank_name"] = bank_name
         data["account_name"] = obj["data"]["accountName"]
         return data
@@ -95,7 +95,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             "meta": {
                 "bank_name": validated_data.get("bank_name"),
                 "account_number": validated_data.get("bank_account_number"),
-                "account_name": validated_data.get("account_name"),
+                "account_name": validated_data.get("account_name", "Test"),
             },
         }
         escrow_meta = EscrowMeta.objects.create(**escrow_meta_data)
