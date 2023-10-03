@@ -548,6 +548,7 @@ class WalletWithdrawalView(GenericAPIView):
         }
 
         obj = self.flw_api.initiate_payout(tx_data)
+        print("PAYOUT INIT OBJ:", obj)
         if obj["status"] == "error":
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Transaction: {tx_ref}", "note": msg})
