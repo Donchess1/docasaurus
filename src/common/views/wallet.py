@@ -544,7 +544,7 @@ class WalletWithdrawalView(GenericAPIView):
                 "customer_email": user.email,
                 "tx_ref": tx_ref,
             },
-            # "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
+            "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
         }
 
         obj = self.flw_api.initiate_payout(tx_data)
@@ -579,9 +579,19 @@ class WalletWithdrawalCallbackView(GenericAPIView):
     pusher = PusherSocket()
 
     @swagger_auto_schema(
-        operation_description="Callback for FLW Transfer to Bank Account",
+        operation_description="Callback for FLW PAYOUT to Bank Account",
     )
     def post(self, request):
+        # secret_hash = os.environ.get("FLW_SECRET_HASH")
+        # verif_hash = request.headers.get("verif-hash", None)
+
+        # if not verif_hash or verif_hash != secret_hash:
+        #     return Response(
+        #         success=False,
+        #         message="Invalid authorization token.",
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #     )
+
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -589,9 +599,8 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
-        data = serializer.validated_data
-        event = data.get("event", None)
-        data = data.get("transfer", None)
+
+        data = serializer.validated_data.get("transfer")
 
         amount_charged = data["amount"]
         msg = data["complete_message"]
@@ -616,7 +625,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
 
         # TODO: LOG EVENT
         print("================================================")
-        print("WITHDRAWAL DATA", data)
+        print("FLW WITHDRAWAL CALLBACK DATA", data)
         print("================================================")
 
         if data["status"] == "FAILED":
@@ -653,6 +662,18 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             txn.meta.update({"note": msg})
             txn.verified = True
             txn.save()
+
+            email = user.email
+            values = {
+                "first_name": user.name.split(" ")[0],
+                "recipient": email,
+                "amount_funded": str(txn.amount),
+                "date": parse_datetime(txn.created_at),
+                "bank_name": data.get("bank_name"),
+                "account_name": data.get("full_name"),
+                "account_number": data.get("account_number"),
+            }
+            tasks.send_wallet_withdrawal_email(email, values)
         except User.DoesNotExist:
             return Response(
                 success=False,
