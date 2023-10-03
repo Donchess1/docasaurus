@@ -15,7 +15,8 @@ class EmailClient:
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", None)
     FROM_EMAIL = os.environ.get("FROM_EMAIL", None)
     ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
-    use_live_email_server = True if ENVIRONMENT == "production" else False
+    # use_live_email_server = True if ENVIRONMENT == "production" else False
+    use_live_email_server = False
     sg_client = SendGridAPIClient(SENDGRID_API_KEY)
 
     @classmethod
