@@ -94,7 +94,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             "meta": {
                 "bank_name": validated_data.get("bank_name"),
                 "account_number": validated_data.get("bank_account_number"),
-                "account_name": validated_data.get("account_name", "Test"),
+                "account_name": validated_data.get("account_name"),
             },
         }
         escrow_meta = EscrowMeta.objects.create(**escrow_meta_data)
