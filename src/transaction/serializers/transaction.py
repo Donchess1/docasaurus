@@ -55,9 +55,8 @@ class EscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"bank": ["Please provide valid bank account details"]}
             )
-        print(obj, "INITIATE!!!")
         data["bank_name"] = bank_name
-        data["account_name"] = obj["data"]["accountName"]
+        data["account_name"] = obj["data"]["account_name"]
         return data
 
     def create(self, validated_data):
