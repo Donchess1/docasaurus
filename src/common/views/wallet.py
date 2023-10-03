@@ -544,7 +544,7 @@ class WalletWithdrawalView(GenericAPIView):
                 "customer_email": user.email,
                 "tx_ref": tx_ref,
             },
-            "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
+            # "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
         }
 
         obj = self.flw_api.initiate_payout(tx_data)
