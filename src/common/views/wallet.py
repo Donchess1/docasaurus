@@ -211,7 +211,7 @@ class FundWalletRedirectView(GenericAPIView):
             try:
                 user = User.objects.get(email=customer_email)
                 profile = UserProfile.objects.get(user_id=user)
-                profile.wallet_balance += int(amount_charged)
+                profile.wallet_balance += int(txn.amount)
                 profile.save()
 
                 email = user.email
