@@ -50,7 +50,7 @@ class EmailTemplate:
     def get_template(self, template):
         if (
             self.environment in self.templates
-            and template in self.template[self.environment]
+            and template in self.templates[self.environment]
         ):
             return self.templates[self.environment][template]
         else:
