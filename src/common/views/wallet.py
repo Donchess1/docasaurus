@@ -74,8 +74,8 @@ class FundWalletView(GenericAPIView):
             "tx_ref": tx_ref,
             "amount": amount,
             "currency": "NGN",
-            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/payment-redirect",
-            # "redirect_url": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
+            # "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/payment-redirect",
+            "redirect_url": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
             "customer": {
                 "email": user.email,
                 "phone_number": user.phone,

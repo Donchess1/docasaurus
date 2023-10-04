@@ -10,76 +10,84 @@ from sendgrid.helpers.mail import (
     To,
 )
 
+from .email_templates import EmailTemplate
+
 
 class EmailClient:
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", None)
     FROM_EMAIL = os.environ.get("FROM_EMAIL", None)
     ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
-    # use_live_email_server = True if ENVIRONMENT == "production" else False
-    use_live_email_server = False
+    env = "live" if ENVIRONMENT == "production" else "test"
+    template_handler = EmailTemplate(env)
     sg_client = SendGridAPIClient(SENDGRID_API_KEY)
 
     @classmethod
     def send_account_verification_email(cls, email: str, values: dict):
-        template_id = (
-            TemplateId("d-c7705c480c644ef69c2599b70f80a796")
-            if cls.use_live_email_server
-            else TemplateId("d-4487d3c426ac451ea4107d4622fe5a0f")
-        )
+        template_id = cls.template_handler.get_template("ACCOUNT_VERIFICATION")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_welcome_email(cls, email: str, values: dict):
-        template_id = (
-            TemplateId("d-8b52dcaa981245ad87f3b736ebf2c47")
-            if cls.use_live_email_server
-            else TemplateId("d-e045a73225224c4c83b59ffe6d565bb6")
-        )
+        template_id = cls.template_handler.get_template("ONBOARDING_SUCCESSFUL")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_reset_password_request_email(cls, email: str, values: dict):
-        template_id = (
-            TemplateId("d-926d624f4ae64585833eda41e0ee1c8c")
-            if cls.use_live_email_server
-            else TemplateId("d-6562061135c44c959c43c08e5bc9cc7d")
-        )
+        template_id = cls.template_handler.get_template("RESET_PASSWORD")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_reset_password_success_email(cls, email: str, values: dict):
-        template_id = (
-            TemplateId("d-60b626bd4fb44d509c19e3621956111c")
-            if cls.use_live_email_server
-            else TemplateId("d-506c4b99dde94ee7a58d28cf7ba166d3")
-        )
+        template_id = cls.template_handler.get_template("RESET_PASSWORD_SUCCESSFUL")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_wallet_withdrawal_email(cls, email: str, values: dict):
-        template_id = TemplateId("d-abcbf3f7f9da4a689bc23d04bb25d617")
+        template_id = cls.template_handler.get_template("WALLET_WITHDRAWAL_SUCCESSFUL")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_wallet_funding_email(cls, email: str, values: dict):
-        template_id = TemplateId("d-125b68d79ed148ae84281f37d7cafbf1")
+        template_id = cls.template_handler.get_template("WALLET_FUNDING_SUCCESSFUL")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_approved_escrow_transaction_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("WALLET_FUNDING_SUCCESSFUL")
+        # template_id = (
+        #     TemplateId("d-1ec8ffd0ae1a4bc9a56eb266d35457b7")
+        #     if cls.use_live_email_server
+        #     else TemplateId("d-9fe98b4943a047899d937be276883a98")
+        # )
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_rejected_escrow_transaction_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("WALLET_FUNDING_SUCCESSFUL")
+        # template_id = (
+        #     TemplateId("d-2a20e467a3994a78a005a0ec9e34ea60")
+        #     if cls.use_live_email_server
+        #     else TemplateId("d-0911aea76c1f44958c1964997748de2c")
+        # )
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_lock_funds_buyer_email(cls, email: str, values: dict):
-        template_id = TemplateId("d-1840ebd4e7ee4281bc18dd8f2b00731e")
+        template_id = cls.template_handler.get_template("LOCK_FUNDS_BUYER")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_lock_funds_seller_email(cls, email: str, values: dict):
-        template_id = TemplateId("d-0fba8d742e884212ad73b35ed81b9c95")
+        template_id = cls.template_handler.get_template("LOCK_FUNDS_SELLER")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
@@ -100,9 +108,11 @@ class EmailClient:
         try:
             response = cls.sg_client.send(mail)
             print("SUCCESSFUL -->", response.status_code == 202)
+            # TODO: Log Email Message and Status
             return response.status_code == 202
         except Exception as e:
             print(e)
+            # TODO: Log Email Message and Status
             return False
 
     @classmethod
