@@ -50,6 +50,7 @@ PASSPORT_DATA = {
 BANK_ACCOUNT_DATA = {
     "nuban": "0234567890",
     "accountName": "JOHN DOE",
+    "account_name": "JOHN DOE",
     "identityType": "BVN",
     "bank": "Wema Bank",
     "accountCurrency": "NGN",
