@@ -16,7 +16,7 @@ RUN pip install --upgrade pip
 COPY ./requirements ./requirements
 RUN pip install psycopg2-binary --no-binary psycopg2-binary
 RUN pip install -r requirements/dev.txt
-COPY ./docker/runner/entrypoint.sh /entrypoint.sh
+COPY ./docker/staging/entrypoint.sh /entrypoint.sh
 
 COPY . .
 

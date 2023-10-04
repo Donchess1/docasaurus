@@ -7,17 +7,19 @@ from utils.utils import convert_to_camel
 
 class Requests:
     @classmethod
-    def make_get_request(cls, url, flw_headers=None):
+    def make_get_request(cls, url, flw_headers=None, zha_headers=None):
         if flw_headers:
             response = requests.get(url, headers=flw_headers)
+        elif zha_headers:
+            response = requests.get(url, headers=zha_headers)
         else:
             response = requests.get(url)
 
         if response.status_code in [503, 500]:
             return Response(
-                message="Service not available.",
+                message="Third Party Service not available.",
                 success=False,
-                status_code=503,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         data = response.json()
@@ -25,12 +27,16 @@ class Requests:
         return data
 
     @classmethod
-    def make_post_request(cls, url, data=None, camelize=True, flw_headers=None):
+    def make_post_request(
+        cls, url, data=None, camelize=True, flw_headers=None, zha_headers=None
+    ):
         if data and camelize:
             json_data = {convert_to_camel(k): v for k, v in data.items()}
             response = requests.post(url, json=json_data)
         elif not camelize and flw_headers:
             response = requests.post(url, json=data, headers=flw_headers)
+        elif not camelize and zha_headers:
+            response = requests.post(url, json=data, headers=zha_headers)
         elif not camelize:
             response = requests.post(url, data)
         else:
@@ -38,9 +44,9 @@ class Requests:
 
         if response.status_code in [503, 500]:
             return Response(
-                message="Service not available.",
+                message="Third Party Service not available.",
                 success=False,
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         data = response.json()

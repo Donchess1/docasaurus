@@ -60,6 +60,11 @@ python manage.py collectstatic --noinput
 status=$?
 if [ $status -eq 0 ]; then
   echo "============================="
+  echo "Loading fixtures..."
+  echo "============================="
+  python manage.py loaddata fixtures.json
+
+  echo "============================="
   echo "Starting Gunicorn..."
   echo "============================="
 

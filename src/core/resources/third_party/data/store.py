@@ -12,7 +12,7 @@ NIN_DATA = {
     "telephoneno": "08178135068",
     "profession": "APPLICANT",
     "title": "mr",
-    "birthdate": "03-11-1993",
+    "birthdate": "03-11-1960",
     "birthstate": "Oyo",
     "birthcountry": "nigeria",
 }

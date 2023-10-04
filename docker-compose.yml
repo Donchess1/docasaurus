@@ -5,7 +5,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: ./docker/runner/Dockerfile
+      dockerfile: ./docker/staging/Dockerfile
     volumes:
       - ./src:/app
       - myb-dev-static-data:/vol/web
