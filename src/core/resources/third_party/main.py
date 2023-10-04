@@ -13,6 +13,7 @@ from core.resources.third_party.data.store import (
     PASSPORT_DATA,
     VOTER_CARD_DATA,
 )
+from core.resources.zeeh_africa import ZeehAfricaAPI
 from users.models.bank_account import BankAccount
 from users.serializers.bank_account import BankAccountSerializer
 from utils.utils import (
@@ -41,31 +42,27 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT")
 class ThirdPartyAPI(BaseThirdPartyService):
     cache = Cache()
 
-    @classmethod
-    def validate_BVN(cls, number):
-        if number != TEST_BVN:
-            return RECORD_NOT_FOUND_PAYLOAD
-        return {
-            "message": "Verification Successful",
-            "status": True,
-            "payload": BVN_DATA,
-        }
-        url = f"{cls.Third_Party_API_URL}/bvn"
-        json_data = {"bvn": number}
-        return cls.make_post_request(url, json_data)
+    # @classmethod
+    # def validate_BVN(cls, number):
+    #     if number != TEST_BVN:
+    #         return RECORD_NOT_FOUND_PAYLOAD
+    #     return {
+    #         "message": "Verification Successful",
+    #         "status": True,
+    #         "payload": BVN_DATA,
+    #     }
+    #     url = f"{cls.Third_Party_API_URL}/bvn"
+    #     json_data = {"bvn": number}
+    #     return cls.make_post_request(url, json_data)
 
     @classmethod
     def validate_NIN(cls, number):
-        if number != TEST_NIN:
-            return RECORD_NOT_FOUND_PAYLOAD
-        return {
-            "message": "Verification Successful",
-            "status": True,
-            "payload": NIN_DATA,
-        }
-        url = f"{cls.Third_Party_API_URL}/nin"
-        json_data = {"bvn": number}
-        return cls.make_post_request(url, json_data)
+        if ENVIRONMENT in ("staging", "development"):
+            return {
+                "status": "error",
+                "data": None,
+            }
+        return ZeehAfricaAPI.validate_nin(number)
 
     @classmethod
     def validate_voters_card(cls, data):

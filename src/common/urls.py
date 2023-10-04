@@ -21,7 +21,7 @@ urlpatterns = [
     path("states", ListNGNStatesView.as_view(), name="list-ngn-states"),
     path("lgas/<str:alias>", ListLGAByStateAliasView.as_view(), name="list-state-lgas"),
     path("lookup/nin", ValidateNINView.as_view(), name="validate-nin"),
-    path("lookup/bvn", ValidateBVNView.as_view(), name="validate-bvn"),
+    # path("lookup/bvn", ValidateBVNView.as_view(), name="validate-bvn"),
     path(
         "lookup/voter-card", ValidateVoterCardView.as_view(), name="validate-voter-card"
     ),

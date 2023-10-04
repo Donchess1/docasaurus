@@ -1,16 +1,16 @@
 build:
 	docker-compose -f docker-compose.yml build
 build-staging:
-	docker-compose -f docker-compose-staging.yml up --build -d --remove-orphans
+	docker-compose -f docker-compose-staging.yml up --build --remove-orphans
 build-prod:
-	docker-compose -f docker-compose-prod.yml up --build -d --remove-orphans
+	docker-compose -f docker-compose-prod.yml up --build --remove-orphans
 
 up:
 	docker-compose -f docker-compose.yml up
 up-staging:
-	docker-compose -f docker-compose-staging.yml up -d
+	docker-compose -f docker-compose-staging.yml up
 up-prod:
-	docker-compose -f docker-compose-prod.yml up -d
+	docker-compose -f docker-compose-prod.yml up
 
 down:
 	docker-compose -f docker-compose.yml down
@@ -71,15 +71,15 @@ isort:
 test:
 	docker-compose -f docker-compose.yml exec api pytest $(TEST_PATH)
 
-bash:
-	docker exec -it {{CONTAINER_NAME}} bash
+# bash:
+# 	docker exec -it {{CONTAINER_NAME}} bash
 
 format:
 	make isort
 	make black
 
-build-api:
-	docker build -t mybapi:dev -f docker/runner/Dockerfile .
+# build-api:
+# 	docker build -t mybapi:dev -f docker/runner/Dockerfile .
 
-start-api:
-	docker run -it --name myb-api --env-file=./.env --network=host mybapi:dev
+# start-api:
+# 	docker run -it --name myb-api --env-file=./.env --network=host mybapi:dev
