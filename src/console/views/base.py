@@ -65,7 +65,12 @@ class UserViewSet(
 
         partial = True  # Allow partial updates
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
         self.perform_update(serializer)
 
         return Response(
