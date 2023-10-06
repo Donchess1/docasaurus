@@ -5,7 +5,11 @@ from users.views.login import LoginView
 from users.views.password import ForgotPasswordView, ResetPasswordView
 from users.views.profile import UserProfileView
 from users.views.seller import RegisterSellerView
-from users.views.user import EditUserProfileView, UploadAvatarView
+from users.views.user import (
+    EditSellerBusinessProfileView,
+    EditUserProfileView,
+    UploadAvatarView,
+)
 from users.views.verify import ResendAccountVerificationOTPView, VerifyOTPView
 
 urlpatterns = [
@@ -23,4 +27,9 @@ urlpatterns = [
     path("profile", UserProfileView.as_view(), name="user-profile"),
     path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),
     path("profile/upload", UploadAvatarView.as_view(), name="user-profile-upload"),
+    path(
+        "profile/business",
+        EditSellerBusinessProfileView.as_view(),
+        name="seller-business-profile-edit",
+    ),
 ]

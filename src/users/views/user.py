@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import generics, mixins, permissions, status
 
+from business.models.business import Business
+from business.serializers.business import BusinessSerializer
 from core.resources.upload_client import FileUploadClient
 from users.models.profile import UserProfile
 from users.serializers.user import UploadUserAvatarSerializer, UserSerializer
@@ -33,12 +35,72 @@ class EditUserProfileView(generics.GenericAPIView):
 
         partial = True  # Allow partial updates
         serializer = self.get_serializer(user, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
         serializer.save()
 
         return Response(
             success=True,
             message="User updated successfully",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class EditSellerBusinessProfileView(generics.GenericAPIView):
+    serializer_class = BusinessSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request):
+        user_id = request.user.id
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response(
+                success=False,
+                message=f"User does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if not user.is_seller:
+            return Response(
+                success=False,
+                message="User cannot update business information",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        business = Business.objects.filter(user_id=user).first()
+        if not business:
+            return Response(
+                success=False,
+                message=f"Business does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        for field in request.data.keys():
+            if field not in ["name", "phone", "description", "address"]:
+                return Response(
+                    success=False,
+                    message="Only name, phone, description or address may be updated",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                )
+
+        partial = True  # Allow partial updates
+        serializer = self.get_serializer(business, data=request.data, partial=partial)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        serializer.save()
+        if request.data.get("phone"):
+            user.phone = request.data["phone"]
+            user.save()
+
+        return Response(
+            success=True,
+            message="Business profile updated successfully",
             data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
