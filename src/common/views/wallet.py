@@ -675,7 +675,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "account_name": data.get("full_name"),
                 "account_number": data.get("account_number"),
             }
-            tasks.send_wallet_withdrawal_email(email, values)
+            console_tasks.send_wallet_withdrawal_email(email, values)
         except User.DoesNotExist:
             return Response(
                 success=False,
