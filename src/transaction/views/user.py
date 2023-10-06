@@ -459,8 +459,8 @@ class FundEscrowTransactionView(generics.GenericAPIView):
             "tx_ref": tx_ref,
             "amount": amount,
             "currency": "NGN",
-            # "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/escrow-payment-redirect",
-            "redirect_url": f"{FRONTEND_BASE_URL}/escrow-payment",
+            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/escrow-payment-redirect",
+            # "redirect_url": f"{FRONTEND_BASE_URL}/escrow-payment",
             "customer": {
                 "email": user.email,
                 "phone_number": user.phone,
