@@ -26,7 +26,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
         request = self.context.get("request")
         if value == request.user.email:
             raise serializers.ValidationError(
-                "You cannot lock an escrow for your own account"
+                "You cannot lock an escrow using your own email"
             )
         return value
 
