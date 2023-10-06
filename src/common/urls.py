@@ -22,19 +22,19 @@ urlpatterns = [
     path("lgas/<str:alias>", ListLGAByStateAliasView.as_view(), name="list-state-lgas"),
     path("lookup/nin", ValidateNINView.as_view(), name="validate-nin"),
     # path("lookup/bvn", ValidateBVNView.as_view(), name="validate-bvn"),
-    path(
-        "lookup/voter-card", ValidateVoterCardView.as_view(), name="validate-voter-card"
-    ),
-    path(
-        "lookup/driver-license",
-        ValidateDriverLicenseView.as_view(),
-        name="validate-driver-license",
-    ),
-    path(
-        "lookup/passport",
-        ValidatePassportView.as_view(),
-        name="validate-international-passport",
-    ),
+    # path(
+    #     "lookup/voter-card", ValidateVoterCardView.as_view(), name="validate-voter-card"
+    # ),
+    # path(
+    #     "lookup/driver-license",
+    #     ValidateDriverLicenseView.as_view(),
+    #     name="validate-driver-license",
+    # ),
+    # path(
+    #     "lookup/passport",
+    #     ValidatePassportView.as_view(),
+    #     name="validate-international-passport",
+    # ),
     path(
         "lookup/nuban",
         ValidateBankAccountView.as_view(),
