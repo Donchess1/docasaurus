@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from console.views.base import UserViewSet
+from console.views.base import CheckUserByEmailView, UserViewSet
 from console.views.webhook import FlwBankTransferWebhookView, FlwPayoutWebhookView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
@@ -19,5 +19,10 @@ urlpatterns = [
         "transactions/<str:id>",
         TransactionDetailView.as_view(),
         name="transaction-detail-view",
+    ),
+    path(
+        "check-email",
+        CheckUserByEmailView.as_view(),
+        name="user-detail-email-view",
     ),
 ] + router.urls
