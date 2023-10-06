@@ -28,3 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UploadUserAvatarSerializer(serializers.Serializer):
     image = serializers.FileField()
+
+
+class CheckUserByEmailViewSerializer(serializers.Serializer):
+    email = serializers.EmailField()

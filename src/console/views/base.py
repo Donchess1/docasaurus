@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
-from rest_framework import mixins, permissions, status, viewsets
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import generics, mixins, permissions, status, viewsets
 
-from users.serializers.user import UserSerializer
+from users.serializers.user import CheckUserByEmailViewSerializer, UserSerializer
 from utils.pagination import CustomPagination
 from utils.response import Response
 
@@ -92,3 +93,40 @@ class UserViewSet(
             message="User deleted successfully",
             status_code=status.HTTP_200_OK,
         )
+
+
+class CheckUserByEmailView(generics.GenericAPIView):
+    serializer_class = CheckUserByEmailViewSerializer
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Console: Check if user exists using email",
+        responses={
+            200: UserSerializer,
+        },
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+
+        email = serializer.validated_data.get("email")
+        try:
+            user = User.objects.get(email=email)
+            serializer = UserSerializer(user)
+            return Response(
+                success=True,
+                message="User found",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
+            )
+        except User.DoesNotExist:
+            return Response(
+                success=False,
+                message="User does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
