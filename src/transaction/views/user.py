@@ -205,7 +205,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
         )
         instance.save()
         if new_status == "REJECTED":
-            amount_to_return = instance.amount - instance.charge
+            amount_to_return = instance.amount + instance.charge
             buyer_email = None
             if instance.escrowmeta.author == "BUYER":
                 buyer_email = instance.user_id.email
