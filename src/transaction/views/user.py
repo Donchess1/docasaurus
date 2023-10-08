@@ -196,7 +196,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
         new_status = serializer.validated_data.get("status")
         rejected_reason = serializer.validated_data.get("rejected_reason")
 
-        instance.status = new_status
+        instance.status = "SUCCESSFUL" if new_status == "APPROVED" else "REJECTED"
         instance.meta.update(
             {
                 "escrow_action": new_status,
