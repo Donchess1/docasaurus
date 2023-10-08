@@ -196,7 +196,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
         new_status = serializer.validated_data.get("status")
         rejected_reason = serializer.validated_data.get("rejected_reason")
 
-        instance.status = new_status
+        instance.status = "SUCCESSFUL" if new_status == "APPROVED" else "REJECTED"
         instance.meta.update(
             {
                 "escrow_action": new_status,
@@ -204,8 +204,21 @@ class UserTransactionDetailView(generics.GenericAPIView):
             }
         )
         instance.save()
-        # If status is approved, then
-        # If status is REJECTED and the author is buyer, refund the escrow funds to the buyer.
+        if new_status == "REJECTED":
+            amount_to_return = instance.amount - instance.charge
+            buyer_email = None
+            if instance.escrowmeta.author == "BUYER":
+                buyer_email = instance.user_id.email
+            else:
+                obj = User.objects.get(email=instance.escrowmeta.partner_email)
+                buyer_email = obj.email
+
+            user = User.objects.get(email=buyer_email)
+            profile = UserProfile.objects.get(user_id=user)
+            profile.wallet_balance += int(amount_to_return)
+            profile.locked_amount -= int(instance.amount)
+            profile.save()
+
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",
