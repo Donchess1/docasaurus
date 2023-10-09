@@ -13,11 +13,6 @@ class ForgotPasswordSerializer(serializers.Serializer):
         obj = validate_email_body(value)
         if obj[0]:
             raise serializers.ValidationError(obj[1])
-        if value == email:
-            raise serializers.ValidationError(
-                "You cannot lock an escrow using your own email"
-            )
-        return value
         try:
             User.objects.get(email=value)
         except User.DoesNotExist:
