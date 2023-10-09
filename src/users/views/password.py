@@ -2,13 +2,17 @@ from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, status
 from rest_framework.generics import GenericAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from users import tasks
-from users.serializers.password import ForgotPasswordSerializer, ResetPasswordSerializer
+from users.serializers.password import (
+    ChangePasswordSerializer,
+    ForgotPasswordSerializer,
+    ResetPasswordSerializer,
+)
 from utils.response import Response
 from utils.utils import (
     RESET_PASSWORD_URL,
@@ -116,5 +120,43 @@ class ResetPasswordView(generics.GenericAPIView):
         return Response(
             success=True,
             message="Password has been reset",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class ChangePasswordView(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Change User Password",
+    )
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                message="Validation error",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        password = serializer.validated_data["password"]
+        user.set_password(password)
+        user.save()
+
+        name = user.name
+        email = user.email
+        dynamic_values = {
+            "first_name": name.split(" ")[0],
+            "recipient": email,
+        }
+
+        tasks.send_reset_password_success_email(email, dynamic_values)
+
+        return Response(
+            success=True,
+            message="Password has been changed successfully",
             status_code=status.HTTP_200_OK,
         )

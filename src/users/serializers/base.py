@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from utils.email import CustomEmailField
+
 from .models import User
 
 
@@ -18,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = CustomEmailField()
 
     def validate(self, attrs):
         email = attrs.get("email")

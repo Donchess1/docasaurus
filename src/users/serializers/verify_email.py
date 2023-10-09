@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from utils.email import validate_email_body
+
 User = get_user_model()
 
 
@@ -18,6 +20,9 @@ class ResendOTPSerializer(serializers.Serializer):
     old_temp_id = serializers.CharField(required=False)
 
     def validate_email(self, value):
+        obj = validate_email_body(value)
+        if obj[0]:
+            raise serializers.ValidationError(obj[1])
         try:
             User.objects.get(email=value)
         except User.DoesNotExist:
