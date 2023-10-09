@@ -2,7 +2,11 @@ from django.urls import path
 
 from users.views.buyer import RegisterBuyerView
 from users.views.login import LoginView
-from users.views.password import ForgotPasswordView, ResetPasswordView
+from users.views.password import (
+    ChangePasswordView,
+    ForgotPasswordView,
+    ResetPasswordView,
+)
 from users.views.profile import UserProfileView
 from users.views.seller import RegisterSellerView
 from users.views.user import (
@@ -24,6 +28,7 @@ urlpatterns = [
     path("login", LoginView.as_view(), name="login"),
     path("forgot-password", ForgotPasswordView.as_view(), name="forgot-password"),
     path("reset-password", ResetPasswordView.as_view(), name="reset-password"),
+    path("change-password", ChangePasswordView.as_view(), name="change-password"),
     path("profile", UserProfileView.as_view(), name="user-profile"),
     path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),
     path("profile/upload", UploadAvatarView.as_view(), name="user-profile-upload"),

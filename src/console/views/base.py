@@ -90,8 +90,7 @@ class UserViewSet(
             )
 
         instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        self.perform_destroy(instance)
+        instance.delete()
 
         return Response(
             success=True,

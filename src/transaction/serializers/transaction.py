@@ -6,6 +6,7 @@ from rest_framework import serializers
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
+from utils.email import validate_email_body
 from utils.utils import generate_random_text, get_escrow_fees, validate_bank_account
 
 User = get_user_model()
@@ -24,7 +25,11 @@ class EscrowTransactionSerializer(serializers.Serializer):
 
     def validate_partner_email(self, value):
         request = self.context.get("request")
-        if value == request.user.email:
+        email = request.user.email
+        obj = validate_email_body(email)
+        if obj[0]:
+            raise serializers.ValidationError(obj[1])
+        if value == email:
             raise serializers.ValidationError(
                 "You cannot lock an escrow using your own email"
             )
