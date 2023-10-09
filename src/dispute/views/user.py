@@ -22,7 +22,7 @@ class UserDisputeView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         queryset = Dispute.objects.filter(Q(buyer=user) | Q(seller=user)).order_by(
-            "created_at"
+            "-created_at"
         )
         return queryset
 
