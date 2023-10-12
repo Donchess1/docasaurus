@@ -7,7 +7,7 @@ from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from utils.email import validate_email_body
-from utils.utils import generate_random_text, get_escrow_fees, validate_bank_account
+from utils.utils import generate_random_text, get_escrow_fees
 
 User = get_user_model()
 cache = Cache()
@@ -39,9 +39,9 @@ class EscrowTransactionSerializer(serializers.Serializer):
         banks = cache.get("banks")
         if banks is None:
             banks = ThirdPartyAPI.list_banks()
-            if banks["status"] == "error":
+            if not banks.get("status") or banks.get("status") == "error":
                 raise serializers.ValidationError(
-                    "Error occurred while retrieving list of banks"
+                    "Error occurred while retrieving list of banks from third party"
                 )
         bank_codes = [item["code"] for item in banks.get("sorted_banks")]
         if value not in bank_codes:

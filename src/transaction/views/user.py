@@ -28,7 +28,7 @@ from utils.html import generate_flw_payment_webhook_html
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_escrow_transaction_stakeholders
-from utils.utils import generate_txn_reference, parse_datetime
+from utils.utils import format_rejected_reasons, generate_txn_reference, parse_datetime
 
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
@@ -182,7 +182,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
         if escrow_action:
             return Response(
                 success=False,
-                message=f"Escrow transaction cannot be updated again",
+                message=f"You cannot update this transaction again",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -204,6 +204,12 @@ class UserTransactionDetailView(generics.GenericAPIView):
             }
         )
         instance.save()
+
+        transaction_author = instance.user_id
+        partner = User.objects.get(email=instance.escrowmeta.partner_email)
+        transaction_author_is_seller = (
+            True if instance.escrowmeta.author == "SELLER" else False
+        )  # Used to determine who rejected the transaction in email template
         if new_status == "REJECTED":
             amount_to_return = instance.amount + instance.charge
             buyer_email = None
@@ -218,7 +224,38 @@ class UserTransactionDetailView(generics.GenericAPIView):
             profile.wallet_balance += int(amount_to_return)
             profile.locked_amount -= int(instance.amount)
             profile.save()
-
+            # Send rejection notification to the author of the transaction
+            response = format_rejected_reasons(list(rejected_reason))
+            values = {
+                "first_name": transaction_author.name.split(" ")[0],
+                "recipient": transaction_author.email,
+                "date": parse_datetime(instance.updated_at),
+                "status": "REJECTED",
+                "transaction_id": instance.reference,
+                "item_name": instance.meta["title"],
+                "partner_name": partner.name,
+                "amount": instance.amount,
+                "transaction_author_is_seller": transaction_author_is_seller,
+                "reasons": response,
+            }
+            tasks.send_rejected_escrow_transaction_email(
+                transaction_author.email, values
+            )
+        else:
+            values = {
+                "first_name": transaction_author.name.split(" ")[0],
+                "recipient": transaction_author.email,
+                "date": parse_datetime(instance.updated_at),
+                "status": "APPROVED",
+                "transaction_id": instance.reference,
+                "item_name": instance.meta["title"],
+                "partner_name": partner.name,
+                "amount": instance.amount,
+                "transaction_author_is_seller": transaction_author_is_seller,
+            }
+            tasks.send_approved_escrow_transaction_email(
+                transaction_author.email, values
+            )
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",

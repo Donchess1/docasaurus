@@ -59,23 +59,13 @@ class EmailClient:
 
     @classmethod
     def send_approved_escrow_transaction_email(cls, email: str, values: dict):
-        template_id = cls.template_handler.get_template("WALLET_FUNDING_SUCCESSFUL")
-        # template_id = (
-        #     TemplateId("d-1ec8ffd0ae1a4bc9a56eb266d35457b7")
-        #     if cls.use_live_email_server
-        #     else TemplateId("d-9fe98b4943a047899d937be276883a98")
-        # )
+        template_id = cls.template_handler.get_template("ESCROW_TRANSACTION_APPROVED")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
     def send_rejected_escrow_transaction_email(cls, email: str, values: dict):
-        template_id = cls.template_handler.get_template("WALLET_FUNDING_SUCCESSFUL")
-        # template_id = (
-        #     TemplateId("d-2a20e467a3994a78a005a0ec9e34ea60")
-        #     if cls.use_live_email_server
-        #     else TemplateId("d-0911aea76c1f44958c1964997748de2c")
-        # )
+        template_id = cls.template_handler.get_template("ESCROW_TRANSACTION_REJECTED")
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 

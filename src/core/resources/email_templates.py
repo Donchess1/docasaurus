@@ -24,6 +24,12 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-1840ebd4e7ee4281bc18dd8f2b00731e"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0fba8d742e884212ad73b35ed81b9c95"),
+                "ESCROW_TRANSACTION_APPROVED": TemplateId(
+                    "d-9fe98b4943a047899d937be276883a98"
+                ),
+                "ESCROW_TRANSACTION_REJECTED": TemplateId(
+                    "d-2a20e467a3994a78a005a0ec9e34ea60"
+                ),
             },
             "live": {
                 "ACCOUNT_VERIFICATION": TemplateId(
@@ -44,6 +50,12 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-2f55861d9a514831b36ac3ef2b0f484a"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0ef402affb07484487f1661c9c110184"),
+                "ESCROW_TRANSACTION_APPROVED": TemplateId(
+                    "d-1ec8ffd0ae1a4bc9a56eb266d35457b7"
+                ),
+                "ESCROW_TRANSACTION_REJECTED": TemplateId(
+                    "d-0911aea76c1f44958c1964997748de2c"
+                ),
             },
         }
 
