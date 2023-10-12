@@ -120,25 +120,21 @@ def get_escrow_fees(amount):
     return charge, amount_payable
 
 
-def validate_bank_account(bank_code, account_number, user_id=None):
-    existing_account = BankAccount.objects.filter(
-        bank_code=bank_code, account_number=account_number
-    ).first()
+def format_rejected_reasons(rejected_reasons):
+    if not rejected_reasons:
+        return ""
 
-    if existing_account:
-        return existing_account
+    if len(rejected_reasons) == 1:
+        return rejected_reasons[0].replace("_", " ").title()
 
-    # is_valid = flw_api.validate_bank_account(bank_code, account_number)
+    elif len(rejected_reasons) == 2:
+        return f"{rejected_reasons[0].replace('_', ' ').title()} & {rejected_reasons[1].replace('_', ' ').title()}"
 
-    # if is_valid and is_valid["status"] == "success":
-    #     new_bank_account = BankAccount.objects.create(
-    #         user_id=user_id,
-    #         bank_code=bank_code,
-    #         account_number=account_number
-    #     )
-    #     return new_bank_account
-
-    return None
+    else:
+        formatted_reasons = ", ".join(
+            reason.replace("_", " ").title() for reason in rejected_reasons[:-1]
+        )
+        return f"{formatted_reasons} & {rejected_reasons[-1].replace('_', ' ').title()}"
 
 
 CUSTOM_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # e.g "1993-12-25"
