@@ -200,7 +200,9 @@ class UserTransactionDetailView(generics.GenericAPIView):
         instance.meta.update(
             {
                 "escrow_action": new_status,
-                "rejected_reason": list(rejected_reason) if rejected_reason else None,
+                "rejected_reason": list(rejected_reason)
+                if rejected_reason and new_status == "REJECTED"
+                else None,
             }
         )
         instance.save()
@@ -621,7 +623,34 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             instance.status = "SETTLED"
             instance.save()
 
-            # TODO: Notify Buyer & Seller that funds has been unlocked from escrow via email.
+            # Notify Buyer & Seller that funds has been unlocked from escrow via email.
+            escrow_meta = txn.escrowmeta.meta
+            buyer_values = {
+                "first_name": user.name.split(" ")[0],
+                "recipient": user.email,
+                "date": parse_datetime(txn.updated_at),
+                "transaction_id": reference,
+                "item_name": txn.meta["title"],
+                "seller_name": seller.name,
+                "bank_name": escrow_meta.get("bank_name"),
+                "account_name": escrow_meta.get("account_name"),
+                "account_number": escrow_meta.get("account_number"),
+                "amount": f"N{txn.amount}",
+            }
+            seller_values = {
+                "first_name": seller.name.split(" ")[0],
+                "recipient": seller.email,
+                "date": parse_datetime(txn.updated_at),
+                "transaction_id": reference,
+                "item_name": txn.meta["title"],
+                "buyer_name": user.name,
+                "bank_name": escrow_meta.get("bank_name"),
+                "account_name": escrow_meta.get("account_name"),
+                "account_number": escrow_meta.get("account_number"),
+                "amount": f"N{txn.amount}",
+            }
+            tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
+            tasks.send_unlock_funds_seller_email(seller.email, seller_values)
 
             return Response(
                 status=True,

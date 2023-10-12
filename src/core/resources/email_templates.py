@@ -24,6 +24,8 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-1840ebd4e7ee4281bc18dd8f2b00731e"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0fba8d742e884212ad73b35ed81b9c95"),
+                "UNLOCK_FUNDS_BUYER": TemplateId("d-5d1c30c963ad459abeeea4a66172dd35"),
+                "UNLOCK_FUNDS_SELLER": TemplateId("d-3c612384a65d44a8b3ee77bfc42dbfff"),
                 "ESCROW_TRANSACTION_APPROVED": TemplateId(
                     "d-9fe98b4943a047899d937be276883a98"
                 ),
@@ -50,6 +52,8 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-2f55861d9a514831b36ac3ef2b0f484a"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0ef402affb07484487f1661c9c110184"),
+                "UNLOCK_FUNDS_BUYER": TemplateId("d-9e19d6d681594f539977f88ab2cc47d8"),
+                "UNLOCK_FUNDS_SELLER": TemplateId("d-956b7f285f26463894546fa3df90dd9b"),
                 "ESCROW_TRANSACTION_APPROVED": TemplateId(
                     "d-1ec8ffd0ae1a4bc9a56eb266d35457b7"
                 ),
