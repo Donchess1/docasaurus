@@ -204,14 +204,18 @@ class UnlockEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Invalid transaction type. Must be ESCROW"
             )
+        if instance.status == "FUFILLED":
+            raise serializers.ValidationError("Funds have already been unlocked")
         if instance.status != "SUCCESSFUL":
             raise serializers.ValidationError(
                 "Transaction must be paid for before unlocking"
             )
-        obj = LockedAmount.objects.get(transaction=instance)
+        obj = LockedAmount.objects.filter(transaction=instance).first()
+        if not obj:
+            raise serializers.ValidationError("Funds have not been locked")
         if obj.status == "SETTLED":
             raise serializers.ValidationError(
-                {"transaction": "Funds have already been unlocked to seller"}
+                "Funds have already been unlocked to seller"
             )
         seller_obj = User.objects.filter(
             email=obj.seller_email, is_verified=True
