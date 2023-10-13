@@ -280,3 +280,4 @@ DRF_API_LOGGER_SLOW_API_ABOVE = (
 )
 DRF_API_LOGGER_TIME_ZONE = "Africa/Lagos"  # see the API information in local timezone
 DRF_API_LOGGER_PATH_TYPE = "ABSOLUTE"
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
