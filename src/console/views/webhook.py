@@ -122,7 +122,7 @@ class FlwPayoutWebhookView(GenericAPIView):
                 errors=serializer.errors,
             )
 
-        data = serializer.validated_data.get("transfer")
+        data = serializer.validated_data.get("data")
 
         amount_charged = data["amount"]
         msg = data["complete_message"]
