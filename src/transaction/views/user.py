@@ -195,8 +195,11 @@ class UserTransactionDetailView(generics.GenericAPIView):
             )
         new_status = serializer.validated_data.get("status")
         rejected_reason = serializer.validated_data.get("rejected_reason")
+        transaction_author_is_seller = (
+            True if instance.escrowmeta.author == "SELLER" else False
+        )
 
-        instance.status = "SUCCESSFUL" if new_status == "APPROVED" else "REJECTED"
+        instance.status = new_status if new_status == "REJECTED" else "PENDING"
         instance.meta.update(
             {
                 "escrow_action": new_status,
@@ -209,22 +212,16 @@ class UserTransactionDetailView(generics.GenericAPIView):
 
         transaction_author = instance.user_id
         partner = User.objects.get(email=instance.escrowmeta.partner_email)
-        transaction_author_is_seller = (
-            True if instance.escrowmeta.author == "SELLER" else False
-        )  # Used to determine who rejected the transaction in email template
         if new_status == "REJECTED":
             amount_to_return = instance.amount + instance.charge
-            if instance.escrowmeta.author == "BUYER" and instance.lockedamount:
+            # Only return lock funds if the amount was deducted initially
+            if instance.escrowmeta.author == "BUYER" and LockedAmount.objects.filter(transaction=instance).exists():
                 buyer = instance.user_id
                 profile = UserProfile.objects.get(user_id=buyer)
                 profile.wallet_balance += int(amount_to_return)
                 profile.locked_amount -= int(instance.amount)
                 profile.save()
-            # else:
-            #     obj = User.objects.get(email=instance.escrowmeta.partner_email)
-            #     buyer_email = obj.email
 
-           
             # Send rejection notification to the author of the transaction
             response = format_rejected_reasons(list(rejected_reason))
             values = {
@@ -242,7 +239,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
             tasks.send_rejected_escrow_transaction_email(
                 transaction_author.email, values
             )
-        else:
+        else:  # APPROVED
             values = {
                 "first_name": transaction_author.name.split(" ")[0],
                 "recipient": transaction_author.email,
@@ -254,9 +251,10 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "amount": instance.amount,
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
-            tasks.send_approved_escrow_transaction_email(
-                transaction_author.email, values
-            )
+            if not transaction_author_is_seller:
+                tasks.send_approved_escrow_transaction_email(
+                    transaction_author.email, values
+                )
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",
