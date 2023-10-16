@@ -214,18 +214,17 @@ class UserTransactionDetailView(generics.GenericAPIView):
         )  # Used to determine who rejected the transaction in email template
         if new_status == "REJECTED":
             amount_to_return = instance.amount + instance.charge
-            buyer_email = None
-            if instance.escrowmeta.author == "BUYER":
-                buyer_email = instance.user_id.email
-            else:
-                obj = User.objects.get(email=instance.escrowmeta.partner_email)
-                buyer_email = obj.email
+            if instance.escrowmeta.author == "BUYER" and instance.lockedamount:
+                buyer = instance.user_id
+                profile = UserProfile.objects.get(user_id=buyer)
+                profile.wallet_balance += int(amount_to_return)
+                profile.locked_amount -= int(instance.amount)
+                profile.save()
+            # else:
+            #     obj = User.objects.get(email=instance.escrowmeta.partner_email)
+            #     buyer_email = obj.email
 
-            user = User.objects.get(email=buyer_email)
-            profile = UserProfile.objects.get(user_id=user)
-            profile.wallet_balance += int(amount_to_return)
-            profile.locked_amount -= int(instance.amount)
-            profile.save()
+           
             # Send rejection notification to the author of the transaction
             response = format_rejected_reasons(list(rejected_reason))
             values = {
