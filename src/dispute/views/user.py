@@ -7,9 +7,11 @@ from rest_framework.permissions import IsAuthenticated
 from console import tasks
 from console.models.dispute import Dispute
 from console.models.transaction import Transaction
+from dispute import tasks as dispute_tasks
 from dispute.serializers.dispute import DisputeSerializer
 from utils.pagination import CustomPagination
 from utils.response import Response
+from utils.utils import parse_datetime
 
 User = get_user_model()
 
@@ -85,7 +87,35 @@ class UserDisputeView(generics.ListCreateAPIView):
             reason=reason,
         )
 
-        # TODO: Send appropriate notification to the seller and buyer
+        dispute_author_is_seller = True if author == "SELLER" else False
+        partner = buyer if dispute_author_is_seller else seller
+        author_values = {
+            "first_name": user.name.split(" ")[0],
+            "recipient": user.email,
+            "date": parse_datetime(dispute.created_at),
+            "transaction_id": transaction.reference,
+            "item_name": transaction.meta.get("title"),
+            "dispute_author_is_seller": dispute_author_is_seller,
+            "partner_name": partner.name,
+            "dispute_reason": reason,
+            "amount": transaction.amount,
+        }
+        recipient_values = {
+            "first_name": partner.name.split(" ")[0],
+            "recipient": partner.email,
+            "date": parse_datetime(dispute.created_at),
+            "transaction_id": transaction.reference,
+            "item_name": transaction.meta.get("title"),
+            "dispute_author_is_seller": not dispute_author_is_seller,
+            "partner_name": user.name,
+            "dispute_reason": reason,
+            "amount": transaction.amount,
+        }
+
+        dispute_tasks.send_dispute_raised_author_email(user.email, author_values)
+        dispute_tasks.send_dispute_raised_receiver_email(
+            partner.email, recipient_values
+        )
 
         return Response(
             success=True,

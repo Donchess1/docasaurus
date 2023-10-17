@@ -68,14 +68,26 @@ class DisputeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "A dispute has already been created for this transaction."
             )
+        escrow_action = value.meta.get("escrow_action")
+        if not escrow_action:
+            raise serializers.ValidationError(
+                "Transaction is yet to be approved or rejected"
+            )
+        elif escrow_action == "REJECTED":
+            raise serializers.ValidationError("Transaction was already rejected")
+
         locked_amount = LockedAmount.objects.filter(transaction=value).first()
         if not locked_amount:
-            raise serializers.ValidationError(
-                "This transaction has not been locked yet"
-            )
+            raise serializers.ValidationError("Escrow funds have not been locked yet")
 
         seller = User.objects.filter(email=locked_amount.seller_email).first()
         if not seller:
-            raise serializers.ValidationError("Seller does not exist")
+            raise serializers.ValidationError("Seller does not exist on the platform")
+        if value.escrowmeta.author == "SELLER":
+            buyer = User.objects.filter(email=value.escrowmeta.partner_email).first()
+            if not buyer:
+                raise serializers.ValidationError(
+                    "Buyer does not exist on the platform"
+                )
 
         return value
