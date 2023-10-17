@@ -192,7 +192,7 @@ class FlwPayoutWebhookView(GenericAPIView):
                 "amount_funded": str(txn.amount),
                 "date": parse_datetime(txn.created_at),
                 "bank_name": data.get("bank_name"),
-                "account_name": data.get("full_name"),
+                "account_name": data.get("fullname"),
                 "account_number": data.get("account_number"),
             }
             tasks.send_wallet_withdrawal_email(email, values)
