@@ -198,8 +198,8 @@ class UserTransactionDetailView(generics.GenericAPIView):
         transaction_author_is_seller = (
             True if instance.escrowmeta.author == "SELLER" else False
         )
-
-        instance.status = new_status if new_status == "REJECTED" else "PENDING"
+        status = instance.status
+        instance.status = new_status if new_status == "REJECTED" else status
         instance.meta.update(
             {
                 "escrow_action": new_status,
@@ -214,8 +214,11 @@ class UserTransactionDetailView(generics.GenericAPIView):
         partner = User.objects.get(email=instance.escrowmeta.partner_email)
         if new_status == "REJECTED":
             amount_to_return = instance.amount + instance.charge
-            # Only return lock funds if the amount was deducted initially
-            if instance.escrowmeta.author == "BUYER" and LockedAmount.objects.filter(transaction=instance).exists():
+            # Only return locked funds if the amount was deducted initially
+            if (
+                instance.escrowmeta.author == "BUYER"
+                and LockedAmount.objects.filter(transaction=instance).exists()
+            ):
                 buyer = instance.user_id
                 profile = UserProfile.objects.get(user_id=buyer)
                 profile.wallet_balance += int(amount_to_return)

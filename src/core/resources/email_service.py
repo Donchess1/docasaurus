@@ -94,6 +94,18 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_dispute_raised_author_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("DISPUTE_RAISED_AUTHOR")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_dispute_raised_receiver_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("DISPUTE_RAISED_RECIPIENT")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_webhook_notification_email_plain(cls, email: str, values: dict):
         subject = "Webhook Notification"
         webhook_html_content = values.get("webhook_html_content", None)

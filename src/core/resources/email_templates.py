@@ -32,6 +32,12 @@ class EmailTemplate:
                 "ESCROW_TRANSACTION_REJECTED": TemplateId(
                     "d-2a20e467a3994a78a005a0ec9e34ea60"
                 ),
+                "DISPUTE_RAISED_AUTHOR": TemplateId(
+                    "d-d3c1d2fdcb3b483fbad6dfa6154cfec0"
+                ),
+                "DISPUTE_RAISED_RECIPIENT": TemplateId(
+                    "d-56c211aeced24b45bc7f08b4d6e04b1b"
+                ),
             },
             "live": {
                 "ACCOUNT_VERIFICATION": TemplateId(
@@ -59,6 +65,12 @@ class EmailTemplate:
                 ),
                 "ESCROW_TRANSACTION_REJECTED": TemplateId(
                     "d-0911aea76c1f44958c1964997748de2c"
+                ),
+                "DISPUTE_RAISED_AUTHOR": TemplateId(
+                    "d-91c2e16c74eb414ebb9bd0971d70b730"
+                ),
+                "DISPUTE_RAISED_RECIPIENT": TemplateId(
+                    "d-eacabe5d8a294286804688024bf0bcd3"
                 ),
             },
         }
