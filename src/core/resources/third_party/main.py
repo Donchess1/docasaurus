@@ -6,7 +6,8 @@ from core.resources.third_party.data.banks import BANKS
 from core.resources.third_party.data.lga import LGAS
 from core.resources.third_party.data.states import STATES
 from core.resources.third_party.data.store import (
-    BANK_ACCOUNT_DATA,
+    BANK_ACCOUNT_DATA_1,
+    BANK_ACCOUNT_DATA_2,
     BVN_DATA,
     DRIVER_LICENSE_DATA,
     NIN_DATA,
@@ -18,14 +19,16 @@ from users.models.bank_account import BankAccount
 from users.serializers.bank_account import BankAccountSerializer
 from utils.utils import (
     RECORD_NOT_FOUND_PAYLOAD,
-    TEST_BANK_CODE,
+    TEST_BANK_CODE_1,
+    TEST_BANK_CODE_2,
     TEST_BVN,
     TEST_DOB,
     TEST_DRIVER_LICENSE_NUMBER,
     TEST_FNAME,
     TEST_LNAME,
     TEST_NIN,
-    TEST_NUBAN,
+    TEST_NUBAN_1,
+    TEST_NUBAN_2,
     TEST_PASSPORT_NUMBER,
     TEST_VOTER_CARD_NUMBER,
     TEST_VOTER_LGA,
@@ -136,11 +139,17 @@ class ThirdPartyAPI(BaseThirdPartyService):
     @classmethod
     def validate_bank_account(cls, bank_code, account_number):
         if ENVIRONMENT in ("staging", "development"):
-            if account_number == TEST_NUBAN and bank_code == TEST_BANK_CODE:
+            if account_number == TEST_NUBAN_1 and bank_code == TEST_BANK_CODE_1:
                 return {
                     "message": "Account details fetched",
                     "status": True,
-                    "data": BANK_ACCOUNT_DATA,
+                    "data": BANK_ACCOUNT_DATA_1,
+                }
+            elif account_number == TEST_NUBAN_2 and bank_code == TEST_BANK_CODE_2:
+                return {
+                    "message": "Account details fetched",
+                    "status": True,
+                    "data": BANK_ACCOUNT_DATA_2,
                 }
             return RECORD_NOT_FOUND_PAYLOAD
         return FlwAPI.validate_bank_account(bank_code, account_number)
