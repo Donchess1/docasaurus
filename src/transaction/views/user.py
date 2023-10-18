@@ -77,7 +77,7 @@ class UserLockedEscrowTransactionListView(generics.ListAPIView):
             Q(user_id=user) | Q(escrowmeta__partner_email=user.email),
             type="ESCROW",
             status="SUCCESSFUL",
-        ).order_by("created_at")
+        ).order_by("-created_at")
 
         return queryset
 
