@@ -47,11 +47,19 @@ PASSPORT_DATA = {
     "gender": "Male",
     "number": "A00400000",
 }
-BANK_ACCOUNT_DATA = {
+BANK_ACCOUNT_DATA_1 = {
     "nuban": "0234567890",
     "accountName": "JOHN DOE",
     "account_name": "JOHN DOE",
     "identityType": "BVN",
     "bank": "Wema Bank",
+    "accountCurrency": "NGN",
+}
+BANK_ACCOUNT_DATA_2 = {
+    "nuban": "0690000040",
+    "accountName": "JOHN DOE",
+    "account_name": "JOHN DOE",
+    "identityType": "BVN",
+    "bank": "Access Bank",
     "accountCurrency": "NGN",
 }
