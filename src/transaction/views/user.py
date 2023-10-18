@@ -198,8 +198,8 @@ class UserTransactionDetailView(generics.GenericAPIView):
         transaction_author_is_seller = (
             True if instance.escrowmeta.author == "SELLER" else False
         )
-        status = instance.status
-        instance.status = new_status if new_status == "REJECTED" else status
+        curr_status = instance.status
+        instance.status = new_status if new_status == "REJECTED" else curr_status
         instance.meta.update(
             {
                 "escrow_action": new_status,
