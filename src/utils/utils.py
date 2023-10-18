@@ -94,13 +94,16 @@ def generate_txn_reference():
 
 
 def get_withdrawal_fee(amount):
-    fee = amount * 0.02
+    # fee = amount * 0.02
     if amount <= 5000:
-        charge = 10.75 + fee
+        # charge = 10.75 + fee
+        charge = 10.75
     elif amount <= 50000:
-        charge = 26.875 + fee
+        # charge = 26.875 + fee
+        charge = 26.875
     else:
-        charge = 53.75 + fee
+        # charge = 53.75 + fee
+        charge = 53.75
 
     amount_payable = amount + charge
     return charge, amount_payable
