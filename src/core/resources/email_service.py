@@ -15,7 +15,8 @@ from .email_templates import EmailTemplate
 
 class EmailClient:
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", None)
-    FROM_EMAIL = os.environ.get("FROM_EMAIL", None)
+    from_email = os.environ.get("FROM_EMAIL", None)
+    FROM_EMAIL = f"MyBalance <{from_email}>"
     ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
     env = "live" if ENVIRONMENT == "production" else "test"
     template_handler = EmailTemplate(env)
