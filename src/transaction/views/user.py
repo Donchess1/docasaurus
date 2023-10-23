@@ -609,13 +609,41 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             # Move amount from Buyer's Locked Balance to Unlocked Balance
             profile.locked_amount -= Decimal(str(txn.amount))
             profile.unlocked_amount += int(txn.amount)
+
+            # Evaluating free escrow transactions
+            free_escrow_credits = int(txn.user_id.userprofile.free_escrow_transactions)
+            amount_to_credit_seller = int(txn.amount - txn.charge)
+            if free_escrow_credits > 0 and txn.escrowmeta.author == "BUYER":
+                # reverse charges to buyer wallet & deplete free credits
+                profile.free_escrow_transactions -= 1
+                profile.wallet_balance += int(txn.charge)
+                tx_ref = generate_txn_reference()
+
+                rev_txn = Transaction.objects.create(
+                    user_id=request.user,
+                    type="DEPOSIT",
+                    amount=int(txn.charge),
+                    status="SUCCESSFUL",
+                    reference=tx_ref,
+                    currency="NGN",
+                    provider="MYBALANCE",
+                    meta={
+                        "title": "Wallet credit",
+                        "description": "Free Escrow Reversal",
+                    },
+                )
+                rev_txn.save()
+            elif free_escrow_credits > 0 and txn.escrowmeta.author == "SELLER":
+                # credit full amount to seller and deplete free credits
+                amount_to_credit_seller = int(txn.amount)
+                txn.user_id.userprofile.free_escrow_transactions -= 1
+                txn.user_id.userprofile.save()
             profile.save()
 
             instance = LockedAmount.objects.get(transaction=txn)
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller = User.objects.get(email=instance.seller_email)
-            amount_to_credit_seller = int(txn.amount - txn.charge)
             seller_profile = UserProfile.objects.get(user_id=seller)
             seller_profile.wallet_balance += int(amount_to_credit_seller)
             seller_profile.save()

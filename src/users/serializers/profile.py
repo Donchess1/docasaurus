@@ -15,6 +15,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "wallet_balance",
             "locked_amount",
             "unlocked_amount",
+            "free_escrow_transactions",
             "withdrawn_amount",
             "created_at",
             "updated_at",
