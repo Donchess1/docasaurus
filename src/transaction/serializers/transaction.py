@@ -212,9 +212,15 @@ class UnlockEscrowTransactionSerializer(serializers.Serializer):
             )
         if instance.status == "FUFILLED":
             raise serializers.ValidationError("Funds have already been unlocked")
+        if instance.status == "REJECTED":
+            raise serializers.ValidationError("Transaction was rejected")
         if instance.status != "SUCCESSFUL":
             raise serializers.ValidationError(
                 "Transaction must be paid for before unlocking"
+            )
+        if not instance.meta.get("escrow_action"):
+            raise serializers.ValidationError(
+                "Transaction is yet to be approved or rejected"
             )
         obj = LockedAmount.objects.filter(transaction=instance).first()
         if not obj:
