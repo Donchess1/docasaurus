@@ -7,13 +7,13 @@ from rest_framework.permissions import IsAuthenticated
 from console import tasks
 from console.models.dispute import Dispute
 from console.models.transaction import Transaction
+from console.permissions.admin import IsSuperUserPermission
 from dispute import tasks as dispute_tasks
 from dispute.serializers.dispute import DisputeSerializer, ResolveDisputeSerializer
 from users.models import UserProfile
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.utils import parse_datetime
-from console.permissions.admin import IsSuperUserPermission
 
 User = get_user_model()
 
