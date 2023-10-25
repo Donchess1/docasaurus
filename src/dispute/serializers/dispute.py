@@ -91,3 +91,7 @@ class DisputeSerializer(serializers.ModelSerializer):
                 )
 
         return value
+
+
+class ResolveDisputeSerializer(serializers.Serializer):
+    destination = serializers.ChoiceField(choices=("BUYER", "SELLER"))

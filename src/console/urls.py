@@ -5,6 +5,7 @@ from console.views.base import CheckUserByEmailView, UserViewSet
 from console.views.webhook import FlwBankTransferWebhookView, FlwPayoutWebhookView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
+from console.views.dispute import DisputeListView, DisputeDetailView
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="users")
@@ -19,6 +20,12 @@ urlpatterns = [
         "transactions/<str:id>",
         TransactionDetailView.as_view(),
         name="transaction-detail-view",
+    ),
+    path("disputes", DisputeListView.as_view(), name="disputes"),
+    path(
+        "disputes/<uuid:id>",
+        DisputeDetailView.as_view(),
+        name="dispute-detail-view",
     ),
     path(
         "check-email",
