@@ -8,7 +8,8 @@ from console import tasks
 from console.models.dispute import Dispute
 from console.models.transaction import Transaction
 from dispute import tasks as dispute_tasks
-from dispute.serializers.dispute import DisputeSerializer
+from dispute.serializers.dispute import DisputeSerializer, ResolveDisputeSerializer
+from users.models import UserProfile
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.utils import parse_datetime
@@ -121,5 +122,36 @@ class UserDisputeView(generics.ListCreateAPIView):
             success=True,
             message="Dispute created successfully",
             status_code=status.HTTP_201_CREATED,
+            data=serializer.data,
+        )
+
+
+class DisputeDetailView(generics.GenericAPIView):
+    serializer_class = DisputeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self, *args, **kwargs):
+        return self.serializer_class
+
+    @swagger_auto_schema(
+        operation_description="Get a dispute detail by ID",
+        responses={
+            200: DisputeSerializer,
+        },
+    )
+    def get(self, request, id, *args, **kwargs):
+        instance = Dispute.objects.filter(id=id).first()
+        if not instance:
+            return Response(
+                success=False,
+                message="Dispute does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = self.get_serializer(instance)
+        return Response(
+            success=True,
+            message="Dispute retrieved successfully.",
+            status_code=status.HTTP_200_OK,
             data=serializer.data,
         )

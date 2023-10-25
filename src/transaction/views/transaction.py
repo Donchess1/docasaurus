@@ -19,7 +19,7 @@ class TransactionListView(generics.ListAPIView):
         return Transaction.objects.all().order_by("-created_at")
 
     @swagger_auto_schema(
-        operation_description="List all the transaction in the Database",
+        operation_description="List all the transaction in the DB",
         responses={
             200: UserTransactionSerializer,
         },
