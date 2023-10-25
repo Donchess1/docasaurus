@@ -675,7 +675,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "bank_name": escrow_meta.get("bank_name"),
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
-                "amount": f"N{txn.amount}",
+                "amount": f"N{amount_to_credit_seller}",
             }
             tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
             tasks.send_unlock_funds_seller_email(seller.email, seller_values)
