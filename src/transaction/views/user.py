@@ -611,11 +611,11 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             profile.unlocked_amount += int(txn.amount)
 
             # Evaluating free escrow transactions
-            free_escrow_credits = int(txn.user_id.userprofile.free_escrow_transactions)
+            buyer_free_escrow_credits = int(profile.free_escrow_transactions)
             amount_to_credit_seller = int(txn.amount - txn.charge)
             seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
             seller_charges = int(txn.charge)
-            if free_escrow_credits > 0 and txn.escrowmeta.author == "BUYER":
+            if buyer_free_escrow_credits > 0:
                 # reverse charges to buyer wallet & deplete free credits
                 profile.free_escrow_transactions -= 1
                 profile.wallet_balance += int(txn.charge)
@@ -641,8 +641,8 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 seller_charges = 0
                 seller.userprofile.free_escrow_transactions -= 1
                 seller.userprofile.save()
-            profile.save()
 
+            profile.save()
             instance = LockedAmount.objects.get(transaction=txn)
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
