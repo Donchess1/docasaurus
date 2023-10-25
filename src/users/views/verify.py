@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
@@ -84,6 +85,8 @@ class VerifyOTPView(GenericAPIView):
         tasks.send_welcome_email(email, dynamic_values)
 
         token = self.jwt_client.sign(user.id)
+        user.userprofile.last_login_date = timezone.now()
+        user.userprofile.save()
         return Response(
             success=True,
             message="Email verified!",

@@ -26,8 +26,8 @@ class UserKYC(models.Model):
     status = models.CharField(
         max_length=255, choices=STATUS_CHOICES, default="INACTIVE"
     )
-    nin = models.CharField(max_length=11, null=True, blank=True)
-    bvn = models.CharField(max_length=11, null=True, blank=True)
+    nin_metadata = models.JSONField(null=True, blank=True)
+    bvn_metadata = models.JSONField(null=True, blank=True)
     dl_metadata = models.JSONField(null=True, blank=True)
     vc_metadata = models.JSONField(null=True, blank=True)
     inp_metadata = models.JSONField(null=True, blank=True)
@@ -35,4 +35,4 @@ class UserKYC(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.id}"
+        return f"{self.user_id.email}"

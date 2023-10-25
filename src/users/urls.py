@@ -12,6 +12,7 @@ from users.views.seller import RegisterSellerView
 from users.views.user import (
     EditSellerBusinessProfileView,
     EditUserProfileView,
+    UpdateKYCView,
     UploadAvatarView,
 )
 from users.views.verify import ResendAccountVerificationOTPView, VerifyOTPView
@@ -19,6 +20,7 @@ from users.views.verify import ResendAccountVerificationOTPView, VerifyOTPView
 urlpatterns = [
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
     path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
+    path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
     path(
         "resend-otp",
         ResendAccountVerificationOTPView.as_view(),
