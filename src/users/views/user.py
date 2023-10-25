@@ -3,9 +3,19 @@ from rest_framework import generics, mixins, permissions, status
 
 from business.models.business import Business
 from business.serializers.business import BusinessSerializer
+from console.models.identity import NINIdentity
+from console.serializers.identity import NINIdentitySerializer
+from core.resources.third_party.main import ThirdPartyAPI
 from core.resources.upload_client import FileUploadClient
+from users.models.kyc import UserKYC
 from users.models.profile import UserProfile
-from users.serializers.user import UploadUserAvatarSerializer, UserSerializer
+from users.serializers.kyc import UserKYCSerializer
+from users.serializers.user import (
+    UpdateKYCSerializer,
+    UploadUserAvatarSerializer,
+    UserSerializer,
+)
+from utils.kyc import create_user_kyc, kyc_meta_map
 from utils.response import Response
 
 User = get_user_model()
@@ -152,5 +162,60 @@ class UploadAvatarView(generics.GenericAPIView):
             success=True,
             message="Avatar updated successfully",
             data=avatar,
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class UpdateKYCView(generics.GenericAPIView):
+    serializer_class = UpdateKYCSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    third_party = ThirdPartyAPI
+
+    def put(self, request):
+        user = request.user
+        kyc = UserKYC.objects.filter(user_id=user).first()
+        if kyc:
+            return Response(
+                success=False,
+                message="KYC already exists",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                message="Validation error",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        data = serializer.validated_data
+        kyc_type = data.get("kyc_type")
+        kyc_meta_id = data.get("kyc_meta_id")
+
+        if not kyc_type in ("NIN"):
+            return Response(
+                success=False,
+                message="Invalid or Disabled KYC Type",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        instance = NINIdentity.objects.filter(id=kyc_meta_id).first()
+        if not instance:
+            return Response(
+                success=False,
+                message="NIN Identity does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        obj = NINIdentitySerializer(instance)
+        user_kyc = create_user_kyc(user, kyc_type, obj.data)
+        user.userprofile.kyc_id = user_kyc
+        user.userprofile.save()
+
+        serializer = UserKYCSerializer(user_kyc)
+        return Response(
+            success=True,
+            message="KYC updated successfully",
+            data=serializer.data,
             status_code=status.HTTP_200_OK,
         )

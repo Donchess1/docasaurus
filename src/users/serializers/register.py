@@ -9,33 +9,6 @@ from users.models.kyc import UserKYC
 from users.models.profile import UserProfile
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN
 
-KYC_CHOICES = (
-    "NIN",
-    "BVN",
-    "DL",
-    "VC",
-    "IP",
-)
-
-
-def create_user_kyc(user, type, kyc_meta):
-    kyc = UserKYC(user_id=user, type=type, status="ACTIVE")
-
-    if type == "NIN":
-        kyc.nin = kyc_meta.get("number")
-    elif type == "BVN":
-        kyc.bvn = kyc_meta.get("number")
-    elif type == "DL":
-        kyc.dl_metadata = json.dumps(kyc_meta)
-    elif type == "VC":
-        kyc.vc_metadata = json.dumps(kyc_meta)
-    elif type == "IP":
-        kyc.inp_metadata = json.dumps(kyc_meta)
-
-    kyc.save()
-    return kyc
-
-
 User = get_user_model()
 
 
@@ -76,8 +49,6 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
     account_number = serializers.CharField()
     account_name = serializers.CharField()
     bank_code = serializers.CharField()
-    kyc_type = serializers.ChoiceField(choices=KYC_CHOICES)
-    kyc_meta = serializers.JSONField()
 
     class Meta:
         model = User
@@ -97,8 +68,6 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             "bank_code",
             "account_number",
             "account_name",
-            "kyc_type",
-            "kyc_meta",
         )
         extra_kwargs = {
             "password": {"write_only": True},
@@ -136,19 +105,11 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             "address": validated_data.get("address"),
         }
         business = Business.objects.create(**business_data)
-
-        # Create KYC
-        kyc_type = validated_data.get("kyc_type")
-        kyc_meta = validated_data.get("kyc_meta")
-        user_kyc = create_user_kyc(user, kyc_type, kyc_meta)
-
         # Create User profile
         profile_data = UserProfile.objects.create(
             user_id=user,
-            kyc_id=user_kyc,
             business_id=business,
             bank_account_id=bank_account,
             user_type="SELLER",
         )
-
         return user

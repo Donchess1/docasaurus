@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from utils.email import validate_email_body
+from utils.kyc import KYC_CHOICES
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN
 
 User = get_user_model()
@@ -39,3 +40,8 @@ class CheckUserByEmailViewSerializer(serializers.Serializer):
         if obj[0]:
             raise serializers.ValidationError(obj[1])
         return value
+
+
+class UpdateKYCSerializer(serializers.Serializer):
+    kyc_type = serializers.ChoiceField(choices=KYC_CHOICES)
+    kyc_meta_id = serializers.UUIDField()
