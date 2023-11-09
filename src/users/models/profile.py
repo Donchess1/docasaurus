@@ -39,7 +39,7 @@ class UserProfile(models.Model):
     locked_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )
-    free_escrow_transactions = models.IntegerField(default=2)
+    free_escrow_transactions = models.IntegerField(default=5)
     unlocked_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )

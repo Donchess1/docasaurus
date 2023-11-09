@@ -111,5 +111,6 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             business_id=business,
             bank_account_id=bank_account,
             user_type="SELLER",
+            free_escrow_transactions=10,
         )
         return user

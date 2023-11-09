@@ -67,7 +67,10 @@ class RegisterBuyerView(CreateAPIView):
         bank_account.save()
 
         profile = UserProfile.objects.create(
-            user_id=user, bank_account_id=bank_account, user_type="BUYER"
+            user_id=user,
+            bank_account_id=bank_account,
+            user_type="BUYER",
+            free_escrow_transactions=5,
         )
         profile.save()
 
