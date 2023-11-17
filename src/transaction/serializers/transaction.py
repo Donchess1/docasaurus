@@ -33,7 +33,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "You cannot lock an escrow using your own email"
             )
-        return value
+        return value.lower()
 
     def validate_bank_code(self, value):
         banks = cache.get("banks")

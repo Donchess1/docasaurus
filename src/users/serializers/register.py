@@ -34,6 +34,10 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             "is_verified": {"read_only": True},
         }
 
+    def to_internal_value(self, data):
+        data["email"] = data.get("email", "").lower()
+        return super().to_internal_value(data)
+
 
 class RegisteredUserPayloadSerializer(serializers.Serializer):
     temp_id = serializers.CharField()
@@ -75,6 +79,10 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             "is_seller": {"read_only": True},
             "is_verified": {"read_only": True},
         }
+
+    def to_internal_value(self, data):
+        data["email"] = data.get("email", "").lower()
+        return super().to_internal_value(data)
 
     def create(self, validated_data):
         # Create user
