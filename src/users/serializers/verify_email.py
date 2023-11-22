@@ -27,4 +27,4 @@ class ResendOTPSerializer(serializers.Serializer):
             User.objects.get(email=value)
         except User.DoesNotExist:
             raise serializers.ValidationError("User with this email does not exist.")
-        return value
+        return value.lower()

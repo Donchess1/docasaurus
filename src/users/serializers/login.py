@@ -17,7 +17,7 @@ class LoginSerializer(serializers.Serializer):
         obj = validate_email_body(value)
         if obj[0]:
             raise serializers.ValidationError(obj[1])
-        return value
+        return value.lower()
 
 
 class LoginPayloadSerializer(serializers.Serializer):
