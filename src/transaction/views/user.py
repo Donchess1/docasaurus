@@ -635,7 +635,8 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                     },
                 )
                 rev_txn.save()
-            elif seller.userprofile.free_escrow_transactions > 0:
+
+            if seller.userprofile.free_escrow_transactions > 0:
                 # credit full amount to seller and deplete free credits
                 amount_to_credit_seller = int(txn.amount)
                 seller_charges = 0
