@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # api: &api
@@ -18,7 +18,14 @@ services:
     #   - redis
     # networks:
     #   - myb
-
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:8000"
+    depends_on:
+      - api
   # db:
   #   image: postgres:14.5-alpine3.16
   #   restart: always
@@ -53,7 +60,6 @@ services:
 volumes:
   myb-dev-static-data:
   myb-dev-db:
-
 # networks:
 #     myb:
 #       driver: bridge
