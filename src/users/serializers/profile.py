@@ -19,6 +19,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "withdrawn_amount",
             "created_at",
             "updated_at",
+            "show_tour_guide",
             "last_login_date",
             "bank_account_id",
             "business_id",

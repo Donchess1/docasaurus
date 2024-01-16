@@ -79,3 +79,25 @@ class UserProfileView(GenericAPIView):
             status_code=status.HTTP_200_OK,
             data=data,
         )
+
+
+class EndUserTourGuideView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        user_id = request.user.id
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response(
+                success=False,
+                message=f"User does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        user.userprofile.show_tour_guide = False
+        user.userprofile.save()
+
+        return Response(
+            success=True,
+            message="Tour guide status updated successfully",
+            status_code=status.HTTP_200_OK,
+        )
