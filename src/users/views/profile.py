@@ -82,6 +82,7 @@ class UserProfileView(GenericAPIView):
 
 
 class EndUserTourGuideView(GenericAPIView):
+    serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
