@@ -7,7 +7,7 @@ from users.views.password import (
     ForgotPasswordView,
     ResetPasswordView,
 )
-from users.views.profile import UserProfileView
+from users.views.profile import EndUserTourGuideView, UserProfileView
 from users.views.seller import RegisterSellerView
 from users.views.user import (
     EditSellerBusinessProfileView,
@@ -32,7 +32,8 @@ urlpatterns = [
     path("reset-password", ResetPasswordView.as_view(), name="reset-password"),
     path("change-password", ChangePasswordView.as_view(), name="change-password"),
     path("profile", UserProfileView.as_view(), name="user-profile"),
-    path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),
+    path("end-tour-guide", EndUserTourGuideView.as_view(), name="user-profile"),
+    path("profile/edit", EndUserTourGuideView.as_view(), name="end-tour-guide"),
     path("profile/upload", UploadAvatarView.as_view(), name="user-profile-upload"),
     path(
         "profile/business",
