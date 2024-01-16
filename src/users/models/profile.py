@@ -35,7 +35,7 @@ class UserProfile(models.Model):
     wallet_balance = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )
-
+    show_tour_guide = models.BooleanField(default=True)
     locked_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )
