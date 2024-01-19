@@ -12,7 +12,7 @@ class FileUploadClient:
     CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY")
     CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET")
     MAX_IMAGE_SIZE_BYTES = 1024 * 1024  # 1MB in bytes
-    ALLOWED_IMAGE_FORMATS = ["jpg", "jpeg", "png"]
+    ALLOWED_IMAGE_FORMATS = ["jpg", "jpeg"]
 
     @classmethod
     def initialize_cloudinary(cls):
@@ -36,7 +36,7 @@ class FileUploadClient:
     def execute(cls, file):
         if not cls.is_image(file):
             return {
-                "message": "Invalid file format. Only image are allowed",
+                "message": "Invalid file format. Only image (JPG) are allowed",
                 "success": False,
                 "status_code": 400,
             }
