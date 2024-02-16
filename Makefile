@@ -1,12 +1,12 @@
 build:
 	docker-compose -f docker-compose.yml build
 build-staging:
-	docker-compose -f docker-compose-staging.yml up --build --remove-orphans
+	docker-compose -f docker-compose-staging.yml up --build --remove-orphans --scale api=2
 build-prod:
-	docker-compose -f docker-compose-prod.yml up --build --remove-orphans
+	docker-compose -f docker-compose-prod.yml up --build --remove-orphans --scale api=2
 
 up:
-	docker-compose -f docker-compose.yml up
+	docker-compose -f docker-compose.yml up --build --remove-orphans --scale api=2
 up-staging:
 	docker-compose -f docker-compose-staging.yml up
 up-prod:
