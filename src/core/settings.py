@@ -44,6 +44,7 @@ LOCAL_APPS = [
     "console",
     "transaction",
     "dispute",
+    "notifications",
 ]
 
 INSTALLED_APPS = LOCAL_APPS + DJANGO_APPS + THIRD_PARTY_APPS

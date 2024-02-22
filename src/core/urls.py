@@ -31,4 +31,5 @@ urlpatterns = [
     path("v1/console/", include("console.urls")),
     path("v1/transaction/", include("transaction.urls")),
     path("v1/dispute/", include("dispute.urls")),
+    path("v1/notifications/", include("notifications.urls")),
 ]

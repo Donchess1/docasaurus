@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 
 from business.models.business import Business
+from notifications.models.notification import UserNotification
 from users.models.user import CustomUser
 
 from .bank_account import BankAccount
@@ -52,3 +53,6 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user_id.email}"
+
+    def notification_count(self):
+        return UserNotification.objects.filter(user=self.user_id, is_seen=False).count()
