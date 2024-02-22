@@ -17,10 +17,12 @@ from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
+from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
+from utils.text import notifications
 from utils.utils import (
     calculate_payment_amount_to_charge,
     generate_txn_reference,
@@ -124,12 +126,12 @@ class FundWalletRedirectView(GenericAPIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        if txn.verified:
-            return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Transaction already verified",
-            )
+        # if txn.verified:
+        #     return Response(
+        #         success=False,
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         message="Transaction already verified",
+        #     )
 
         if flw_status == "cancelled":
             txn.verified = True
@@ -223,6 +225,16 @@ class FundWalletRedirectView(GenericAPIView):
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
                 console_tasks.send_wallet_funding_email(email, values)
+                # TODO: Create Notification
+                UserNotification.objects.create(
+                    user=user,
+                    category="DEPOSIT",
+                    title=notifications.WalletDepositNotification(txn.amount).TITLE,
+                    content=notifications.WalletDepositNotification(txn.amount).CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
+                )
+
+                # TODO: Send real-time Notification
             except User.DoesNotExist:
                 return Response(
                     success=False,
@@ -370,9 +382,11 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 instance = LockedAmount.objects.create(
                     transaction=escrow_txn,
                     user=user,
-                    seller_email=escrow_txn.escrowmeta.partner_email
-                    if escrow_txn.escrowmeta.author == "BUYER"
-                    else escrow_txn.user_id.email,
+                    seller_email=(
+                        escrow_txn.escrowmeta.partner_email
+                        if escrow_txn.escrowmeta.author == "BUYER"
+                        else escrow_txn.user_id.email
+                    ),
                     amount=escrow_txn.amount,
                     status="ESCROW",
                 )
