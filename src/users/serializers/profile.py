@@ -4,6 +4,8 @@ from users.models.profile import UserProfile
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    unread_notification_count = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         fields = (
@@ -24,4 +26,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "bank_account_id",
             "business_id",
             "kyc_id",
+            "unread_notification_count",
         )
+
+    def get_unread_notification_count(self, obj):
+        return obj.notification_count()
