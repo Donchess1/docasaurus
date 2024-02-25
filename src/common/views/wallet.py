@@ -126,12 +126,12 @@ class FundWalletRedirectView(GenericAPIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        # if txn.verified:
-        #     return Response(
-        #         success=False,
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         message="Transaction already verified",
-        #     )
+        if txn.verified:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Transaction already verified",
+            )
 
         if flw_status == "cancelled":
             txn.verified = True
@@ -225,7 +225,7 @@ class FundWalletRedirectView(GenericAPIView):
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
                 console_tasks.send_wallet_funding_email(email, values)
-                # TODO: Create Notification
+                # Create Notification
                 UserNotification.objects.create(
                     user=user,
                     category="DEPOSIT",
@@ -690,6 +690,16 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "account_number": data.get("account_number"),
             }
             console_tasks.send_wallet_withdrawal_email(email, values)
+            
+            # Create Notification
+            UserNotification.objects.create(
+                user=user,
+                category="WITHDRAWAL",
+                title=notifications.WalletWithdrawalNotification(txn.amount).TITLE,
+                content=notifications.WalletWithdrawalNotification(txn.amount).CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
+            )
+            # TODO: Send real-time Notification
         except User.DoesNotExist:
             return Response(
                 success=False,
