@@ -690,7 +690,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "account_number": data.get("account_number"),
             }
             console_tasks.send_wallet_withdrawal_email(email, values)
-            
+
             # Create Notification
             UserNotification.objects.create(
                 user=user,

@@ -28,9 +28,9 @@ from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.pagination import CustomPagination
 from utils.response import Response
+from utils.text import notifications
 from utils.transaction import get_escrow_transaction_stakeholders
 from utils.utils import format_rejected_reasons, generate_txn_reference, parse_datetime
-from utils.text import notifications
 
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
@@ -273,14 +273,14 @@ class UserTransactionDetailView(generics.GenericAPIView):
 
                 # Create Notification
                 UserNotification.objects.create(
-                user=user,
-                category="ESCROW_APPROVED",
-                title=notifications.ESCROW_TRANSACTION_APPROVED_TITLE,
-                content=notifications.ESCROW_TRANSACTION_APPROVED_CONTENT,
-                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
-            )
+                    user=user,
+                    category="ESCROW_APPROVED",
+                    title=notifications.ESCROW_TRANSACTION_APPROVED_TITLE,
+                    content=notifications.ESCROW_TRANSACTION_APPROVED_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
+                )
                 # TODO: Send real-time Notification
-                
+
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",

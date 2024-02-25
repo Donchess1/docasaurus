@@ -39,4 +39,4 @@ class UserNotification(models.Model):
         ordering = ("is_seen", "-created_at")
 
     def __str__(self):
-        return f"{self.category}"
+        return f"{self.user}-{self.category}"
