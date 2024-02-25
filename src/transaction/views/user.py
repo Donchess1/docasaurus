@@ -247,7 +247,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
 
             # Create Notification
             UserNotification.objects.create(
-                user=user,
+                user=transaction_author,
                 category="ESCROW_REJECTED",
                 title=notifications.ESCROW_TRANSACTION_REJECTED_TITLE,
                 content=notifications.ESCROW_TRANSACTION_REJECTED_CONTENT,
@@ -273,7 +273,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
 
                 # Create Notification
                 UserNotification.objects.create(
-                    user=user,
+                    user=transaction_author,
                     category="ESCROW_APPROVED",
                     title=notifications.ESCROW_TRANSACTION_APPROVED_TITLE,
                     content=notifications.ESCROW_TRANSACTION_APPROVED_CONTENT,
