@@ -414,10 +414,28 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         "buyer_name": user.name,
                     }
                     txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
+                    # Create Notification for Seller
+                    UserNotification.objects.create(
+                        user=seller,
+                        category="FUNDS_LOCKED_SELLER",
+                        title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
+                        content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+                        action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
+                    )
+
                     txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
                 else:
                     txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
 
+                #  Create Notification for Buyer
+                UserNotification.objects.create(
+                    user=user,
+                    category="FUNDS_LOCKED_BUYER",
+                    title=notifications.FUNDS_LOCKED_BUYER_TITLE,
+                    content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
+                )
+            # TODO: Send real-time Notification
             except User.DoesNotExist:
                 return Response(
                     success=False,

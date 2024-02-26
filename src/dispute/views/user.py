@@ -9,9 +9,11 @@ from console.models.dispute import Dispute
 from console.models.transaction import Transaction
 from dispute import tasks as dispute_tasks
 from dispute.serializers.dispute import DisputeSerializer, ResolveDisputeSerializer
+from notifications.models.notification import UserNotification
 from users.models import UserProfile
 from utils.pagination import CustomPagination
 from utils.response import Response
+from utils.text import notifications
 from utils.utils import parse_datetime
 
 User = get_user_model()
@@ -117,6 +119,8 @@ class UserDisputeView(generics.ListCreateAPIView):
         dispute_tasks.send_dispute_raised_receiver_email(
             partner.email, recipient_values
         )
+
+        # Create Notification for Author
 
         return Response(
             success=True,

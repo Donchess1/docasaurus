@@ -445,16 +445,25 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 # Notify both buyer and seller of payment details
                 tasks.send_lock_funds_seller_email(seller.email, seller_values)
                 tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+
+                # Create Notification for Seller
+                UserNotification.objects.create(
+                    user=seller,
+                    category="FUNDS_LOCKED_SELLER",
+                    title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
+                    content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+                )
             else:
                 tasks.send_lock_funds_buyer_email(user.email, buyer_values)
 
-            # Create Notification
+            # Create Notification for Buyer
             UserNotification.objects.create(
                 user=user,
-                category="WITHDRAWAL",
-                title=notifications.WalletWithdrawalNotification(txn.amount).TITLE,
-                content=notifications.WalletWithdrawalNotification(txn.amount).CONTENT,
-                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
+                category="FUNDS_LOCKED_BUYER",
+                title=notifications.FUNDS_LOCKED_BUYER_TITLE,
+                content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )
             # TODO: Send real-time Notification
             return Response(
@@ -717,6 +726,24 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             }
             tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
             tasks.send_unlock_funds_seller_email(seller.email, seller_values)
+
+            # Create Notification for Buyer
+            UserNotification.objects.create(
+                user=user,
+                category="FUNDS_UNLOCKED_BUYER",
+                title=notifications.FUNDS_UNLOCKED_BUYER_TITLE,
+                content=notifications.FUNDS_UNLOCKED_BUYER_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+            )
+
+            # Create Notification for Seller
+            UserNotification.objects.create(
+                user=seller,
+                category="FUNDS_UNLOCKED_SELLER",
+                title=notifications.FUNDS_UNLOCKED_CONFIRMATION_TITLE,
+                content=notifications.FUNDS_UNLOCKED_CONFIRMATION_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+            )
 
             return Response(
                 status=True,
