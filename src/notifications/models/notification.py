@@ -10,12 +10,15 @@ class UserNotification(models.Model):
     NOTIFICATION_CATEGORIES = (
         ("DEPOSIT", "DEPOSIT"),
         ("WITHDRAWAL", "WITHDRAWAL"),
+        ("ESCROW_APPROVED", "ESCROW_APPROVED"),
+        ("ESCROW_REJECTED", "ESCROW_REJECTED"),
         ("FUNDS_LOCKED_BUYER", "FUNDS_LOCKED_BUYER"),
-        ("FUDNS_LOCKED_SELLER", "FUDNS_LOCKED_SELLER"),
+        ("FUNDS_LOCKED_SELLER", "FUNDS_LOCKED_SELLER"),
         ("FUNDS_UNLOCKED_BUYER", "FUNDS_UNLOCKED_BUYER"),
-        ("FUDNS_UNLOCKED_SELLER", "FUDNS_UNLOCKED_SELLER"),
+        ("FUNDS_UNLOCKED_SELLER", "FUNDS_UNLOCKED_SELLER"),
         ("DISPUTE_RAISED_AUTHOR", "DISPUTE_RAISED_AUTHOR"),
         ("DISPUTE_RAISED_RECIPIENT", "DISPUTE_RAISED_RECIPIENT"),
+        ("DISPUTE_RESOLVED", "DISPUTE_RESOLVED"),
     )
     id = models.UUIDField(
         unique=True, primary_key=True, default=uuid.uuid4, editable=False
@@ -37,4 +40,4 @@ class UserNotification(models.Model):
         ordering = ("is_seen", "-created_at")
 
     def __str__(self):
-        return f"{self.category}"
+        return f"{self.user}-{self.category}"

@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 
 from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
+from notifications.models.notification import UserNotification
 from transaction import tasks
 from transaction.permissions import IsBuyer, IsTransactionStakeholder
 from transaction.serializers.transaction import (
@@ -27,6 +28,7 @@ from users.models import UserProfile
 from utils.html import generate_flw_payment_webhook_html
 from utils.pagination import CustomPagination
 from utils.response import Response
+from utils.text import notifications
 from utils.transaction import get_escrow_transaction_stakeholders
 from utils.utils import format_rejected_reasons, generate_txn_reference, parse_datetime
 
@@ -242,6 +244,16 @@ class UserTransactionDetailView(generics.GenericAPIView):
             tasks.send_rejected_escrow_transaction_email(
                 transaction_author.email, values
             )
+
+            # Create Notification
+            UserNotification.objects.create(
+                user=transaction_author,
+                category="ESCROW_REJECTED",
+                title=notifications.ESCROW_TRANSACTION_REJECTED_TITLE,
+                content=notifications.ESCROW_TRANSACTION_REJECTED_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
+            )
+            # TODO: Send real-time Notification
         else:  # APPROVED
             values = {
                 "first_name": transaction_author.name.split(" ")[0],
@@ -258,6 +270,17 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 tasks.send_approved_escrow_transaction_email(
                     transaction_author.email, values
                 )
+
+                # Create Notification
+                UserNotification.objects.create(
+                    user=transaction_author,
+                    category="ESCROW_APPROVED",
+                    title=notifications.ESCROW_TRANSACTION_APPROVED_TITLE,
+                    content=notifications.ESCROW_TRANSACTION_APPROVED_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
+                )
+                # TODO: Send real-time Notification
+
         return Response(
             success=True,
             message=f"Escrow transaction {new_status.lower()}",
@@ -422,8 +445,27 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 # Notify both buyer and seller of payment details
                 tasks.send_lock_funds_seller_email(seller.email, seller_values)
                 tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+
+                # Create Notification for Seller
+                UserNotification.objects.create(
+                    user=seller,
+                    category="FUNDS_LOCKED_SELLER",
+                    title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
+                    content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+                )
             else:
                 tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+
+            # Create Notification for Buyer
+            UserNotification.objects.create(
+                user=user,
+                category="FUNDS_LOCKED_BUYER",
+                title=notifications.FUNDS_LOCKED_BUYER_TITLE,
+                content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+            )
+            # TODO: Send real-time Notification
             return Response(
                 status=True,
                 message="Funds locked successfully",
@@ -684,6 +726,24 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             }
             tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
             tasks.send_unlock_funds_seller_email(seller.email, seller_values)
+
+            # Create Notification for Buyer
+            UserNotification.objects.create(
+                user=user,
+                category="FUNDS_UNLOCKED_BUYER",
+                title=notifications.FUNDS_UNLOCKED_BUYER_TITLE,
+                content=notifications.FUNDS_UNLOCKED_BUYER_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+            )
+
+            # Create Notification for Seller
+            UserNotification.objects.create(
+                user=seller,
+                category="FUNDS_UNLOCKED_SELLER",
+                title=notifications.FUNDS_UNLOCKED_CONFIRMATION_TITLE,
+                content=notifications.FUNDS_UNLOCKED_CONFIRMATION_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
+            )
 
             return Response(
                 status=True,

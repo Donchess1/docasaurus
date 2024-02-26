@@ -126,12 +126,12 @@ class FundWalletRedirectView(GenericAPIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        # if txn.verified:
-        #     return Response(
-        #         success=False,
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         message="Transaction already verified",
-        #     )
+        if txn.verified:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Transaction already verified",
+            )
 
         if flw_status == "cancelled":
             txn.verified = True
@@ -225,7 +225,7 @@ class FundWalletRedirectView(GenericAPIView):
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
                 console_tasks.send_wallet_funding_email(email, values)
-                # TODO: Create Notification
+                # Create Notification
                 UserNotification.objects.create(
                     user=user,
                     category="DEPOSIT",
@@ -414,10 +414,28 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         "buyer_name": user.name,
                     }
                     txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
+                    # Create Notification for Seller
+                    UserNotification.objects.create(
+                        user=seller,
+                        category="FUNDS_LOCKED_SELLER",
+                        title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
+                        content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+                        action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
+                    )
+
                     txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
                 else:
                     txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
 
+                #  Create Notification for Buyer
+                UserNotification.objects.create(
+                    user=user,
+                    category="FUNDS_LOCKED_BUYER",
+                    title=notifications.FUNDS_LOCKED_BUYER_TITLE,
+                    content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
+                )
+            # TODO: Send real-time Notification
             except User.DoesNotExist:
                 return Response(
                     success=False,
@@ -690,6 +708,16 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "account_number": data.get("account_number"),
             }
             console_tasks.send_wallet_withdrawal_email(email, values)
+
+            # Create Notification
+            UserNotification.objects.create(
+                user=user,
+                category="WITHDRAWAL",
+                title=notifications.WalletWithdrawalNotification(txn.amount).TITLE,
+                content=notifications.WalletWithdrawalNotification(txn.amount).CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
+            )
+            # TODO: Send real-time Notification
         except User.DoesNotExist:
             return Response(
                 success=False,
