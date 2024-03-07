@@ -1,6 +1,7 @@
 import math
 import os
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -633,6 +634,15 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 success=False,
                 message="User Profile does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if delivery date has elapsed
+        delivery_date = instance.escrowmeta.delivery_date
+        if datetime.now().date() < delivery_date:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Transaction delivery date is not due yet.",
             )
 
         serializer = self.serializer_class(data=request.data)

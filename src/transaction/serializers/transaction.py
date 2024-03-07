@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import serializers
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
@@ -62,6 +63,15 @@ class EscrowTransactionSerializer(serializers.Serializer):
             )
         data["bank_name"] = bank_name
         data["account_name"] = obj["data"]["account_name"]
+
+        # Validate delivery date
+        delivery_date = data.get("delivery_date")
+        today = timezone.now().date()
+        if delivery_date < today:
+            raise serializers.ValidationError(
+                {"delivery_date": "Delivery date is not due yet."}
+            )
+
         return data
 
     def create(self, validated_data):
