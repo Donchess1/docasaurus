@@ -684,6 +684,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             user = User.objects.get(email=customer_email)
             profile = UserProfile.objects.get(user_id=user)
             profile.wallet_balance -= Decimal(str(amount_to_debit))
+            profile.withdrawn_amount += int(txn.amount)
             profile.save()
 
             self.pusher.trigger(
