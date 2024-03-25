@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import authenticate, get_user_model
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
@@ -58,12 +60,20 @@ class LoginView(GenericAPIView):
         profile.last_login_date = timezone.now()
         profile.save()
 
+        # validate phone number - flag 02000000000 - 02000000099
+        user_phone = user.phone
+        phone_pattern = re.compile(r"^020000000\d{2}$")
+        if phone_pattern.match(user_phone):
+            user.userprofile.phone_number_flagged = True
+            user.userprofile.save()
+
         token = self.jwt_client.sign(user_id)
         return Response(
             success=True,
             message="Login successful",
             data={
                 "token": token["access_token"],
+                "phone_number_flagged": user.userprofile.phone_number_flagged,
                 "user": UserSerializer(user).data,
             },
             status_code=status.HTTP_200_OK,

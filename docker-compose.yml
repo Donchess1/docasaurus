@@ -9,6 +9,7 @@ services:
     volumes:
       - ./src:/app
       # - ./docker/staging/entrypoint.sh:/app/entrypoint.sh
+      # - ./docker/staging/entrypoint_postgres.sh:/app/entrypoint_postgres.sh
       - myb-dev-static-data:/vol/web
     # ports:
     #   - "8000:8000"
