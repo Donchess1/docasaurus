@@ -18,6 +18,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "locked_amount",
             "unlocked_amount",
             "free_escrow_transactions",
+            "phone_number_flagged",
             "withdrawn_amount",
             "created_at",
             "updated_at",
