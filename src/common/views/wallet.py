@@ -633,14 +633,24 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
+        transfer_data = serializer.validated_data.get("transfer")
+        data_data = serializer.validated_data.get("data")
 
-        data = serializer.validated_data.get("transfer")
+        if transfer_data is not None:
+            # 'transfer' field was provided in the request
+            data = transfer_data
+        elif data_data is not None:
+            # 'data' field was provided in the request
+            data = data_data
+        else:
+            # Both fields were provided, choose one (here, 'transfer' is chosen)
+            data = transfer_data
 
-        amount_charged = data["amount"]
-        msg = data["complete_message"]
-        amount_to_debit = data["meta"]["amount_to_debit"]
-        customer_email = data["meta"]["customer_email"]
-        tx_ref = data["meta"]["tx_ref"]
+        amount_charged = data.get("amount")
+        msg = data.get("complete_message")
+        amount_to_debit = data["meta"].get("amount_to_debit")
+        customer_email = data["meta"].get("customer_email")
+        tx_ref = data["meta"].get("tx_ref")
 
         try:
             txn = Transaction.objects.get(reference=tx_ref)
