@@ -8,7 +8,11 @@ from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from utils.email import validate_email_body
-from utils.utils import generate_random_text, get_escrow_fees
+from utils.utils import (
+    PHONE_NUMBER_SERIALIZER_REGEX_NGN,
+    generate_random_text,
+    get_escrow_fees,
+)
 
 User = get_user_model()
 cache = Cache()
@@ -23,6 +27,9 @@ class EscrowTransactionSerializer(serializers.Serializer):
     bank_code = serializers.CharField(max_length=255)
     bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()
+    # partner_number = serializers.CharField(
+    #     validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False
+    # )
 
     def validate_partner_email(self, value):
         request = self.context.get("request")

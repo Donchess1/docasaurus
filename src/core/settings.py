@@ -135,7 +135,15 @@ db_host = os.getenv("POSTGRES_HOST")
 db_user = os.getenv("POSTGRES_USER")
 db_port = os.getenv("POSTGRES_PORT")
 
+# mysql_name = os.getenv("MYSQL_DB")
+# mysql_user = os.getenv("MYSQL_USER")
+# mysql_password = os.getenv("MYSQL_PASSWORD")
+# mysql_host = os.getenv("MYSQL_HOST")
+# mysql_port = os.getenv("MYSQL_PORT")
+
+# db_uri = f"mysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_name}"
 db_uri = f"postgres://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
 DATABASES = {"default": dj_database_url.parse(db_uri, conn_max_age=600)}
 AUTH_USER_MODEL = "users.CustomUser"
 

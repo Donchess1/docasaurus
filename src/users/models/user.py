@@ -36,7 +36,7 @@ class CustomUser(AbstractUser):
     username = None
     name = models.CharField(max_length=255)
     email = models.EmailField(max_length=255, unique=True)
-    phone = models.CharField(max_length=50)
+    phone = models.CharField(max_length=50, unique=True)
     is_verified = models.BooleanField(default=False)
     is_buyer = models.BooleanField(default=False)
     is_seller = models.BooleanField(default=False)

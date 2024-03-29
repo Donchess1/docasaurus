@@ -37,6 +37,7 @@ class UserProfile(models.Model):
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )
     show_tour_guide = models.BooleanField(default=True)
+    phone_number_flagged = models.BooleanField(default=False)
     locked_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, null=True, blank=True
     )

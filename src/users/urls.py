@@ -33,7 +33,7 @@ urlpatterns = [
     path("change-password", ChangePasswordView.as_view(), name="change-password"),
     path("profile", UserProfileView.as_view(), name="user-profile"),
     path("end-tour-guide", EndUserTourGuideView.as_view(), name="end-tour-guide"),
-    path("profile/edit", EndUserTourGuideView.as_view(), name="user-profile-edit"),
+    path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),
     path("profile/upload", UploadAvatarView.as_view(), name="user-profile-upload"),
     path(
         "profile/business",

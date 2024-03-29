@@ -6,11 +6,9 @@ EXPOSE 8000
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends postgresql-client netcat build-essential libpq-dev && \
+    apt-get install -y --no-install-recommends postgresql-client default-libmysqlclient-dev netcat build-essential libpq-dev pkg-config && \
     apt-get clean
-
 
 RUN pip install --upgrade pip
 COPY ./requirements ./requirements
