@@ -104,7 +104,8 @@ def get_withdrawal_fee(amount):
     else:
         # charge = 53.75 + fee
         charge = 53.75
-
+    
+    charge = 0 # temporarily disable withdrawal fee
     amount_payable = amount + charge
     return charge, amount_payable
 
