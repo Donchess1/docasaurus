@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 
+from merchant.models import Merchant
 from users.models.user import CustomUser
 
 
@@ -44,6 +45,9 @@ class Transaction(models.Model):
     provider_tx_reference = models.CharField(max_length=255, null=True, blank=True)
     meta = models.JSONField(null=True, blank=True)
     verified = models.BooleanField(default=False)
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.SET_NULL, null=True, blank=True, db_index=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -55,6 +59,7 @@ class EscrowMeta(models.Model):
     AUTHOR = (
         ("BUYER", "BUYER"),
         ("SELLER", "SELLER"),
+        ("MERCHANT", "MERCHANT"),
     )
     id = models.UUIDField(
         unique=True, primary_key=True, default=uuid.uuid4, editable=False

@@ -21,15 +21,16 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("", views.api_ok, name="api-ok"),
     path(
-        "docs",
+        "swagger-api-docs",
         schema_view.with_ui("swagger", cache_timeout=0),
         name="swagger-schema-ui",
     ),
-    path("admin/", admin.site.urls),
+    path("jazzminadmin23qwe/", admin.site.urls),
     path("v1/auth/", include("users.urls")),
     path("v1/shared/", include("common.urls")),
     path("v1/console/", include("console.urls")),
     path("v1/transaction/", include("transaction.urls")),
     path("v1/dispute/", include("dispute.urls")),
     path("v1/notifications/", include("notifications.urls")),
+    path("v1/merchants/", include("merchant.urls")),
 ]

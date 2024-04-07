@@ -107,6 +107,12 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_one_time_login_code_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("VERIFY_ONE_TIME_LOGIN_CODE")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_webhook_notification_email_plain(cls, email: str, values: dict):
         subject = "Webhook Notification"
         webhook_html_content = values.get("webhook_html_content", None)

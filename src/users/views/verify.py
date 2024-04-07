@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
@@ -10,6 +12,7 @@ from core.resources.email_service import EmailClient
 from core.resources.jwt_client import JWTClient
 from users import tasks
 from users.serializers.register import RegisteredUserPayloadSerializer
+from users.serializers.user import UserSerializer
 from users.serializers.verify_email import (
     ResendOTPSerializer,
     VerifiedOTPPayloadSerializer,
@@ -161,5 +164,78 @@ class ResendAccountVerificationOTPView(GenericAPIView):
             success=True,
             message="OTP has been re-sent",
             data=payload,
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class VerifyOneTimeLoginCodeView(GenericAPIView):
+    serializer_class = VerifyOTPSerializer
+    permission_classes = [AllowAny]
+    jwt_client = JWTClient
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        otp = serializer.validated_data["otp"]
+        temp_id = serializer.validated_data["temp_id"]
+
+        cache_data = cache.get(temp_id)
+        if not cache_data or not cache_data["is_valid"]:
+            return Response(
+                success=False,
+                message="One Time Code expired! Please try again",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cache_data["otp"] != otp:
+            return Response(
+                success=False,
+                message="Invalid One Time Code. Please try again",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cache_data["is_valid"] = False
+        cache.delete(temp_id)
+
+        email = cache_data.get("email")
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                success=False,
+                message="User not found!",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.is_verified:
+            return Response(
+                success=False,
+                message="Your email is not verified yet",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        profile = user.userprofile
+        profile.last_login_date = timezone.now()
+
+        # validate phone number - flag 02000000000 - 02000000099
+        user_phone = user.phone
+        phone_pattern = re.compile(r"^020000000\d{2}$")
+        if phone_pattern.match(user_phone):
+            profile.phone_number_flagged = True
+        profile.save()
+        token = self.jwt_client.sign(user.id)
+        return Response(
+            success=True,
+            message="Login successful",
+            data={
+                "token": token["access_token"],
+                "phone_number_flagged": user.userprofile.phone_number_flagged,
+                "user": UserSerializer(user).data,
+            },
             status_code=status.HTTP_200_OK,
         )

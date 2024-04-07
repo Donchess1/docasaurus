@@ -41,6 +41,7 @@ class CustomUser(AbstractUser):
     is_buyer = models.BooleanField(default=False)
     is_seller = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
+    is_merchant = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -16,6 +16,7 @@ class UserProfile(models.Model):
         ("BUYER", "BUYER"),
         ("SELLER", "SELLER"),
         ("CONTRACTOR", "CONTRACTOR"),
+        ("MERCHANT", "MERCHANT"),
     )
     id = models.UUIDField(
         unique=True, primary_key=True, default=uuid.uuid4, editable=False

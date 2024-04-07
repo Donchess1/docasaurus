@@ -33,6 +33,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             "is_seller": {"read_only": True},
             "is_verified": {"read_only": True},
         }
+
     def validate_phone(self, phone):
         if User.objects.filter(phone=phone).exists():
             raise serializers.ValidationError("This phone number is already in use.")

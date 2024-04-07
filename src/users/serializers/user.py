@@ -23,6 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "is_buyer",
             "is_seller",
+            "is_merchant",
             "created_at",
             "updated_at",
         )
@@ -42,6 +43,24 @@ class CheckUserByEmailViewSerializer(serializers.Serializer):
         return value
 
 
+class CheckUserByPhoneNumberViewSerializer(serializers.Serializer):
+    phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
+
+
 class UpdateKYCSerializer(serializers.Serializer):
     kyc_type = serializers.ChoiceField(choices=KYC_CHOICES)
     kyc_meta_id = serializers.UUIDField()
+
+
+class OneTimeLoginCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        obj = validate_email_body(value)
+        if obj[0]:
+            raise serializers.ValidationError(obj[1])
+        try:
+            User.objects.get(email=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User with email does not exist.")
+        return value.lower()

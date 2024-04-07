@@ -38,6 +38,27 @@ def generate_temp_id():
     return str(uuid4())
 
 
+def generate_short_uuid():
+    new_uuid = generate_temp_id()
+    return new_uuid.split("-")[0][:-4] + generate_random_text(20)
+
+
+api_key_prefix = (
+    "live" if os.environ.get("ENVIRONMENT", None) == "production" else "test"
+)
+
+
+def get_pub_key():
+    return "{}_{}".format(f"{api_key_prefix}_pub", generate_short_uuid())
+
+
+def get_priv_key():
+    return "{}_{}".format(f"{api_key_prefix}_priv", generate_short_uuid())
+
+
+MODES = ["LIVE", "TEST"]
+
+
 def generate_otp():
     return str(random.randint(100000, 999999))
 
@@ -104,8 +125,8 @@ def get_withdrawal_fee(amount):
     else:
         # charge = 53.75 + fee
         charge = 53.75
-    
-    charge = 0 # temporarily disable withdrawal fee
+
+    charge = 0  # temporarily disable withdrawal fee
     amount_payable = amount + charge
     return charge, amount_payable
 

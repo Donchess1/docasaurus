@@ -38,6 +38,9 @@ class EmailTemplate:
                 "DISPUTE_RAISED_RECIPIENT": TemplateId(
                     "d-56c211aeced24b45bc7f08b4d6e04b1b"
                 ),
+                "VERIFY_ONE_TIME_LOGIN_CODE": TemplateId(
+                    "d-32e80afb15d34862a9775bd8daac1acd"
+                ),
             },
             "live": {
                 "ACCOUNT_VERIFICATION": TemplateId(
@@ -71,6 +74,9 @@ class EmailTemplate:
                 ),
                 "DISPUTE_RAISED_RECIPIENT": TemplateId(
                     "d-eacabe5d8a294286804688024bf0bcd3"
+                ),
+                "VERIFY_ONE_TIME_LOGIN_CODE": TemplateId(
+                    "d-900389ba039b4ef4890920267203a11a"
                 ),
             },
         }

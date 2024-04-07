@@ -7,20 +7,25 @@ from business.models.business import Business
 from business.serializers.business import BusinessSerializer
 from console.models.identity import NINIdentity
 from console.serializers.identity import NINIdentitySerializer
+from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from core.resources.upload_client import FileUploadClient
+from users import tasks
 from users.models.kyc import UserKYC
 from users.models.profile import UserProfile
 from users.serializers.kyc import UserKYCSerializer
 from users.serializers.user import (
+    OneTimeLoginCodeSerializer,
     UpdateKYCSerializer,
     UploadUserAvatarSerializer,
     UserSerializer,
 )
 from utils.kyc import create_user_kyc, kyc_meta_map
 from utils.response import Response
+from utils.utils import generate_otp, generate_temp_id
 
 User = get_user_model()
+cache = Cache()
 
 
 class EditUserProfileView(generics.GenericAPIView):
@@ -228,4 +233,50 @@ class UpdateKYCView(generics.GenericAPIView):
             message="KYC updated successfully",
             data=serializer.data,
             status_code=status.HTTP_200_OK,
+        )
+
+
+class GenerateOneTimeLoginCodeView(generics.GenericAPIView):
+    serializer_class = OneTimeLoginCodeSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=serializer.errors.get("email")[0],
+            )
+
+        email = serializer.validated_data["email"]
+        user = User.objects.get(email=email)
+        name = user.name
+
+        otp = generate_otp()
+        otp_key = generate_temp_id()
+
+        payload = {
+            "temp_id": otp_key,
+            "email": email,
+        }
+        value = {
+            "otp": otp,
+            "email": email,
+            "name": name,
+            "is_valid": True,
+        }
+        cache.set(otp_key, value, 60 * 60 * 10)
+        dynamic_values = {
+            "name": name,
+            "otp": otp,
+            "recipient": email,
+        }
+        tasks.send_one_time_login_code_email(email, dynamic_values)
+
+        return Response(
+            success=True,
+            message="Verification email sent!",
+            data=payload,
+            status_code=status.HTTP_201_CREATED,
         )

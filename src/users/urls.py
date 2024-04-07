@@ -12,10 +12,15 @@ from users.views.seller import RegisterSellerView
 from users.views.user import (
     EditSellerBusinessProfileView,
     EditUserProfileView,
+    GenerateOneTimeLoginCodeView,
     UpdateKYCView,
     UploadAvatarView,
 )
-from users.views.verify import ResendAccountVerificationOTPView, VerifyOTPView
+from users.views.verify import (
+    ResendAccountVerificationOTPView,
+    VerifyOneTimeLoginCodeView,
+    VerifyOTPView,
+)
 
 urlpatterns = [
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
@@ -28,6 +33,14 @@ urlpatterns = [
     ),
     path("verify-account", VerifyOTPView.as_view(), name="verify-email"),
     path("login", LoginView.as_view(), name="login"),
+    path(
+        "send-login-otc", GenerateOneTimeLoginCodeView.as_view(), name="send-login-otc"
+    ),
+    path(
+        "verify-login-otc",
+        VerifyOneTimeLoginCodeView.as_view(),
+        name="verify-login-otc",
+    ),
     path("forgot-password", ForgotPasswordView.as_view(), name="forgot-password"),
     path("reset-password", ResetPasswordView.as_view(), name="reset-password"),
     path("change-password", ChangePasswordView.as_view(), name="change-password"),

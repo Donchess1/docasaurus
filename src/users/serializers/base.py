@@ -14,4 +14,5 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "is_buyer",
             "is_seller",
+            "is_merchant",
         )
