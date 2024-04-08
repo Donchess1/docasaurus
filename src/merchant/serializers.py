@@ -2,13 +2,13 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
-from merchant.models import Merchant
-from users.models import CustomUser, UserProfile
 from business.models.business import Business
+from merchant.models import Customer, Merchant
+from users.models import CustomUser, UserProfile
 from users.models.bank_account import BankAccount
 from users.serializers.profile import UserProfileSerializer
-from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
 from utils.email import validate_email_body
+from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
 
 User = get_user_model()
 
@@ -97,11 +97,45 @@ class MerchantDetailSerializer(serializers.ModelSerializer):
     def get_user_profile(self, obj):
         user_profile = UserProfile.objects.get(user_id=obj.user_id)
         return UserProfileSerializer(user_profile).data
+
+
+class CustomerUserProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    phone_number = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    user_type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customer
+        fields = (
+            "id",
+            "user_type",
+            "created_at",
+            "updated_at",
+            "full_name",
+            "phone_number",
+            "email",
+        )
+    
+    def get_full_name(self, obj):
+        return obj.user.name
+    
+    def get_phone_number(self, obj):
+        return obj.user.phone
+    
+    def get_email(self, obj):
+        return obj.user.email
+    
+    def get_user_type(self, obj):
+        return obj.user.userprofile.user_type
+
 class RegisterCustomerSerializer(serializers.Serializer):
     customer_type = serializers.ChoiceField(choices=("BUYER", "SELLER"))
     email = serializers.EmailField()
     name = serializers.CharField(required=False)
-    phone_number = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False)
+    phone_number = serializers.CharField(
+        validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN],
+    )
 
     def validate(self, data):
         email = data.get("email")
@@ -110,49 +144,44 @@ class RegisterCustomerSerializer(serializers.Serializer):
         obj = validate_email_body(email)
         if obj[0]:
             raise serializers.ValidationError({"email": obj[1]})
-        
+
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                {"email": "This email is already in use."}
+            )
+
         if phone_number and User.objects.filter(phone=phone_number).exists():
-            raise serializers.ValidationError({"phone_number" :"This phone number is already in use."})
+            raise serializers.ValidationError(
+                {"phone_number": "This phone number is already in use."}
+            )
 
         return data
-    
+
     def to_internal_value(self, data):
         data["email"] = data.get("email", "").lower()
         return super().to_internal_value(data)
-    
+
+    @transaction.atomic
     def create(self, validated_data):
         customer_type = validated_data.get("customer_type")
+        merchant = self.context.get("merchant")
 
         user_data = {
             "email": validated_data["email"],
-            "phone": validated_data["phone"],
+            "phone": validated_data["phone_number"],
             "name": validated_data["name"],
             "password": generate_random_text(15),
             f"is_{customer_type.lower()}": True,
         }
         user = User.objects.create_user(**user_data)
 
-        # Create bank account
-        bank_account_data = {
-            "user_id": user,
-            "bank_name": validated_data.get("bank_name"),
-            "bank_code": validated_data.get("bank_code"),
-            "account_name": validated_data.get("account_name"),
-            "account_number": validated_data.get("account_number"),
-        }
-        bank_account = BankAccount.objects.create(**bank_account_data)
-
-        # business_data = {
-        #     "user_id": user,
-        #     "name": validated_data.get("business_name"),
-        #     "description": validated_data.get("business_description"),
-        #     "address": validated_data.get("address"),
-        # }
-        # business = Business.objects.create(**business_data)
-
         profile_data = UserProfile.objects.create(
             user_id=user,
             user_type=customer_type,
             free_escrow_transactions=10 if customer_type == "SELLER" else 5,
         )
+
+        customer = Customer.objects.create(user=user)
+        customer.merchants.add(merchant)
+
         return user
