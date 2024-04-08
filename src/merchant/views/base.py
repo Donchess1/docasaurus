@@ -6,6 +6,7 @@ from merchant.serializers import (
     MerchantCreateSerializer,
     MerchantDetailSerializer,
     MerchantSerializer,
+    RegisterCustomerSerializer
 )
 from merchant.utils import validate_request
 from utils.response import Response
@@ -51,6 +52,7 @@ class MerchantListView(generics.ListAPIView):
 
 class MerchantProfileView(generics.GenericAPIView):
     serializer_class = MerchantDetailSerializer
+    permission_classes = (permissions.AllowAny,)
 
     def get(self, request, *args, **kwargs):
         request_is_valid, resource = validate_request(request)
@@ -72,6 +74,7 @@ class MerchantProfileView(generics.GenericAPIView):
 
 class MerchantResetKeyView(generics.GenericAPIView):
     serializer_class = MerchantSerializer
+    permission_classes = (permissions.AllowAny,)
 
     def put(self, request, *args, **kwargs):
         request_is_valid, resource = validate_request(request)
@@ -86,5 +89,30 @@ class MerchantResetKeyView(generics.GenericAPIView):
         return Response(
             success=True,
             message="API key reset successfully",
+            status_code=status.HTTP_200_OK,
+        )
+class RegisterCustomerView(generics.GenericAPIView):
+    serializer_class = RegisterCustomerSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        request_is_valid, resource = validate_request(request)
+        if not request_is_valid:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message=resource,
+            )
+        merchant = resource
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        return Response(
+            success=True,
+            message="Customer created successfully",
             status_code=status.HTTP_200_OK,
         )
