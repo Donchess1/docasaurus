@@ -1,1 +1,1 @@
-from .base import Merchant
+from .base import Merchant, Customer, CustomerMerchant
