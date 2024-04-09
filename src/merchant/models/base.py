@@ -40,9 +40,16 @@ class Customer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
 class CustomerMerchant(models.Model):
+    USER_TYPE_CHOICES = (
+        ("BUYER", "BUYER"),
+        ("SELLER", "SELLER"),
+    )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE)
-    alternate_phone_number = models.CharField(max_length=20)
+    alternate_phone_number = models.CharField(max_length=20, null=True, blank=True)
+    alternate_email = models.EmailField(max_length=20, null=True, blank=True)
+    user_type = models.CharField(max_length=255, choices=USER_TYPE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
