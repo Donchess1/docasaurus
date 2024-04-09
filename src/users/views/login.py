@@ -63,9 +63,8 @@ class LoginView(GenericAPIView):
         # validate phone number - flag 02000000000 - 02000000099
         user_phone = user.phone
         phone_pattern = re.compile(r"^020000000\d{2}$")
-        if phone_pattern.match(user_phone):
-            user.userprofile.phone_number_flagged = True
-            user.userprofile.save()
+        user.userprofile.phone_number_flagged = True if phone_pattern.match(user_phone) else False
+        user.userprofile.save()
 
         token = self.jwt_client.sign(user_id)
         return Response(
