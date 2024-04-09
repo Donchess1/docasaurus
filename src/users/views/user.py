@@ -66,6 +66,12 @@ class EditUserProfileView(generics.GenericAPIView):
                 message="Phone number is invalid.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        if phone_number_update and User.objects.filter(phone=phone_number_update).first():
+            return Response(
+                success=False,
+                message="Phone number is already in use. Try another number",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         serializer.save()
 
         return Response(
