@@ -121,26 +121,24 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
         return obj.user.name
 
     def get_phone_number(self, obj):
-        return obj.user.phone
+        customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
+        if customer_merchant:
+            return customer_merchant.alternate_phone_number
+        return None
 
     def get_email(self, obj):
         return obj.user.email
 
     def get_user_type(self, obj):
-        return obj.user.userprofile.user_type
+        customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
+        if customer_merchant:
+            return customer_merchant.user_type
+        return None
 
 
 def create_or_update_customer(email, phone_number, customer_type, merchant):
     """
     Creates or updates a customer with the given email, phone number & customer type.
-    If a user with the given email exists, fetch the user and see if there is a CustomerMerchant instance linked to the merchant and the customer linked to this user (if existing)
-     linked to the merchant.
-    If the user with the given email and phone number does not exist,
-    it will be created.
-    If the user with both email and phone number exists but not linked to merchant,
-    it will be linked to the merchant.
-    If the user with the same email exists but different phone number,
-    it will be updated.
     """
     existing_user = User.objects.filter(email=email).first()
     if existing_user:
@@ -154,84 +152,36 @@ def create_or_update_customer(email, phone_number, customer_type, merchant):
 
         customer, created = Customer.objects.get_or_create(user=existing_user)
         customer.merchants.add(merchant)
-        if existing_user.phone != phone_number:
-            CustomerMerchant.objects.get_or_create(
-                customer=customer,
-                merchant=merchant,
-                alternate_phone_number=phone_number,
-                user_type=customer_type,
-            )
-            customer.alternate_phone_number = phone_number
-            customer.save()
-        return existing_user, customer, None
-
-
-
-
-
-
-
-
-
-    existing_user = User.objects.filter(email=email).first()
-    existing_customer = None
-
-    if existing_user:
-        existing_customer = (
-            Customer.objects.filter(user=existing_user)
-            .filter(merchants=merchant)
-            .first()
+        CustomerMerchant.objects.get_or_create(
+            customer=customer,
+            merchant=merchant,
+            alternate_phone_number=phone_number,
+            user_type=customer_type,
         )
-
-    if existing_user and existing_customer:
-        return existing_user, existing_customer, None
-
-    # If user with both email and phone number exists but not linked to merchant
-    if existing_user and not existing_customer:
-        # Create a new Customer instance linked to the merchant
-        customer = Customer.objects.create(user=existing_user)
-        customer.merchants.add(merchant)
         return existing_user, customer, None
-
-    # If user with the same email exists but different phone number
-    if existing_user and existing_user.phone != phone_number:
-        # Update the alternate phone number in the CustomerMerchant model
-        existing_customer_merchant = CustomerMerchant.objects.filter(
-            customer__user=existing_user
-        ).first()
-        if existing_customer_merchant:
-            existing_customer_merchant.alternate_phone_number = phone_number
-            existing_customer_merchant.save()
-        else:
-            CustomerMerchant.objects.create(
-                customer=existing_user.customer,
-                merchant=merchant,
-                alternate_phone_number=phone_number,
-            )
-        return existing_user, existing_user.customer, None
-
-    user_data = {
-        "email": email,
-        "phone": phone_number,
-        "password": generate_random_text(15),
-        f"is_{customer_type.lower()}": True,
-    }
-    user = User.objects.create_user(**user_data)
-    profile_data = UserProfile.objects.create(
-        user_id=user,
-        user_type=customer_type,
-        free_escrow_transactions=10 if customer_type == "SELLER" else 5,
-    )
-
-    customer = Customer.objects.create(user=user)
-    customer.merchants.add(merchant)
-    CustomerMerchant.objects.create(
-        customer=customer,
-        merchant=merchant,
-        alternate_phone_number=phone_number,
-        user_type=customer_type,
-    )
-    return user, customer, None
+    else:
+        user_data = {
+            "email": email,
+            "phone": phone_number,
+            "password": generate_random_text(15),
+            f"is_{customer_type.lower()}": True,
+        }
+        # TODO: Notify the user via email to setup their password
+        user = User.objects.create_user(**user_data)
+        profile_data = UserProfile.objects.create(
+            user_id=user,
+            user_type=customer_type,
+            free_escrow_transactions=10 if customer_type == "SELLER" else 5,
+        )
+        customer = Customer.objects.create(user=user)
+        customer.merchants.add(merchant)
+        CustomerMerchant.objects.create(
+            customer=customer,
+            merchant=merchant,
+            alternate_phone_number=phone_number,
+            user_type=customer_type,
+        )
+        return user, customer, None
 
 
 class RegisterCustomerSerializer(serializers.Serializer):
@@ -251,8 +201,6 @@ class RegisterCustomerSerializer(serializers.Serializer):
             raise serializers.ValidationError({"email": obj[1]})
 
         merchant = self.context.get("merchant")
-
-        # Check if a customer with the user linked to email or phone exists for the merchant
         existing_customer = (
             Customer.objects.filter(
                 models.Q(user__email=email) | models.Q(user__phone=phone_number)
