@@ -542,7 +542,7 @@ class WalletWithdrawalView(GenericAPIView):
 
         charge, total_amount = get_withdrawal_fee(int(amount))
 
-        if total_amount >= profile.wallet_balance:
+        if total_amount > profile.wallet_balance:
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
