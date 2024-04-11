@@ -16,7 +16,7 @@ urlpatterns = [
     path(
         "customers", MerchantCustomerView.as_view(), name="register-merchant-customer"
     ),
-    # path("initiate-escrow", UpdateKYCView.as_view(), name="initiate-merchant-escrow"),
     # path("transactions", VerifyOTPView.as_view(), name="merchant-transactions"),
     # path("transactions/<str:id>",UserTransactionDetailView.as_view(),name="merchant-transaction-detail"),
+    # path("initiate-escrow", UpdateKYCView.as_view(), name="initiate-merchant-escrow"),
 ]
