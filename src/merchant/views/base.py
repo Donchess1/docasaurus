@@ -139,7 +139,9 @@ class MerchantCustomerView(generics.CreateAPIView):
             )
         merchant = resource
         customers = merchant.customer_set.all()
-        serialized_customers = CustomerUserProfileSerializer(customers, many=True)
+        serialized_customers = CustomerUserProfileSerializer(
+            customers, many=True, context={"merchant": merchant}
+        )
         return Response(
             success=True,
             data=serialized_customers.data,

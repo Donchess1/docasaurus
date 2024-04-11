@@ -10,6 +10,12 @@ from users.serializers.profile import UserProfileSerializer
 from utils.email import validate_email_body
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
 
+from .utils import (
+    create_or_update_customer_user,
+    customer_phone_numer_exists_for_merchant,
+    customer_with_email_exists_for_merchant,
+)
+
 User = get_user_model()
 
 
@@ -104,6 +110,7 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     phone_number = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
     user_type = serializers.SerializerMethodField()
+    merchant_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
@@ -114,82 +121,44 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
             "updated_at",
             "full_name",
             "phone_number",
+            "merchant_name",
             "email",
         )
 
+    def get_merchant(self, *args, **kwargs):
+        self.merchant = self.context.get("merchant", None)
+        return self.merchant
+
+    def get_merchant_customer_instance(self, obj, *args, **kwargs):
+        merchant = self.get_merchant()
+        return CustomerMerchant.objects.filter(customer=obj, merchant=merchant).first()
+
     def get_full_name(self, obj):
-        customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
-        if customer_merchant:
-            return customer_merchant.alternate_name
+        customer_merchant_instance = self.get_merchant_customer_instance(obj)
+        if customer_merchant_instance:
+            return customer_merchant_instance.alternate_name
         return None
 
     def get_phone_number(self, obj):
-        customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
-        if customer_merchant:
-            return customer_merchant.alternate_phone_number
+        customer_merchant_instance = self.get_merchant_customer_instance(obj)
+        if customer_merchant_instance:
+            return customer_merchant_instance.alternate_phone_number
         return None
 
     def get_email(self, obj):
         return obj.user.email
 
     def get_user_type(self, obj):
-        customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
-        if customer_merchant:
-            return customer_merchant.user_type
+        customer_merchant_instance = self.get_merchant_customer_instance(obj)
+        if customer_merchant_instance:
+            return customer_merchant_instance.user_type
         return None
 
-
-def create_or_update_customer(email, phone_number, name, customer_type, merchant):
-    """
-    Creates or updates a customer with the given email, phone number & customer type.
-    """
-    existing_user = User.objects.filter(email=email).first()
-    if existing_user:
-        print("CREATED EXISINTG USER")
-        existing_customer = (
-            Customer.objects.filter(user=existing_user)
-            .filter(merchants=merchant)
-            .first()
-        )  # This means there is a customer with this email address already linked to merchant
-        if existing_customer:
-            return existing_user, existing_customer, None
-
-        customer, created = Customer.objects.get_or_create(user=existing_user)
-        # customer.merchants.add(merchant)
-        CustomerMerchant.objects.get_or_create(
-            customer=customer,
-            merchant=merchant,
-            alternate_phone_number=phone_number,
-            alternate_name=name,
-            user_type=customer_type,
-        )
-        return existing_user, customer, None
-    else:
-        print("CREATED NOT EXISINTG USER")
-        user_data = {
-            "email": email,
-            "phone": phone_number,
-            "name":name,
-            "password": generate_random_text(15),
-            f"is_{customer_type.lower()}": True,
-        }
-        # TODO: Notify the user via email to setup their password
-        user = User.objects.create_user(**user_data)
-        profile_data = UserProfile.objects.create(
-            user_id=user,
-            user_type=customer_type,
-            free_escrow_transactions=10 if customer_type == "SELLER" else 5,
-        )
-        customer = Customer.objects.create(user=user)
-        # customer.merchants.add(merchant)
-        CustomerMerchant.objects.create(
-            customer=customer,
-            merchant=merchant,
-            alternate_phone_number=phone_number,
-            alternate_name=name,
-            user_type=customer_type,
-        )
-        return user, customer, None
+    def get_merchant_name(self, obj):
+        customer_merchant_instance = self.get_merchant_customer_instance(obj)
+        if customer_merchant_instance:
+            return customer_merchant_instance.merchant.name
+        return None
 
 
 class RegisterCustomerSerializer(serializers.Serializer):
@@ -201,34 +170,27 @@ class RegisterCustomerSerializer(serializers.Serializer):
     )
 
     def validate(self, data):
-        print("EOF--1", data)
         email = data.get("email")
         phone_number = data.get("phone_number")
+        merchant = self.context.get("merchant")
 
         obj = validate_email_body(email)
         if obj[0]:
             raise serializers.ValidationError({"email": obj[1]})
 
-        merchant = self.context.get("merchant")
-        existing_customer = Customer.objects.filter(
-            models.Q(user__email=email)
-            | models.Q(  # Check if user email matches
-                customermerchant__merchant=merchant,
-                customermerchant__alternate_phone_number=phone_number,
-            )  # Check if alternate phone number matches
-        ).first()
+        if customer_phone_numer_exists_for_merchant(merchant, phone_number):
+            raise serializers.ValidationError(
+                {
+                    "phone_number": "This phone number is already in use by another customer."
+                }
+            )
 
-        if existing_customer and existing_customer.user.email == email:
-            print("Customer with this email already exists for this merchant.")
-            raise serializers.ValidationError({"email":"Customer with this email already exists for this merchant."})
-        
-        customer_merchant = CustomerMerchant.objects.filter(
-            customer=existing_customer, merchant=merchant
-        ).first()
-
-        if (customer_merchant and customer_merchant.alternate_phone_number == phone_number): 
-            raise serializers.ValidationError({"phone_number":"Customer with this phone number already exists for this merchant."})
-
+        user = User.objects.filter(email=email).first()
+        if user:
+            if customer_with_email_exists_for_merchant(merchant, user):
+                raise serializers.ValidationError(
+                    {"email": "This email is already in use by another customer."}
+                )
         return data
 
     def to_internal_value(self, data):
@@ -237,24 +199,14 @@ class RegisterCustomerSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        print("VALIDATED DATA", validated_data)
         customer_type = validated_data.get("customer_type")
         email = validated_data.get("email")
         name = validated_data.get("name")
         phone_number = validated_data.get("phone_number")
         merchant = self.context.get("merchant")
-        print(
-            customer_type,
-            email,
-            name,
-            phone_number,
-        )
-        user, customer, error = create_or_update_customer(
+        user, customer, error = create_or_update_customer_user(
             email, phone_number, name, customer_type, merchant
         )
         if error:
             raise serializers.ValidationError(error)
-
-        if not user:
-            return customer.user
         return user
