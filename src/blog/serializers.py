@@ -1,12 +1,15 @@
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import BlogPost
 from .utils import parse_markdown_file
 
+
 class BlogPostSerializer(serializers.ModelSerializer):
-    author = serializers.ReadOnlyField(source='author.name')
+    author = serializers.ReadOnlyField(source="author.name")
     reading_time = serializers.ReadOnlyField()
     markdown_file = serializers.FileField(write_only=True, required=True)
+
     class Meta:
         model = BlogPost
         fields = [
@@ -21,24 +24,17 @@ class BlogPostSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def validate(self, attrs):
-        if 'markdown_file' in attrs:
-            markdown_file = attrs['markdown_file']
-            html_content = parse_markdown_file(markdown_file)
-            attrs['content'] = html_content
-            print("---->",attrs['content'])
-        return attrs
-
+    @transaction.atomic
     def create(self, validated_data):
-        markdown_file = validated_data.pop('markdown_file')
+        markdown_file = validated_data.pop("markdown_file")
         html_content = parse_markdown_file(markdown_file)
-        validated_data['content'] = html_content
-        print("---->", validated_data)
+        validated_data["content"] = html_content
         return super().create(validated_data)
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        markdown_file = validated_data.pop('markdown_file', None)
+        markdown_file = validated_data.pop("markdown_file", None)
         if markdown_file:
             html_content = parse_markdown_file(markdown_file)
-            validated_data['content'] = html_content
+            validated_data["content"] = html_content
         return super().update(instance, validated_data)
