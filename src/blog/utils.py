@@ -1,11 +1,11 @@
 import markdown
 from rest_framework import serializers
 
-def parse_markdown_file(file_path):
+def parse_markdown_file(markdown_file):
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            markdown_content = f.read()
-            html_content = markdown.markdown(markdown_content)
-            return html_content
+        markdown_content = markdown_file.read().decode('utf-8')
+        html_content = markdown.markdown(markdown_content)
+        print("HTML", html_content)
+        return html_content
     except Exception as e:
         raise serializers.ValidationError("Error occurred parsing markdown file: {}".format(str(e)))

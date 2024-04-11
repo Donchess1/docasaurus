@@ -9,7 +9,7 @@ from users.models.user import CustomUser as User
 class BlogPost(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
-    content = models.TextField()
+    content = models.TextField(null=True, blank=True)
     reading_time = models.PositiveIntegerField(blank=True, null=True)  # in minutes
     cover_image_url = models.URLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)
