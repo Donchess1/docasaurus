@@ -148,7 +148,7 @@ def create_or_update_customer(email, phone_number, customer_type, merchant):
             Customer.objects.filter(user=existing_user)
             .filter(merchants=merchant)
             .first()
-        ) # This means there is a customer with this email address already linked to merchant
+        )  # This means there is a customer with this email address already linked to merchant
         if existing_customer:
             return existing_user, existing_customer, None
 
@@ -164,14 +164,6 @@ def create_or_update_customer(email, phone_number, customer_type, merchant):
             customer.alternate_phone_number = phone_number
             customer.save()
         return existing_user, customer, None
-
-
-
-
-
-
-
-
 
     existing_user = User.objects.filter(email=email).first()
     existing_customer = None
