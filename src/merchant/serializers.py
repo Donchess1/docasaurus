@@ -118,7 +118,10 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
         )
 
     def get_full_name(self, obj):
-        return obj.user.name
+        customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
+        if customer_merchant:
+            return customer_merchant.alternate_name
+        return None
 
     def get_phone_number(self, obj):
         customer_merchant = CustomerMerchant.objects.filter(customer=obj).first()
@@ -136,33 +139,37 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
         return None
 
 
-def create_or_update_customer(email, phone_number, customer_type, merchant):
+def create_or_update_customer(email, phone_number, name, customer_type, merchant):
     """
     Creates or updates a customer with the given email, phone number & customer type.
     """
     existing_user = User.objects.filter(email=email).first()
     if existing_user:
+        print("CREATED EXISINTG USER")
         existing_customer = (
             Customer.objects.filter(user=existing_user)
             .filter(merchants=merchant)
             .first()
-        ) # This means there is a customer with this email address already linked to merchant
+        )  # This means there is a customer with this email address already linked to merchant
         if existing_customer:
             return existing_user, existing_customer, None
 
         customer, created = Customer.objects.get_or_create(user=existing_user)
-        customer.merchants.add(merchant)
+        # customer.merchants.add(merchant)
         CustomerMerchant.objects.get_or_create(
             customer=customer,
             merchant=merchant,
             alternate_phone_number=phone_number,
+            alternate_name=name,
             user_type=customer_type,
         )
         return existing_user, customer, None
     else:
+        print("CREATED NOT EXISINTG USER")
         user_data = {
             "email": email,
             "phone": phone_number,
+            "name":name,
             "password": generate_random_text(15),
             f"is_{customer_type.lower()}": True,
         }
@@ -174,11 +181,12 @@ def create_or_update_customer(email, phone_number, customer_type, merchant):
             free_escrow_transactions=10 if customer_type == "SELLER" else 5,
         )
         customer = Customer.objects.create(user=user)
-        customer.merchants.add(merchant)
+        # customer.merchants.add(merchant)
         CustomerMerchant.objects.create(
             customer=customer,
             merchant=merchant,
             alternate_phone_number=phone_number,
+            alternate_name=name,
             user_type=customer_type,
         )
         return user, customer, None
@@ -193,6 +201,7 @@ class RegisterCustomerSerializer(serializers.Serializer):
     )
 
     def validate(self, data):
+        print("EOF--1", data)
         email = data.get("email")
         phone_number = data.get("phone_number")
 
@@ -201,34 +210,24 @@ class RegisterCustomerSerializer(serializers.Serializer):
             raise serializers.ValidationError({"email": obj[1]})
 
         merchant = self.context.get("merchant")
-        existing_customer = (
-            Customer.objects.filter(
-                models.Q(user__email=email) | models.Q(user__phone=phone_number)
-            )
-            .filter(merchants=merchant)
-            .first()
-        )
+        existing_customer = Customer.objects.filter(
+            models.Q(user__email=email)
+            | models.Q(  # Check if user email matches
+                customermerchant__merchant=merchant,
+                customermerchant__alternate_phone_number=phone_number,
+            )  # Check if alternate phone number matches
+        ).first()
 
-        # Check if a customer with the provided phone number exists as an alternate phone number
-        if not existing_customer:
-            existing_customer_merchant = CustomerMerchant.objects.filter(
-                alternate_phone_number=phone_number, merchant=merchant
-            ).first()
-            if existing_customer_merchant:
-                existing_customer = existing_customer_merchant.customer
+        if existing_customer and existing_customer.user.email == email:
+            print("Customer with this email already exists for this merchant.")
+            raise serializers.ValidationError({"email":"Customer with this email already exists for this merchant."})
+        
+        customer_merchant = CustomerMerchant.objects.filter(
+            customer=existing_customer, merchant=merchant
+        ).first()
 
-        if existing_customer:
-            error_data = {}
-            if existing_customer.user.email == email:
-                error_data[
-                    "email"
-                ] = "Customer with this email already exists for this merchant."
-            if existing_customer.user.phone == phone_number:
-                error_data[
-                    "phone_number"
-                ] = "Customer with this phone number already exists for this merchant."
-
-            raise serializers.ValidationError(error_data)
+        if (customer_merchant and customer_merchant.alternate_phone_number == phone_number): 
+            raise serializers.ValidationError({"phone_number":"Customer with this phone number already exists for this merchant."})
 
         return data
 
@@ -238,12 +237,20 @@ class RegisterCustomerSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        print("VALIDATED DATA", validated_data)
         customer_type = validated_data.get("customer_type")
         email = validated_data.get("email")
+        name = validated_data.get("name")
         phone_number = validated_data.get("phone_number")
         merchant = self.context.get("merchant")
+        print(
+            customer_type,
+            email,
+            name,
+            phone_number,
+        )
         user, customer, error = create_or_update_customer(
-            email, phone_number, customer_type, merchant
+            email, phone_number, name, customer_type, merchant
         )
         if error:
             raise serializers.ValidationError(error)

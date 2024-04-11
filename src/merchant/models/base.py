@@ -50,6 +50,7 @@ class CustomerMerchant(models.Model):
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE)
     alternate_phone_number = models.CharField(max_length=20, null=True, blank=True)
     alternate_email = models.EmailField(max_length=20, null=True, blank=True)
+    alternate_name = models.CharField(max_length=255, null=True, blank=True)
     user_type = models.CharField(max_length=255, choices=USER_TYPE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
