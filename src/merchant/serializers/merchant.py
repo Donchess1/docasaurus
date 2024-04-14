@@ -4,17 +4,16 @@ from rest_framework import serializers
 
 from business.models.business import Business
 from merchant.models import Customer, CustomerMerchant, Merchant
+from merchant.utils import (
+    create_or_update_customer_user,
+    customer_phone_numer_exists_for_merchant,
+    customer_with_email_exists_for_merchant,
+)
 from users.models import CustomUser, UserProfile
 from users.models.bank_account import BankAccount
 from users.serializers.profile import UserProfileSerializer
 from utils.email import validate_email_body
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
-
-from .utils import (
-    create_or_update_customer_user,
-    customer_phone_numer_exists_for_merchant,
-    customer_with_email_exists_for_merchant,
-)
 
 User = get_user_model()
 
@@ -164,7 +163,8 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
 class RegisterCustomerSerializer(serializers.Serializer):
     customer_type = serializers.ChoiceField(choices=("BUYER", "SELLER"))
     email = serializers.EmailField()
-    name = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
     phone_number = serializers.CharField(
         validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN],
     )
@@ -201,7 +201,9 @@ class RegisterCustomerSerializer(serializers.Serializer):
     def create(self, validated_data):
         customer_type = validated_data.get("customer_type")
         email = validated_data.get("email")
-        name = validated_data.get("name")
+        first_name = validated_data.get("first_name")
+        last_name = validated_data.get("last_name")
+        name = f"{first_name} {last_name}"
         phone_number = validated_data.get("phone_number")
         merchant = self.context.get("merchant")
         user, customer, error = create_or_update_customer_user(

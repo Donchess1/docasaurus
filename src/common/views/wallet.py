@@ -24,6 +24,7 @@ from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
+    add_commas_to_transaction_amount,
     calculate_payment_amount_to_charge,
     generate_txn_reference,
     get_withdrawal_fee,
@@ -221,7 +222,7 @@ class FundWalletRedirectView(GenericAPIView):
                     "first_name": user.name.split(" ")[0],
                     "recipient": email,
                     "date": parse_datetime(txn.created_at),
-                    "amount_funded": f"N{str(txn.amount)}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
                 console_tasks.send_wallet_funding_email(email, values)
@@ -396,7 +397,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     "first_name": user.name.split(" ")[0],
                     "recipient": user.email,
                     "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"N{escrow_txn.amount}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
                     "transaction_id": escrow_txn.reference,
                     "item_name": escrow_txn.meta["title"],
                     # "seller_name": seller.name,
@@ -408,7 +409,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         "first_name": seller.name.split(" ")[0],
                         "recipient": seller.email,
                         "date": parse_datetime(escrow_txn.updated_at),
-                        "amount_funded": f"N{escrow_txn.amount}",
+                        "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
                         "transaction_id": escrow_txn.reference,
                         "item_name": escrow_txn.meta["title"],
                         "buyer_name": user.name,
