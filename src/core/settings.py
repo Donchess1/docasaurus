@@ -88,6 +88,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://main--fastidious-bombolone-2dabe2.netlify.app",
     "http://main--fastidious-bombolone-2dabe2.netlify.app",
     "https://mybalanceapp.netlify.app",
+    "https://staging-mybalance-merch-redirect.netlify.app",
 ]
 
 CORS_ORIGIN_WHITELIST = [

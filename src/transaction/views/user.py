@@ -31,7 +31,12 @@ from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.transaction import get_escrow_transaction_stakeholders
-from utils.utils import format_rejected_reasons, generate_txn_reference, parse_datetime
+from utils.utils import (
+    add_commas_to_transaction_amount,
+    format_rejected_reasons,
+    generate_txn_reference,
+    parse_datetime,
+)
 
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
@@ -426,7 +431,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 "first_name": user.name.split(" ")[0],
                 "recipient": user.email,
                 "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"N{txn.amount}",
+                "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                 "transaction_id": reference,
                 "item_name": txn.meta["title"],
                 # "seller_name": seller.name,
@@ -438,7 +443,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
                     "date": parse_datetime(txn.updated_at),
-                    "amount_funded": f"N{txn.amount}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                     "transaction_id": reference,
                     "item_name": txn.meta["title"],
                     "buyer_name": user.name,
@@ -719,7 +724,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "bank_name": escrow_meta.get("bank_name"),
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
-                "amount": f"N{txn.amount}",
+                "amount": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
             }
             seller_values = {
                 "first_name": seller.name.split(" ")[0],
@@ -731,7 +736,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "bank_name": escrow_meta.get("bank_name"),
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
-                "amount": f"N{amount_to_credit_seller}",
+                "amount": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
                 "transaction_fee": f"N{seller_charges}",
             }
             tasks.send_unlock_funds_buyer_email(user.email, buyer_values)

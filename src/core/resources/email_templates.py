@@ -24,6 +24,15 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-1840ebd4e7ee4281bc18dd8f2b00731e"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0fba8d742e884212ad73b35ed81b9c95"),
+                "LOCK_MERCHANT_FUNDS_BUYER": TemplateId(
+                    "d-03ca81b85abe4165a5c24cd09c162900"
+                ),
+                "LOCK_MERCHANT_FUNDS_SELLER": TemplateId(
+                    "d-34cc75d6f0d0473fabc7ef8e49dd2ef8"
+                ),
+                "LOCK_MERCHANT_FUNDS_NOTIFY_MERCHANT": TemplateId(
+                    "d-d00a892d52324c5e939dab373e3a58b4"
+                ),
                 "UNLOCK_FUNDS_BUYER": TemplateId("d-5d1c30c963ad459abeeea4a66172dd35"),
                 "UNLOCK_FUNDS_SELLER": TemplateId("d-3c612384a65d44a8b3ee77bfc42dbfff"),
                 "ESCROW_TRANSACTION_APPROVED": TemplateId(
@@ -61,6 +70,9 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-2f55861d9a514831b36ac3ef2b0f484a"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0ef402affb07484487f1661c9c110184"),
+                "LOCK_MERCHANT_FUNDS_BUYER": TemplateId(""),
+                "LOCK_MERCHANT_FUNDS_SELLER": TemplateId(""),
+                "LOCK_MERCHANT_FUNDS_NOTIFY_MERCHANT": TemplateId(""),
                 "UNLOCK_FUNDS_BUYER": TemplateId("d-9e19d6d681594f539977f88ab2cc47d8"),
                 "UNLOCK_FUNDS_SELLER": TemplateId("d-956b7f285f26463894546fa3df90dd9b"),
                 "ESCROW_TRANSACTION_APPROVED": TemplateId(

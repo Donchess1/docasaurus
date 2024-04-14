@@ -7,6 +7,11 @@ from merchant.views.base import (
     MerchantProfileView,
     MerchantResetKeyView,
 )
+from merchant.views.transaction import (
+    InitiateMerchantEscrowTransactionView,
+    MerchantEscrowTransactionRedirectView,
+    MerchantTransactionListView,
+)
 
 urlpatterns = [
     path("list", MerchantListView.as_view(), name="list-merchants"),
@@ -16,7 +21,20 @@ urlpatterns = [
     path(
         "customers", MerchantCustomerView.as_view(), name="register-merchant-customer"
     ),
-    # path("initiate-escrow", UpdateKYCView.as_view(), name="initiate-merchant-escrow"),
-    # path("transactions", VerifyOTPView.as_view(), name="merchant-transactions"),
+    path(
+        "transactions",
+        MerchantTransactionListView.as_view(),
+        name="merchant-transactions",
+    ),
+    path(
+        "initiate-escrow",
+        InitiateMerchantEscrowTransactionView.as_view(),
+        name="initiate-merchant-escrow",
+    ),
+    path(
+        "escrow-redirect",
+        MerchantEscrowTransactionRedirectView.as_view(),
+        name="validate-merchant-escrow-payment",
+    ),
     # path("transactions/<str:id>",UserTransactionDetailView.as_view(),name="merchant-transaction-detail"),
 ]

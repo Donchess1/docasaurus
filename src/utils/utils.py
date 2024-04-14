@@ -20,6 +20,48 @@ def parse_datetime(datetime_input):
     return parsed_datetime.strftime("%B %d, %Y %I:%M%p")
 
 
+def parse_date(date_input):
+    # Convert date to string
+    val = str(date_input)
+    parsed_date = datetime.fromisoformat(val)
+    day = parsed_date.strftime("%d").lstrip("0")  # Remove leading zero
+    month = parsed_date.strftime("%b.")
+    year = parsed_date.strftime("%Y")
+
+    # Add appropriate suffix to the day
+    if day.endswith("1") and day != "11":
+        suffix = "st"
+    elif day.endswith("2") and day != "12":
+        suffix = "nd"
+    elif day.endswith("3") and day != "13":
+        suffix = "rd"
+    else:
+        suffix = "th"
+
+    formatted_date = f"{month} {day}{suffix} {year}"
+    return formatted_date
+
+
+def add_commas_to_transaction_amount(number):
+    number_str = str(number).split(".")[0]
+    # Reverse the string
+    reversed_str = number_str[::-1]
+
+    # Initialize variables
+    result = ""
+    count = 0
+
+    # Iterate through the reversed string
+    for char in reversed_str:
+        result = char + result
+        count += 1
+        # Add comma after every third character, except for the last group
+        if count % 3 == 0 and count != len(reversed_str):
+            result = "," + result
+
+    return result
+
+
 def calculate_payment_amount_to_charge(amount, percent):
     try:
         amount = float(amount)

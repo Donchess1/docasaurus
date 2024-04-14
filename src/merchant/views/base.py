@@ -2,7 +2,7 @@ from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
 
 from merchant.models import Merchant
-from merchant.serializers import (
+from merchant.serializers.merchant import (
     CustomerUserProfileSerializer,
     MerchantCreateSerializer,
     MerchantDetailSerializer,
@@ -138,7 +138,9 @@ class MerchantCustomerView(generics.CreateAPIView):
             )
         merchant = resource
         customers = merchant.customer_set.all()
-        serialized_customers = CustomerUserProfileSerializer(customers, many=True)
+        serialized_customers = CustomerUserProfileSerializer(
+            customers, many=True, context={"merchant": merchant}
+        )
         return Response(
             success=True,
             data=serialized_customers.data,
