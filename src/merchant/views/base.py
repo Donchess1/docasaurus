@@ -30,8 +30,8 @@ class MerchantCreateView(generics.CreateAPIView):
         self.perform_create(serializer)
         return Response(
             success=True,
+            status_code=status.HTTP_201_CREATED,
             message="Merchant created successfully",
-            status=status.HTTP_201_CREATED,
         )
 
 
@@ -67,9 +67,9 @@ class MerchantProfileView(generics.GenericAPIView):
         serializer = self.get_serializer(merchant)
         return Response(
             success=True,
+            status_code=status.HTTP_200_OK,
             message="Merchant profile retrieved successfully",
             data=serializer.data,
-            status_code=status.HTTP_200_OK,
         )
 
 
