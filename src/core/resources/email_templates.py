@@ -70,9 +70,15 @@ class EmailTemplate:
                 ),
                 "LOCK_FUNDS_BUYER": TemplateId("d-2f55861d9a514831b36ac3ef2b0f484a"),
                 "LOCK_FUNDS_SELLER": TemplateId("d-0ef402affb07484487f1661c9c110184"),
-                "LOCK_MERCHANT_FUNDS_BUYER": TemplateId("d-130f161ad7df4c98b01bd74083bfa5a6"),
-                "LOCK_MERCHANT_FUNDS_SELLER": TemplateId("d-2b90268adb8b43ea8478a9a50086609b"),
-                "LOCK_MERCHANT_FUNDS_NOTIFY_MERCHANT": TemplateId("d-9cd182b5ae974993801d8cd3fd5f4c5d"),
+                "LOCK_MERCHANT_FUNDS_BUYER": TemplateId(
+                    "d-130f161ad7df4c98b01bd74083bfa5a6"
+                ),
+                "LOCK_MERCHANT_FUNDS_SELLER": TemplateId(
+                    "d-2b90268adb8b43ea8478a9a50086609b"
+                ),
+                "LOCK_MERCHANT_FUNDS_NOTIFY_MERCHANT": TemplateId(
+                    "d-9cd182b5ae974993801d8cd3fd5f4c5d"
+                ),
                 "UNLOCK_FUNDS_BUYER": TemplateId("d-9e19d6d681594f539977f88ab2cc47d8"),
                 "UNLOCK_FUNDS_SELLER": TemplateId("d-956b7f285f26463894546fa3df90dd9b"),
                 "ESCROW_TRANSACTION_APPROVED": TemplateId(

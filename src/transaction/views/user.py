@@ -53,9 +53,16 @@ class UserTransactionListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         # Transactions where user is the main user or user is involved in escrow
-        queryset = Transaction.objects.filter(
-            Q(user_id=user) | Q(escrowmeta__partner_email=user.email)
-        ).order_by("-created_at")
+        queryset = (
+            Transaction.objects.filter(
+                Q(user_id=user)
+                | Q(escrowmeta__partner_email=user.email)
+                | Q(escrowmeta__meta__parties__buyer=user.email)
+                | Q(escrowmeta__meta__parties__seller=user.email)
+            )
+            .order_by("-created_at")
+            .distinct()
+        )
         return queryset
 
     @swagger_auto_schema(
