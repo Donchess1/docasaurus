@@ -32,6 +32,7 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "address",
             "enable_payout_splitting",
             "payout_splitting_ratio",
+            "escrow_redirect_url",
             "phone",
             "email",
         )
@@ -43,6 +44,11 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
         if User.objects.filter(phone=data["phone"]).exists():
             raise serializers.ValidationError(
                 {"phone": "This phone number is already in use."}
+            )
+
+        if User.objects.filter(email=data["email"]).exists():
+            raise serializers.ValidationError(
+                {"email": "This email address is already in use."}
             )
 
         if enable_payout_splitting and payout_splitting_ratio is None:
@@ -81,6 +87,7 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "address": validated_data.get("address"),
             "enable_payout_splitting": validated_data.get("enable_payout_splitting"),
             "payout_splitting_ratio": validated_data.get("payout_splitting_ratio"),
+            "escrow_redirect_url": validated_data.get("escrow_redirect_url"),
         }
         merchant = Merchant.objects.create(**merchant_data)
         return merchant
