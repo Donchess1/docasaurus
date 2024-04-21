@@ -22,6 +22,10 @@ class Dispute(models.Model):
         ("BUYER", "BUYER"),
         ("SELLER", "SELLER"),
     )
+    SOURCE = (
+        ("PLATFORM", "PLATFORM"),
+        ("API", "API"),
+    )
     id = models.UUIDField(
         unique=True, primary_key=True, default=uuid.uuid4, editable=False
     )
@@ -34,6 +38,7 @@ class Dispute(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="seller_user"
     )
     status = models.CharField(max_length=255, choices=STATUS)
+    source = models.CharField(max_length=255, choices=SOURCE, default="PLATFORM")
     priority = models.CharField(max_length=255, choices=PRIORITY)
     reason = models.CharField(max_length=255)
     description = models.TextField()

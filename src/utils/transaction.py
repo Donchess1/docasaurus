@@ -16,3 +16,25 @@ def get_escrow_transaction_stakeholders(tx_ref):
 
     except Transaction.DoesNotExist:
         return None
+
+
+def get_merchant_escrow_transaction_stakeholders(id):
+    buyer, seller, merchant = None, None, None
+    try:
+        transaction = Transaction.objects.get(id=id)
+        if transaction.escrowmeta:
+            if transaction.escrowmeta.meta:
+                meta = transaction.escrowmeta.meta
+                parties = meta.get("parties")
+                buyer_email = parties.get("buyer")
+                seller_email = parties.get("seller")
+                merchant = transaction.merchant
+    except Exception as e:
+        print(str(e))
+        {"BUYER": buyer, "SELLER": seller, "MERCHANT": merchant}
+
+    return {
+        "BUYER": buyer_email,
+        "SELLER": seller_email,
+        "MERCHANT": merchant.user_id.email,
+    }

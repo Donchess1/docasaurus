@@ -121,8 +121,28 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_dispute_raised_via_merchant_widget_author_email(
+        cls, email: str, values: dict
+    ):
+        template_id = cls.template_handler.get_template(
+            "MERCHANT_WIDGET_DISPUTE_RAISED_AUTHOR"
+        )
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_dispute_raised_receiver_email(cls, email: str, values: dict):
         template_id = cls.template_handler.get_template("DISPUTE_RAISED_RECIPIENT")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_dispute_raised_via_merchant_widget_receiver_email(
+        cls, email: str, values: dict
+    ):
+        template_id = cls.template_handler.get_template(
+            "MERCHANT_WIDGET_DISPUTE_RAISED_RECIPIENT"
+        )
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
