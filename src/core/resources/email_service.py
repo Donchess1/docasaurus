@@ -159,7 +159,7 @@ class EmailClient:
         html_content = webhook_html_content
         return cls.send_plain_email(email, subject, html_content)
 
-    # BASE HANDLERS
+    # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, template_id: str, dynamic_template_data: dict):
         to_email = To(email)
@@ -191,3 +191,4 @@ class EmailClient:
         except Exception as e:
             print(e)
             return False
+    # ENTRY POINT
