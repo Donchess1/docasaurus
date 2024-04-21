@@ -44,8 +44,14 @@ class EmailTemplate:
                 "DISPUTE_RAISED_AUTHOR": TemplateId(
                     "d-d3c1d2fdcb3b483fbad6dfa6154cfec0"
                 ),
+                "MERCHANT_WIDGET_DISPUTE_RAISED_AUTHOR": TemplateId(
+                    "d-76075f2b10e74f95aa31634ae74ecade"
+                ),
                 "DISPUTE_RAISED_RECIPIENT": TemplateId(
                     "d-56c211aeced24b45bc7f08b4d6e04b1b"
+                ),
+                "MERCHANT_WIDGET_DISPUTE_RAISED_RECIPIENT": TemplateId(
+                    "d-ca505fe977dd4298ba92515cf60c3371"
                 ),
                 "VERIFY_ONE_TIME_LOGIN_CODE": TemplateId(
                     "d-32e80afb15d34862a9775bd8daac1acd"
@@ -90,8 +96,14 @@ class EmailTemplate:
                 "DISPUTE_RAISED_AUTHOR": TemplateId(
                     "d-91c2e16c74eb414ebb9bd0971d70b730"
                 ),
+                "MERCHANT_WIDGET_DISPUTE_RAISED_AUTHOR": TemplateId(
+                    "d-31ebdbec39bf406a87142936fc5510e8"
+                ),
                 "DISPUTE_RAISED_RECIPIENT": TemplateId(
                     "d-eacabe5d8a294286804688024bf0bcd3"
+                ),
+                "MERCHANT_WIDGET_DISPUTE_RAISED_RECIPIENT": TemplateId(
+                    "d-a21ae21316b144a7b9222aa2090a713a"
                 ),
                 "VERIFY_ONE_TIME_LOGIN_CODE": TemplateId(
                     "d-900389ba039b4ef4890920267203a11a"

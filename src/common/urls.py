@@ -3,6 +3,7 @@ from django.urls import path
 from common.views.banks import ListBanksView, ValidateBankAccountView
 from common.views.bvn import ValidateBVNView
 from common.views.driver_license import ValidateDriverLicenseView
+from common.views.merchant import TrimMerchantTokenView
 from common.views.nin import ValidateNINView
 from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
@@ -40,6 +41,11 @@ urlpatterns = [
         name="fund-escrow-redirect",
     ),
     path("withdrawal-fee", WalletWithdrawalFeeView.as_view(), name="withdrawal-fee"),
+    path(
+        "trim-merchant-token",
+        TrimMerchantTokenView.as_view(),
+        name="trim-merchant-token",
+    ),
     path("withdraw", WalletWithdrawalView.as_view(), name="withdraw-funds"),
     path(
         "withdraw-callback",

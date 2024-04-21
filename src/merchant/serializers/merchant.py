@@ -8,6 +8,7 @@ from merchant.utils import (
     create_or_update_customer_user,
     customer_phone_numer_exists_for_merchant,
     customer_with_email_exists_for_merchant,
+    get_customer_merchant_instance,
 )
 from users.models import CustomUser, UserProfile
 from users.models.bank_account import BankAccount
@@ -219,3 +220,22 @@ class RegisterCustomerSerializer(serializers.Serializer):
         if error:
             raise serializers.ValidationError(error)
         return user
+
+
+class CustomerWidgetSessionSerializer(serializers.Serializer):
+    customer_email = serializers.EmailField()
+
+    def validate(self, data):
+        email = data.get("customer_email")
+        merchant = self.context.get("merchant")
+
+        customer_instance = get_customer_merchant_instance(email, merchant)
+        if not customer_instance:
+            raise serializers.ValidationError({"user": "Customer does not exist."})
+        data["customer_instance"] = customer_instance
+        return data
+
+
+class CustomerWidgetSessionPayloadSerializer(serializers.Serializer):
+    widget_url = serializers.URLField()
+    session_lifetime = serializers.CharField()

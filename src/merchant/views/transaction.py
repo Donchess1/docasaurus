@@ -14,8 +14,14 @@ from merchant.serializers.transaction import (
     CreateMerchantEscrowTransactionSerializer,
     MerchantEscrowRedirectPayloadSerializer,
     MerchantTransactionSerializer,
+    UnlockMerchantEscrowTransactionSerializer,
 )
-from merchant.utils import get_merchant_escrow_users, validate_request
+from merchant.utils import (
+    get_customer_merchant_instance,
+    get_merchant_by_id,
+    get_merchant_escrow_users,
+    validate_request,
+)
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.serializers.user import UserSerializer
@@ -25,6 +31,7 @@ from utils.text import notifications
 from utils.utils import add_commas_to_transaction_amount, parse_date, parse_datetime
 
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 User = get_user_model()
 
 
@@ -318,7 +325,68 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 "transaction_reference": escrow_txn_ref,
                 "amount": escrow_amount_to_charge,
                 "redirect_url": escrow_txn.merchant.escrow_redirect_url
-                or f"{BACKEND_BASE_URL}/swagger-api-docs",
+                or f"{FRONTEND_BASE_URL}/login",
             },
             message="Transaction verified.",
+        )
+
+
+class UnlockEscrowFundsView(generics.CreateAPIView):
+    serializer_class = UnlockMerchantEscrowTransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    def perform_create(self, serializer):
+        instance_txn_data = serializer.save()
+        return instance_txn_data
+
+    @swagger_auto_schema(
+        operation_description="Unlock Escrow Transaction Funds",
+        responses={
+            200: UnlockMerchantEscrowTransactionSerializer,
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        merchant_id = request.query_params.get("merchant")
+        if not merchant_id:
+            return Response(
+                success=False,
+                message="Merchant ID is required. Pass 'merchant' in query parameters",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        merchant = get_merchant_by_id(merchant_id)
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        merchant_customer = get_customer_merchant_instance(user.email, merchant)
+        if not merchant_customer:
+            return Response(
+                success=False,
+                message="Customer does not exist for merchant",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "merchant": merchant,
+                "user": user,
+            },
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        instance_txn_data = self.perform_create(serializer)
+        return Response(
+            status=True,
+            message="Funds unlocked successfully",
+            status_code=status.HTTP_200_OK,
         )

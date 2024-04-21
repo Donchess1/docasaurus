@@ -8,9 +8,14 @@ from rest_framework import serializers
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from merchant.utils import (
     check_escrow_user_is_valid,
+    check_transactions_already_unlocked,
+    check_transactions_are_valid_escrows,
+    check_transactions_due_for_unlocking,
     create_merchant_escrow_transaction,
     generate_deposit_transaction_for_escrow,
+    get_merchant_customer_transactions_by_customer_email,
     get_merchant_customers_by_user_type,
+    unlock_customer_escrow_transactions,
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
 from utils.utils import generate_random_text, generate_txn_reference, get_escrow_fees
@@ -46,7 +51,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
 
 class MerchantTransactionSerializer(serializers.ModelSerializer):
     # locked_amount = serializers.SerializerMethodField()
-    escrow_metadata = serializers.SerializerMethodField()
+    escrow = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -68,7 +73,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             "merchant",
             "verified",
             # "locked_amount",
-            "escrow_metadata",
+            "escrow",
             "created_at",
             "updated_at",
         )
@@ -89,7 +94,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             "remitted_amount",
             "currency",
             "locked_amount",
-            "escrow_metadata",
+            "escrow",
             "provider",
         )
 
@@ -100,7 +105,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         serializer = LockedAmountSerializer(instance=instance)
         return serializer.data
 
-    def get_escrow_metadata(self, obj):
+    def get_escrow(self, obj):
         instance = EscrowMeta.objects.filter(transaction_id=obj).first()
         if not instance:
             return None
@@ -199,3 +204,53 @@ class MerchantEscrowRedirectPayloadSerializer(serializers.Serializer):
     transaction_reference = serializers.CharField()
     amount = serializers.IntegerField()
     redirect_url = serializers.URLField()
+
+
+class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
+    transactions = serializers.ListField(child=serializers.UUIDField())
+
+    def validate(self, data):
+        transactions = data.get("transactions")
+        merchant = self.context.get("merchant")
+        user = self.context.get("user")
+
+        valid_customer_transactions = (
+            get_merchant_customer_transactions_by_customer_email(user.email, merchant)
+        )
+        valid_customer_transactions_ids = [
+            transaction.id for transaction in valid_customer_transactions
+        ]
+
+        if not set(transactions).issubset(set(valid_customer_transactions_ids)):
+            raise serializers.ValidationError(
+                {"transactions": "One or more invalid transaction(s) to be unlocked"}
+            )
+
+        transactions = list(set(transactions))
+
+        if not check_transactions_are_valid_escrows(transactions):
+            raise serializers.ValidationError(
+                {"transactions": "One or more transaction(s) not a valid escrow"}
+            )
+
+        if not check_transactions_due_for_unlocking(transactions):
+            raise serializers.ValidationError(
+                {"transactions": "One or more transaction(s) not due for unlocking yet"}
+            )
+
+        if not check_transactions_already_unlocked(transactions):
+            raise serializers.ValidationError(
+                {
+                    "transactions": "One or more transaction(s) have already been unlocked"
+                }
+            )
+        data["transactions"] = transactions
+        return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        transactions = validated_data.get("transactions")
+        user = self.context.get("user")
+        res = unlock_customer_escrow_transactions(transactions, user)
+        print("UNLOCKING RES", res)
+        return res
