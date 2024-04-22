@@ -241,13 +241,15 @@ def check_transactions_are_valid_escrows(transactions):
     return True
 
 
-def check_transactions_due_for_unlocking(transactions):
+def check_transactions_delivery_date_has_elapsed(transactions: list[str]) -> bool:
     for id in transactions:
         transaction = get_transaction_by_id(id)
+        if not transaction:
+            continue
         delivery_date = transaction.escrowmeta.delivery_date
         if datetime.datetime.now().date() < delivery_date:
-            return False
-    return True
+            return True
+    return False
 
 
 def check_transactions_already_unlocked(transactions):
