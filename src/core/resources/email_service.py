@@ -191,4 +191,5 @@ class EmailClient:
         except Exception as e:
             print(e)
             return False
+
     # ENTRY POINT

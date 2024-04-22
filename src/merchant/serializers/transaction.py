@@ -10,7 +10,7 @@ from merchant.utils import (
     check_escrow_user_is_valid,
     check_transactions_already_unlocked,
     check_transactions_are_valid_escrows,
-    check_transactions_due_for_unlocking,
+    check_transactions_delivery_date_has_elapsed,
     create_merchant_escrow_transaction,
     generate_deposit_transaction_for_escrow,
     get_merchant_customer_transactions_by_customer_email,
@@ -233,7 +233,7 @@ class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
                 {"transactions": "One or more transaction(s) not a valid escrow"}
             )
 
-        if not check_transactions_due_for_unlocking(transactions):
+        if check_transactions_delivery_date_has_elapsed(transactions):
             raise serializers.ValidationError(
                 {"transactions": "One or more transaction(s) not due for unlocking yet"}
             )
