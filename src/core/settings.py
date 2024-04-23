@@ -83,12 +83,13 @@ CORS_ALLOWED_ORIGINS = [
     "https://api.mybalanceapp.com",
     "http://staging-api.mybalanceapp.com",
     "https://staging-api.mybalanceapp.com",
-    "https://dapper-eclair-4a6866.netlify.app",
-    "http://dapper-eclair-4a6866.netlify.app",
-    "https://main--fastidious-bombolone-2dabe2.netlify.app",
-    "http://main--fastidious-bombolone-2dabe2.netlify.app",
     "https://mybalanceapp.netlify.app",
     "https://staging-mybalance-merch-redirect.netlify.app",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "https://staging-merchant-mybalanceapp.netlify.app",
+    "https://merchant-mybalanceapp.netlify.app",
 ]
 
 CORS_ORIGIN_WHITELIST = [
@@ -102,7 +103,6 @@ CORS_ORIGIN_WHITELIST = [
     "https://api.mybalanceapp.com",
     "http://staging-api.mybalanceapp.com",
     "https://staging-api.mybalanceapp.com",
-    "https://dapper-eclair-4a6866.netlify.app",
 ]
 
 CORS_EXPOSE_HEADERS = [
