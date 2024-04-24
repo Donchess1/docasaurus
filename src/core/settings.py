@@ -105,6 +105,11 @@ CORS_ORIGIN_WHITELIST = [
     "https://staging-api.mybalanceapp.com",
     "https://staging-merchant-mybalanceapp.netlify.app",
     "https://merchant-mybalanceapp.netlify.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5174",
+    "http://0.0.0.0:5174",
+    "http://localhost:5174",
+    "http://localhost:5175",
 ]
 
 CORS_EXPOSE_HEADERS = [

@@ -13,7 +13,7 @@ User = get_user_model()
 
 
 def validate_request(request):
-    api_key = request.headers.get("API-KEY")
+    api_key = request.headers.get("MerchantAPIKey")
     if not api_key:
         return [False, "Request Forbidden. API Key missing"]
     try:

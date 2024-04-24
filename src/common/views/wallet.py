@@ -316,6 +316,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             )
 
         obj = self.flw_api.verify_transaction(flw_transaction_id)
+        print("FLW TRANSACTION VALIDATION VIA API ----->", obj)
 
         if obj["status"] == "error":
             msg = obj["message"]
@@ -449,6 +450,8 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     message="Profile not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
+            retry_validation = self.flw_api.verify_transaction(flw_transaction_id)
+            print("FLW TRANSACTION VALIDATION VIA API ----->", retry_validation)
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
