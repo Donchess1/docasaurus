@@ -629,7 +629,8 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 message="Invalid authorization token.",
                 status_code=status.HTTP_403_FORBIDDEN,
             )
-
+        print("WITHDRAW CALLBACK FUNCTION CALLED")
+        print("REQUEST DATA---->", request.data)
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
