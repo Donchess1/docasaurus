@@ -9,6 +9,7 @@ from rest_framework.decorators import action
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
+from merchant.decorators import authorized_api_call
 from merchant.models import Merchant
 from merchant.serializers.transaction import (
     CreateMerchantEscrowTransactionSerializer,
@@ -49,7 +50,10 @@ class MerchantTransactionListView(generics.ListAPIView):
             200: MerchantTransactionSerializer,
         },
     )
+    @authorized_api_call
     def list(self, request, *args, **kwargs):
+        merchant_id = request.headers.get("X-IDENTITY")
+        merchant = Merchant.objects.filter(id=merchant_id).first()
         request_is_valid, resource = validate_request(request)
         if not request_is_valid:
             return Response(
@@ -84,15 +88,10 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
             200: None,
         },
     )
+    @authorized_api_call
     def post(self, request, *args, **kwargs):
-        request_is_valid, resource = validate_request(request)
-        if not request_is_valid:
-            return Response(
-                success=False,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message=resource,
-            )
-        merchant = resource
+        merchant_id = request.headers.get("X-IDENTITY")
+        merchant = Merchant.objects.filter(id=merchant_id).first()
         serializer = self.get_serializer(
             data=request.data, context={"merchant": merchant}
         )

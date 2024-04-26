@@ -1,15 +1,25 @@
 import datetime
+import hashlib
+import hmac
+import time
 from decimal import Decimal
 
+import bcrypt
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import OuterRef, Q, Subquery
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
+from core.resources.cache import Cache
+from core.resources.flutterwave import FlwAPI
 from merchant.models import Customer, CustomerMerchant, Merchant
 from users.models import UserProfile
 from utils.utils import generate_random_text, generate_txn_reference
 
 User = get_user_model()
+cache = Cache()
+flw_api = FlwAPI
 
 
 def validate_request(request):
@@ -21,6 +31,69 @@ def validate_request(request):
         return [True, merchant]
     except Merchant.DoesNotExist:
         return [False, "Request Forbidden. Invalid API Key"]
+
+
+def verify_otp(otp, temp_id):
+    cache_data = cache.get(temp_id)
+    if not cache_data or not cache_data["is_valid"]:
+        return False, "OTP is invalid or expired!"
+
+    if cache_data["otp"] != otp:
+        return False, "Invalid OTP!"
+
+    cache_data["is_valid"] = False
+    cache.delete(temp_id)
+
+    return True, cache_data
+
+
+@transaction.atomic
+def initiate_gateway_withdrawal_transaction(user, data):
+    amount = data.get("amount")
+    bank_code = data.get("bank_code")
+    account_number = data.get("account_number")
+    merchant_platform = data.get("merchant_platform_name")
+    tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
+    description = "MyBalance Wallet Withdrawal"
+    email = user.email
+
+    txn = Transaction.objects.create(
+        user_id=user,
+        type="WITHDRAW",
+        amount=amount,
+        mode="MERCHANT_API",
+        status="PENDING",
+        reference=tx_ref,
+        currency="NGN",
+        provider="FLUTTERWAVE",
+        meta={"title": "Wallet debit"},
+    )
+    # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
+    tx_data = {
+        "account_bank": bank_code,
+        "account_number": account_number,
+        "amount": int(amount),
+        "narration": description,
+        "reference": tx_ref,
+        "currency": "NGN",
+        "meta": {
+            "amount_to_debit": amount,
+            "customer_email": email,
+            "tx_ref": tx_ref,
+        },
+        # "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
+    }
+
+    obj = flw_api.initiate_payout(tx_data)
+    msg = obj["message"]
+    txn.meta.update({"description": f"FLW Transaction: {tx_ref}", "note": msg})
+    txn.save()
+    if obj["status"] == "error":
+        return False, msg
+    return (
+        True,
+        {"transaction_reference": tx_ref},
+    )
 
 
 def get_merchant_by_id(merchant_id):
@@ -368,3 +441,17 @@ def unlock_customer_escrow_transactions(transactions, user):
         except Exception as e:
             print(f"Exception occurred: {str(e)}")
         print("FINISHED UNLOCKING TRANSACTION")
+
+
+def generate_api_key(merchant_id):
+    api_key = hmac.new(
+        settings.SECRET_KEY.encode("utf-8"),
+        str(merchant_id).encode("utf-8") + time.ctime().encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    hashed_api_key = bcrypt.hashpw(api_key.encode("utf-8"), bcrypt.gensalt())
+    return api_key, hashed_api_key.decode("utf-8")
+
+
+def verify_api_key(api_key: str, hashed_api_key: str) -> bool:
+    return bcrypt.checkpw(api_key.encode("utf-8"), hashed_api_key.encode("utf-8"))

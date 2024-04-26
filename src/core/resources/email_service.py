@@ -159,6 +159,16 @@ class EmailClient:
         html_content = webhook_html_content
         return cls.send_plain_email(email, subject, html_content)
 
+    @classmethod
+    def send_merchant_wallet_withdrawal_confirmation_email(
+        cls, email: str, values: dict
+    ):
+        template_id = cls.template_handler.get_template(
+            "MERCHANT_USER_WALLET_WITHDRAWAL_VERIFICATION"
+        )
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
     # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, template_id: str, dynamic_template_data: dict):

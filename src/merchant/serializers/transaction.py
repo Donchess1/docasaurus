@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
+from core.resources.third_party.main import ThirdPartyAPI
 from merchant.utils import (
     check_escrow_user_is_valid,
     check_transactions_already_unlocked,
@@ -13,12 +14,18 @@ from merchant.utils import (
     check_transactions_delivery_date_has_elapsed,
     create_merchant_escrow_transaction,
     generate_deposit_transaction_for_escrow,
+    get_merchant_by_id,
     get_merchant_customer_transactions_by_customer_email,
     get_merchant_customers_by_user_type,
     unlock_customer_escrow_transactions,
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
-from utils.utils import generate_random_text, generate_txn_reference, get_escrow_fees
+from utils.utils import (
+    generate_random_text,
+    generate_txn_reference,
+    get_escrow_fees,
+    get_withdrawal_fee,
+)
 
 User = get_user_model()
 MERCHANT_REDIRECT_BASE_URL = os.environ.get("MERCHANT_REDIRECT_BASE_URL", "")
@@ -254,3 +261,37 @@ class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
         res = unlock_customer_escrow_transactions(transactions, user)
         print("UNLOCKING RES", res)
         return res
+
+
+class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
+    amount = serializers.IntegerField()
+    bank_code = serializers.CharField()
+    account_number = serializers.CharField(max_length=10, min_length=10)
+    merchant_id = serializers.UUIDField()
+
+    def validate(self, data):
+        amount = data.get("amount")
+        bank_code = data.get("bank_code")
+        account_number = data.get("account_number")
+        merchant_id = data.get("merchant_id")
+        user = self.context.get("user")
+
+        merchant = get_merchant_by_id(merchant_id)
+        if not merchant:
+            raise serializers.ValidationError({"error": "Merchant does not exist"})
+        charge, total_amount = get_withdrawal_fee(int(amount))
+        if total_amount > user.userprofile.wallet_balance:
+            raise serializers.ValidationError({"error": "Insufficient funds"})
+
+        obj = ThirdPartyAPI.validate_bank_account(bank_code, account_number)
+        if obj["status"] in ["error", False]:
+            raise serializers.ValidationError({"error": "Invalid bank details"})
+        data["merchant_platform"] = merchant.name
+        data["merchant_id"] = str(merchant.id)
+        data["amount"] = int(total_amount)
+        return data
+
+
+class ConfirmMerchantWalletWithdrawalSerializer(serializers.Serializer):
+    otp = serializers.CharField(min_length=6, max_length=6, required=True)
+    temp_id = serializers.CharField()
