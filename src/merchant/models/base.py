@@ -15,23 +15,17 @@ class Merchant(models.Model):
     user_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField()
-    api_key = models.CharField(max_length=255, default=get_priv_key)
     address = models.CharField(max_length=255)
     enable_payout_splitting = models.BooleanField(default=False)
     payout_splitting_ratio = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
     )  # --> 0.20
     metadata = models.JSONField(null=True, blank=True)
-    escrow_redirect_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name}"
-
-    def reset_api_key(self):
-        self.api_key = get_priv_key()
-        self.save()
 
 
 class Customer(models.Model):
@@ -57,3 +51,22 @@ class CustomerMerchant(models.Model):
     user_type_match = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ApiKey(models.Model):
+    id = models.UUIDField(
+        unique=True, primary_key=True, default=uuid.uuid4, editable=False
+    )
+    name = models.CharField(max_length=255)
+    key = models.CharField(max_length=255, null=True, blank=True)
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, null=True, blank=True
+    )
+    buyer_redirect_url = models.CharField(max_length=255, null=True, blank=True)
+    seller_redirect_url = models.CharField(max_length=255, null=True, blank=True)
+    webhook_url = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name}"

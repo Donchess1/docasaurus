@@ -599,7 +599,6 @@ class WalletWithdrawalView(GenericAPIView):
         txn.meta.update({"description": f"FLW Transaction {tx_ref}", "note": msg})
         txn.save()
 
-        # TODO: Send email notification
         print("DATA FOR WALLET DEBIT:", obj["data"])
 
         return Response(

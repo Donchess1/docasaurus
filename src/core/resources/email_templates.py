@@ -56,6 +56,9 @@ class EmailTemplate:
                 "VERIFY_ONE_TIME_LOGIN_CODE": TemplateId(
                     "d-32e80afb15d34862a9775bd8daac1acd"
                 ),
+                "MERCHANT_USER_WALLET_WITHDRAWAL_VERIFICATION": TemplateId(
+                    "d-40e950255187426e8ae022d96c6b5818"
+                ),
             },
             "live": {
                 "ACCOUNT_VERIFICATION": TemplateId(
@@ -107,6 +110,9 @@ class EmailTemplate:
                 ),
                 "VERIFY_ONE_TIME_LOGIN_CODE": TemplateId(
                     "d-900389ba039b4ef4890920267203a11a"
+                ),
+                "MERCHANT_USER_WALLET_WITHDRAWAL_VERIFICATION": TemplateId(
+                    "d-47d95b2d7ea04d70ac7b4ef128e0bd10"
                 ),
             },
         }

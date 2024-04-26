@@ -3,7 +3,7 @@ from django.db import models, transaction
 from rest_framework import serializers
 
 from business.models.business import Business
-from merchant.models import Customer, CustomerMerchant, Merchant
+from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
 from merchant.utils import (
     create_or_update_customer_user,
     customer_phone_numer_exists_for_merchant,
@@ -33,7 +33,6 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "address",
             "enable_payout_splitting",
             "payout_splitting_ratio",
-            "escrow_redirect_url",
             "phone",
             "email",
         )
@@ -66,12 +65,14 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        password = generate_random_text(15)
         user_data = {
             "email": validated_data["email"],
             "phone": validated_data["phone"],
             "name": validated_data["name"],
-            "password": generate_random_text(15),
+            "password": password,
             "is_merchant": True,
+            "is_verified": True,
         }
         user = User.objects.create_user(**user_data)
 
@@ -88,16 +89,20 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "address": validated_data.get("address"),
             "enable_payout_splitting": validated_data.get("enable_payout_splitting"),
             "payout_splitting_ratio": validated_data.get("payout_splitting_ratio"),
-            "escrow_redirect_url": validated_data.get("escrow_redirect_url"),
         }
         merchant = Merchant.objects.create(**merchant_data)
-        return merchant
+        return password, merchant
 
 
 class MerchantSerializer(serializers.ModelSerializer):
+    email = serializers.SerializerMethodField()
+
     class Meta:
         model = Merchant
         fields = "__all__"
+
+    def get_email(self, obj):
+        return obj.user_id.email
 
 
 class MerchantDetailSerializer(serializers.ModelSerializer):
@@ -239,3 +244,9 @@ class CustomerWidgetSessionSerializer(serializers.Serializer):
 class CustomerWidgetSessionPayloadSerializer(serializers.Serializer):
     widget_url = serializers.URLField()
     session_lifetime = serializers.CharField()
+
+
+class ApiKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApiKey
+        fields = ["name"]

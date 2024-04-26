@@ -1,16 +1,18 @@
 from django.urls import path
 
 from merchant.views.base import (
+    MerchantApiKeyView,
     MerchantCreateView,
     MerchantCustomerView,
     MerchantListView,
     MerchantProfileView,
-    MerchantResetKeyView,
 )
 from merchant.views.customer import (
+    ConfirmMerchantWalletWithdrawalView,
     CustomerTransactionDetailView,
     CustomerTransactionListView,
     CustomerWidgetSessionView,
+    InitiateMerchantWalletWithdrawalView,
 )
 from merchant.views.transaction import (
     InitiateMerchantEscrowTransactionView,
@@ -23,7 +25,7 @@ urlpatterns = [
     path("list", MerchantListView.as_view(), name="list-merchants"),
     path("profile", MerchantProfileView.as_view(), name="merchant-profile"),
     path("create", MerchantCreateView.as_view(), name="create-merchants"),
-    path("reset-api-key", MerchantResetKeyView.as_view(), name="reset-api-key"),
+    path("api-key", MerchantApiKeyView.as_view(), name="merchant-api-key"),
     path(
         "customers", MerchantCustomerView.as_view(), name="register-merchant-customer"
     ),
@@ -51,6 +53,16 @@ urlpatterns = [
         "initiate-escrow",
         InitiateMerchantEscrowTransactionView.as_view(),
         name="initiate-merchant-escrow",
+    ),
+    path(
+        "customers/initiate-withdrawal",
+        InitiateMerchantWalletWithdrawalView.as_view(),
+        name="initiate-wallet-withdrawal",
+    ),
+    path(
+        "customers/confirm-withdrawal",
+        ConfirmMerchantWalletWithdrawalView.as_view(),
+        name="confirm-wallet-withdrawal",
     ),
     path(
         "escrow-redirect",
