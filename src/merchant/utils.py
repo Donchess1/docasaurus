@@ -13,7 +13,7 @@ from django.db.models import OuterRef, Q, Subquery
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.flutterwave import FlwAPI
-from merchant.models import Customer, CustomerMerchant, Merchant
+from merchant.models import Customer, CustomerMerchant, Merchant, ApiKey
 from users.models import UserProfile
 from utils.utils import generate_random_text, generate_txn_reference
 
@@ -106,6 +106,21 @@ def get_merchant_by_id(merchant_id):
         print("Error", str(e))
         instance = None
     return instance
+
+def get_merchant_users_redirect_url(merchant: Merchant)-> dict:
+    """
+    Retrieve Merchant Redicrect URLs for Buyer and Seller
+    """
+    try:
+        instance = ApiKey.objects.filter(merchant=merchant).first()
+        if instance:
+            return {
+                "buyer_redirect_url": instance.buyer_redirect_url,
+                "seller_redirect_url": instance.seller_redirect_url,
+            }
+    except Exception as e:
+        print("Error", str(e))
+        return None
 
 
 def customer_phone_numer_exists_for_merchant(merchant, phone_number):

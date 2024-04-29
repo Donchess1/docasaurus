@@ -22,6 +22,7 @@ from merchant.utils import (
     get_merchant_by_id,
     get_merchant_escrow_users,
     validate_request,
+    get_merchant_users_redirect_url,
 )
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
@@ -316,15 +317,18 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
-
+        buyer_redirect_url = None
+        redirect_urls = get_merchant_users_redirect_url(escrow_txn.merchant)
+        if redirect_urls:
+            buyer_redirect_url = redirect_urls.get("buyer_redirect_url")
+        
         return Response(
             success=True,
             status_code=status.HTTP_200_OK,
             data={
                 "transaction_reference": escrow_txn_ref,
                 "amount": escrow_amount_to_charge,
-                "redirect_url": escrow_txn.merchant.escrow_redirect_url
-                or f"{FRONTEND_BASE_URL}/login",
+                "redirect_url": buyer_redirect_url if buyer_redirect_url else f"{FRONTEND_BASE_URL}/login",
             },
             message="Transaction verified.",
         )
