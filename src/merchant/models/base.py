@@ -16,10 +16,10 @@ class Merchant(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     address = models.CharField(max_length=255)
-    enable_payout_splitting = models.BooleanField(default=False)
-    payout_splitting_ratio = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True
-    )  # --> 0.20
+    # enable_payout_splitting = models.BooleanField(default=False)
+    # payout_splitting_ratio = models.DecimalField(
+    #     max_digits=5, decimal_places=2, null=True, blank=True
+    # )  # --> 0.20
     metadata = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
