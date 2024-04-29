@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from merchant.models import Merchant
+from merchant.models import Merchant, PayoutConfig
 from users.models.user import CustomUser
 
 
@@ -21,6 +21,7 @@ class Transaction(models.Model):
         ("DEPOSIT", "DEPOSIT"),
         ("WITHDRAW", "WITHDRAW"),
         ("ESCROW", "ESCROW"),
+        ("MERCHANT_SETTLEMENT", "MERCHANT_SETTLEMENT"),
     )
     PROVIDER = (
         ("FLUTTERWAVE", "FLUTTERWAVE"),
@@ -73,6 +74,12 @@ class EscrowMeta(models.Model):
     delivery_date = models.DateField()
     delivery_tolerance = models.IntegerField(null=True, blank=True, default=3)
     charge = models.IntegerField(null=True, blank=True)
+    payout_config = models.ForeignKey(
+        PayoutConfig,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     meta = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

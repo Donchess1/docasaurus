@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
-from merchant.utils import check_transactions_delivery_date_has_elapsed
+from merchant.utils import transactions_delivery_date_has_not_elapsed
 
 User = get_user_model()
 
@@ -65,7 +65,7 @@ class DisputeSerializer(serializers.ModelSerializer):
         )
 
     def validate_transaction(self, value):
-        if check_transactions_delivery_date_has_elapsed([str(value.id)]):
+        if transactions_delivery_date_has_not_elapsed([str(value.id)]):
             raise serializers.ValidationError("Delivery date is not due yet")
         if Dispute.objects.filter(transaction=value).exists():
             raise serializers.ValidationError(

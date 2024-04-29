@@ -8,15 +8,17 @@ from rest_framework import serializers
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.third_party.main import ThirdPartyAPI
 from merchant.utils import (
-    check_escrow_user_is_valid,
-    check_transactions_already_unlocked,
-    check_transactions_are_valid_escrows,
-    check_transactions_delivery_date_has_elapsed,
     create_merchant_escrow_transaction,
+    escrow_user_is_valid,
     generate_deposit_transaction_for_escrow,
+    get_merchant_active_payout_configuration,
     get_merchant_by_id,
     get_merchant_customer_transactions_by_customer_email,
     get_merchant_customers_by_user_type,
+    get_merchant_transaction_charges,
+    transactions_are_already_unlocked,
+    transactions_are_invalid_escrows,
+    transactions_delivery_date_has_not_elapsed,
     unlock_customer_escrow_transactions,
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
@@ -29,6 +31,8 @@ from utils.utils import (
 
 User = get_user_model()
 MERCHANT_REDIRECT_BASE_URL = os.environ.get("MERCHANT_REDIRECT_BASE_URL", "")
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+env = "live" if ENVIRONMENT == "production" else "test"
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
@@ -132,14 +136,14 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     def validate_buyer(self, value):
         merchant = self.context.get("merchant")
         user_list = get_merchant_customers_by_user_type(merchant, "BUYER")
-        if not check_escrow_user_is_valid(value, user_list):
+        if not escrow_user_is_valid(value, user_list):
             raise serializers.ValidationError("Buyer does not exist.")
         return value
 
     def validate_seller(self, value):
         merchant = self.context.get("merchant")
         user_list = get_merchant_customers_by_user_type(merchant, "SELLER")
-        if not check_escrow_user_is_valid(value, user_list):
+        if not escrow_user_is_valid(value, user_list):
             raise serializers.ValidationError("Seller does not exist.")
         return value
 
@@ -149,6 +153,11 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Delivery date cannot be earlier that today."
             )
+        return value
+
+    def validate_amount(self, value):
+        if env == "test" and value > 30000:
+            raise serializers.ValidationError("Use amounts less than NGN30,000")
         return value
 
     @transaction.atomic
@@ -165,7 +174,12 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         charge, amount_payable = get_escrow_fees(amount)
         tx_ref = generate_random_text(length=20)
 
-        escrow_txn_instance = create_merchant_escrow_transaction(
+        merchant_payout_config = get_merchant_active_payout_configuration(merchant)
+        merchant_user_charges = get_merchant_transaction_charges(
+            merchant, amount, merchant_payout_config
+        )
+        merchant_buyer_charge = merchant_user_charges.get("buyer_charge")
+        escrow_txn_instance, escrow_txn_meta = create_merchant_escrow_transaction(
             merchant,
             buyer,
             seller,
@@ -177,10 +191,21 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             item_type,
             item_quantity,
             delivery_date,
+            merchant_payout_config,
         )
 
         payer = User.objects.filter(email=buyer).first()
-        amount_to_charge = amount + charge
+        amount_to_charge = amount + charge + int(merchant_buyer_charge)
+
+        payment_breakdown = {
+            "base_amount": str(amount),
+            "buyer_escrow_fees": str(charge),
+            "merchant_fees": str(merchant_buyer_charge),
+            "total_payable": str(amount_to_charge),
+            "currency": "NGN",
+        }
+        escrow_txn_meta.meta.update({"payment_breakdown": payment_breakdown})
+        escrow_txn_meta.save()
         new_tx_ref = generate_txn_reference()
         deposit_txn = generate_deposit_transaction_for_escrow(
             escrow_txn_instance, payer, amount_to_charge, new_tx_ref
@@ -202,9 +227,10 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             },
             "meta": {
                 "escrow_transaction_reference": escrow_txn_instance.reference,
+                "total_payable_amount": str(amount_to_charge),
             },
         }
-        return flw_txn_data
+        return flw_txn_data, payment_breakdown
 
 
 class MerchantEscrowRedirectPayloadSerializer(serializers.Serializer):
@@ -230,26 +256,24 @@ class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
 
         if not set(transactions).issubset(set(valid_customer_transactions_ids)):
             raise serializers.ValidationError(
-                {"transactions": "One or more invalid transaction(s) to be unlocked"}
+                {"error": "One or more transaction(s) invalid for user"}
             )
 
         transactions = list(set(transactions))
 
-        if not check_transactions_are_valid_escrows(transactions):
+        if transactions_are_invalid_escrows(transactions):
             raise serializers.ValidationError(
-                {"transactions": "One or more transaction(s) not a valid escrow"}
+                {"error": "One or more transaction(s) not a valid escrow"}
             )
 
-        if check_transactions_delivery_date_has_elapsed(transactions):
+        if transactions_delivery_date_has_not_elapsed(transactions):
             raise serializers.ValidationError(
-                {"transactions": "One or more transaction(s) not due for unlocking yet"}
+                {"error": "One or more transaction(s) not due for unlocking yet"}
             )
 
-        if not check_transactions_already_unlocked(transactions):
+        if transactions_are_already_unlocked(transactions):
             raise serializers.ValidationError(
-                {
-                    "transactions": "One or more transaction(s) have already been unlocked"
-                }
+                {"error": "One or more transaction(s) have already been unlocked"}
             )
         data["transactions"] = transactions
         return data
@@ -258,9 +282,12 @@ class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
     def create(self, validated_data):
         transactions = validated_data.get("transactions")
         user = self.context.get("user")
-        res = unlock_customer_escrow_transactions(transactions, user)
-        print("UNLOCKING RES", res)
-        return res
+        completed = unlock_customer_escrow_transactions(transactions, user)
+        if not completed:
+            raise serializers.ValidationError(
+                {"error": "One or more transaction(s) could not be unlocked"}
+            )
+        return transactions
 
 
 class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):

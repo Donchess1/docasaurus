@@ -6,8 +6,8 @@ from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from dispute import tasks
 from merchant.utils import (
-    check_transactions_delivery_date_has_elapsed,
     get_merchant_escrow_users,
+    transactions_delivery_date_has_not_elapsed,
 )
 from utils.utils import add_commas_to_transaction_amount, parse_date, parse_datetime
 
@@ -49,7 +49,7 @@ class MerchantEscrowDisputeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"transaction": "Dispute has already been raised for this transaction."}
             )
-        if check_transactions_delivery_date_has_elapsed([str(transaction.id)]):
+        if transactions_delivery_date_has_not_elapsed([str(transaction.id)]):
             raise serializers.ValidationError(
                 {"transaction": "Delivery date is not due yet"}
             )

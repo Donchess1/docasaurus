@@ -21,8 +21,8 @@ from merchant.utils import (
     get_customer_merchant_instance,
     get_merchant_by_id,
     get_merchant_escrow_users,
-    validate_request,
     get_merchant_users_redirect_url,
+    validate_request,
 )
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
@@ -54,20 +54,55 @@ class MerchantTransactionListView(generics.ListAPIView):
     @authorized_api_call
     def list(self, request, *args, **kwargs):
         merchant_id = request.headers.get("X-IDENTITY")
-        merchant = Merchant.objects.filter(id=merchant_id).first()
-        request_is_valid, resource = validate_request(request)
-        if not request_is_valid:
+        merchant = get_merchant_by_id(merchant_id)
+        if not merchant:
             return Response(
                 success=False,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message=resource,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
             )
-        merchant = resource
-        queryset = self.get_queryset().filter(merchant=merchant)
+        queryset = self.get_queryset().filter(merchant=merchant, type="ESCROW")
         filtered_queryset = self.filter_queryset(queryset)
         qs = self.paginate_queryset(filtered_queryset)
         serializer = self.get_serializer(qs, many=True)
         self.pagination_class.message = "Transactions retrieved successfully"
+        response = self.get_paginated_response(
+            serializer.data,
+        )
+        return response
+
+
+class MerchantSettlementTransactionListView(generics.ListAPIView):
+    serializer_class = MerchantTransactionSerializer
+    queryset = Transaction.objects.filter().order_by("-created_at")
+    permission_classes = (permissions.AllowAny,)
+    pagination_class = CustomPagination
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["reference", "provider", "type"]
+
+    @swagger_auto_schema(
+        operation_description="List Merchant Settlements",
+        responses={
+            200: MerchantTransactionSerializer,
+        },
+    )
+    @authorized_api_call
+    def list(self, request, *args, **kwargs):
+        merchant_id = request.headers.get("X-IDENTITY")
+        merchant = get_merchant_by_id(merchant_id)
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        queryset = self.get_queryset().filter(
+            merchant=merchant, type="MERCHANT_SETTLEMENT"
+        )
+        filtered_queryset = self.filter_queryset(queryset)
+        qs = self.paginate_queryset(filtered_queryset)
+        serializer = self.get_serializer(qs, many=True)
+        self.pagination_class.message = "Settlements retrieved successfully"
         response = self.get_paginated_response(
             serializer.data,
         )
@@ -92,7 +127,13 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
     @authorized_api_call
     def post(self, request, *args, **kwargs):
         merchant_id = request.headers.get("X-IDENTITY")
-        merchant = Merchant.objects.filter(id=merchant_id).first()
+        merchant = get_merchant_by_id(merchant_id)
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
         serializer = self.get_serializer(
             data=request.data, context={"merchant": merchant}
         )
@@ -102,8 +143,8 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
-        instance_txn_data = self.perform_create(serializer)
-        obj = self.flw_api.initiate_payment_link(instance_txn_data)
+        flw_init_txn_data, payment_breakdown = self.perform_create(serializer)
+        obj = self.flw_api.initiate_payment_link(flw_init_txn_data)
         if obj["status"] == "error":
             return Response(
                 success=False,
@@ -111,7 +152,7 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
                 message=obj["message"],
             )
 
-        payload = {"link": obj["data"]["link"]}
+        payload = {"link": obj["data"]["link"], "payment_breakdown": payment_breakdown}
         return Response(
             success=True,
             status_code=status.HTTP_201_CREATED,
@@ -202,11 +243,12 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             and obj["data"]["charged_amount"] >= txn.amount
         ):
             escrow_txn_ref = obj["data"]["meta"]["escrow_transaction_reference"]
+            total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
             escrow_txn = Transaction.objects.filter(reference=escrow_txn_ref).first()
             escrow_txn.verified = True
             escrow_txn.status = "SUCCESSFUL"
             escrow_txn.save()
-            escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
+            escrow_amount_to_charge = int(total_payable_amount_to_charge)
 
             flw_ref = obj["data"]["flw_ref"]
             narration = obj["data"]["narration"]
@@ -321,14 +363,16 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
         redirect_urls = get_merchant_users_redirect_url(escrow_txn.merchant)
         if redirect_urls:
             buyer_redirect_url = redirect_urls.get("buyer_redirect_url")
-        
+
         return Response(
             success=True,
             status_code=status.HTTP_200_OK,
             data={
                 "transaction_reference": escrow_txn_ref,
                 "amount": escrow_amount_to_charge,
-                "redirect_url": buyer_redirect_url if buyer_redirect_url else f"{FRONTEND_BASE_URL}/login",
+                "redirect_url": buyer_redirect_url
+                if buyer_redirect_url
+                else f"{FRONTEND_BASE_URL}/login",
             },
             message="Transaction verified.",
         )
@@ -365,14 +409,14 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             return Response(
                 success=False,
                 message="Merchant does not exist",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_404_NOT_FOUND,
             )
         merchant_customer = get_customer_merchant_instance(user.email, merchant)
         if not merchant_customer:
             return Response(
                 success=False,
                 message="Customer does not exist for merchant",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_404_NOT_FOUND,
             )
         serializer = self.serializer_class(
             data=request.data,

@@ -35,7 +35,7 @@ def authorized_api_call(view_func):
             return Response(
                 success=False,
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                message="Invalid API Key",
+                message="API key does not exist",
             )
 
         if not verify_api_key(api_key, api_key_obj.key):
