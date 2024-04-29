@@ -8,6 +8,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
 from core.resources.jwt_client import JWTClient
+from merchant.utils import get_merchant_by_email
 from users.models.profile import UserProfile
 from users.serializers.login import LoginPayloadSerializer, LoginSerializer
 from users.serializers.user import UserSerializer
@@ -69,6 +70,8 @@ class LoginView(GenericAPIView):
         user.userprofile.save()
 
         token = self.jwt_client.sign(user_id)
+        merchant = get_merchant_by_email(user.email)
+
         return Response(
             success=True,
             message="Login successful",
@@ -76,6 +79,7 @@ class LoginView(GenericAPIView):
                 "token": token["access_token"],
                 "phone_number_flagged": user.userprofile.phone_number_flagged,
                 "user": UserSerializer(user).data,
+                "merchant": str(merchant.id) if merchant else None,
             },
             status_code=status.HTTP_200_OK,
         )

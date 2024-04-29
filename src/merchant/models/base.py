@@ -70,3 +70,31 @@ class ApiKey(models.Model):
 
     def __str__(self):
         return f"{self.name}"
+
+
+class PayoutConfig(models.Model):
+    PAYMENT_TYPE_CHOICES = (
+        ("PERCENTAGE", "Percentage"),
+        ("FLAT_FEE", "Flat Fee"),
+        ("NO_FEES", "No Fees"),
+    )
+    id = models.UUIDField(
+        unique=True, primary_key=True, default=uuid.uuid4, editable=False
+    )
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    buyer_charge_type = models.CharField(
+        max_length=255, choices=PAYMENT_TYPE_CHOICES, default="NO_FEES"
+    )
+    buyer_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    seller_charge_type = models.CharField(
+        max_length=255, choices=PAYMENT_TYPE_CHOICES, default="NO_FEES"
+    )
+    seller_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

@@ -7,16 +7,11 @@ from uuid import uuid4
 
 from django.core.validators import RegexValidator
 
-from users.models import BankAccount
-
-# from core.resources.flutterwave import FlwAPI
-
-# flw_api = FlwAPI
-
 
 def parse_datetime(datetime_input):
     val = str(datetime_input)[:-6]
     parsed_datetime = datetime.fromisoformat(val)  # Removed the timezone offset
+    parsed_datetime += timedelta(hours=1)  # Offset by an hour ahead
     return parsed_datetime.strftime("%B %d, %Y %I:%M%p")
 
 
@@ -131,17 +126,8 @@ def generate_random_text(length):
     )
 
 
-def add_60_minutes():
-    current_datetime = datetime.now()
-    new_datetime = current_datetime + timedelta(minutes=60)
-    formatted_datetime = new_datetime.strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )  # Formats the datetime as "YYYY-MM-DD HH:MM:SS"
-    return formatted_datetime
-
-
 def generate_txn_reference():
-    random_text = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    random_text = "".join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
     now = datetime.now()
     year = str(now.year)

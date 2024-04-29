@@ -1,1 +1,1 @@
-from .base import Merchant, Customer, CustomerMerchant, ApiKey
+from .base import Merchant, Customer, CustomerMerchant, ApiKey, PayoutConfig

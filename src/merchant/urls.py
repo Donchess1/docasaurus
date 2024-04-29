@@ -1,5 +1,10 @@
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
+from merchant.views.payout import PayoutConfigViewSet
+
+router = DefaultRouter()
+router.register(r"payout-config", PayoutConfigViewSet)
 from merchant.views.base import (
     MerchantApiKeyView,
     MerchantCreateView,
@@ -17,11 +22,13 @@ from merchant.views.customer import (
 from merchant.views.transaction import (
     InitiateMerchantEscrowTransactionView,
     MerchantEscrowTransactionRedirectView,
+    MerchantSettlementTransactionListView,
     MerchantTransactionListView,
     UnlockEscrowFundsView,
 )
 
 urlpatterns = [
+    path("", include(router.urls)),
     path("list", MerchantListView.as_view(), name="list-merchants"),
     path("profile", MerchantProfileView.as_view(), name="merchant-profile"),
     path("create", MerchantCreateView.as_view(), name="create-merchants"),
@@ -29,15 +36,20 @@ urlpatterns = [
     path(
         "customers", MerchantCustomerView.as_view(), name="register-merchant-customer"
     ),
-    # path(
-    #     "customers/unlock-funds",
-    #     UnlockEscrowFundsView.as_view(),
-    #     name="unlock-customer-escrow-funds",
-    # ),
+    path(
+        "customers/unlock-funds",
+        UnlockEscrowFundsView.as_view(),
+        name="unlock-customer-escrow-funds",
+    ),
     path(
         "transactions",
         MerchantTransactionListView.as_view(),
         name="merchant-transactions",
+    ),
+    path(
+        "settlements",
+        MerchantSettlementTransactionListView.as_view(),
+        name="merchant-settlement-transactions",
     ),
     path(
         "customer-transactions",

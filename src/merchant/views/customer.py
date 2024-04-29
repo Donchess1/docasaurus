@@ -130,7 +130,9 @@ class CustomerTransactionListView(generics.ListAPIView):
                 message="Customer does not exist for merchant",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        merchant_transactions_queryset = self.get_queryset().filter(merchant=merchant)
+        merchant_transactions_queryset = self.get_queryset().filter(
+            merchant=merchant, type="ESCROW"
+        )
         customer_queryset = merchant_transactions_queryset.filter(
             Q(escrowmeta__partner_email=customer_email)
             | Q(escrowmeta__meta__parties__buyer=customer_email)
