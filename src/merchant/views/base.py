@@ -55,6 +55,7 @@ class MerchantListView(generics.ListAPIView):
             message="Merchants retrieved successfully",
             data=serializer.data,
             status_code=status.HTTP_200_OK,
+            meta={"count": len(serializer.data)},
         )
 
 
@@ -157,4 +158,5 @@ class MerchantCustomerView(generics.CreateAPIView):
             data=serialized_customers.data,
             message="Customers retrieved successfully",
             status_code=status.HTTP_200_OK,
+            meta={"count": len(serialized_customers.data)},
         )

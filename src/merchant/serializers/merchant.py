@@ -93,15 +93,24 @@ class MerchantSerializer(serializers.ModelSerializer):
 
 
 class MerchantDetailSerializer(serializers.ModelSerializer):
-    user_profile = serializers.SerializerMethodField()
+    wallet_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = Merchant
-        fields = "__all__"
+        fields = (
+            "id",
+            "name",
+            "description",
+            "address",
+            "wallet_balance",
+            "created_at",
+            "updated_at",
+        )
 
-    def get_user_profile(self, obj):
+    def get_wallet_balance(self, obj):
         user_profile = UserProfile.objects.get(user_id=obj.user_id)
-        return UserProfileSerializer(user_profile).data
+        # data = UserProfileSerializer(user_profile).data
+        return str(user_profile.wallet_balance)
 
 
 class CustomerUserProfileSerializer(serializers.ModelSerializer):
@@ -109,18 +118,18 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     phone_number = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
     user_type = serializers.SerializerMethodField()
-    merchant_name = serializers.SerializerMethodField()
+    # merchant_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
         fields = (
-            "id",
+            # "id",
             "user_type",
             "created_at",
             "updated_at",
             "full_name",
             "phone_number",
-            "merchant_name",
+            # "merchant_name",
             "email",
         )
 
