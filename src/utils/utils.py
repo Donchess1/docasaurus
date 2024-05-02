@@ -37,6 +37,25 @@ def parse_date(date_input):
     return formatted_date
 
 
+def custom_flatten_uuid(uuid_string):
+    """Flatten a UUID string by removing dashes and reverses the string."""
+    return uuid_string.replace("-", "")[::-1]
+
+
+def unflatten_uuid(flattened_uuid):
+    flattened_uuid = flattened_uuid[::-1]
+    """Deflatten a flattened UUID string by reversing the string and adding dashes."""
+    return "-".join(
+        [
+            flattened_uuid[:8],
+            flattened_uuid[8:12],
+            flattened_uuid[12:16],
+            flattened_uuid[16:20],
+            flattened_uuid[20:],
+        ]
+    )
+
+
 def add_commas_to_transaction_amount(number):
     number_str = str(number).split(".")[0]
     # Reverse the string

@@ -1,3 +1,5 @@
+import os
+
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
 
@@ -14,6 +16,10 @@ from merchant.serializers.merchant import (
 from merchant.utils import generate_api_key
 from users.serializers.user import UserSerializer
 from utils.response import Response
+from utils.utils import custom_flatten_uuid, generate_random_text
+
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+env = "live" if ENVIRONMENT == "production" else "test"
 
 
 class MerchantCreateView(generics.CreateAPIView):
@@ -83,19 +89,27 @@ class MerchantApiKeyView(generics.GenericAPIView):
             )
         raw_api_key, hashed_api_key = generate_api_key(str(merchant.id))
         name = serializer.validated_data.get("name")
+        key_identifier = None
 
         existing_api_key = ApiKey.objects.filter(merchant=merchant).first()
         if existing_api_key:
             existing_api_key.key = hashed_api_key
             existing_api_key.save()
+            key_identifier = str(existing_api_key.id)
         else:
-            ApiKey.objects.create(key=hashed_api_key, merchant=merchant, name=name)
+            obj = ApiKey.objects.create(
+                key=hashed_api_key, merchant=merchant, name=name
+            )
+            key_identifier = str(obj.id)
+
+        suffix = f"{generate_random_text(3)}{custom_flatten_uuid(key_identifier)}{raw_api_key}"
+        api_key = f"MYBTSTSECK-{suffix}" if env == "test" else f"MYBLIVSECK-{suffix}"
 
         return Response(
             success=True,
             message="API Key generated successfully. You can only view once.",
             status_code=status.HTTP_200_OK,
-            data={"api_key": raw_api_key},
+            data={"api_key": api_key},
         )
 
 
@@ -105,8 +119,7 @@ class MerchantProfileView(generics.GenericAPIView):
 
     @authorized_api_call
     def get(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = Merchant.objects.filter(id=merchant_id).first()
+        merchant = request.merchant
         serializer = self.get_serializer(merchant)
         return Response(
             success=True,

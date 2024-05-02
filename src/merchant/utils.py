@@ -597,7 +597,7 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
 def generate_api_key(merchant_id):
     api_key = hmac.new(
         settings.SECRET_KEY.encode("utf-8"),
-        str(merchant_id).encode("utf-8") + time.ctime().encode("utf-8"),
+        merchant_id.encode("utf-8") + time.ctime().encode("utf-8"),
         digestmod=hashlib.sha256,
     ).hexdigest()
     hashed_api_key = bcrypt.hashpw(api_key.encode("utf-8"), bcrypt.gensalt())
