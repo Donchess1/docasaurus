@@ -248,7 +248,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             escrow_txn.verified = True
             escrow_txn.status = "SUCCESSFUL"
             escrow_txn.save()
-            escrow_amount_to_charge = int(total_payable_amount_to_charge)
+            escrow_amount_to_charge = total_payable_amount_to_charge
 
             flw_ref = obj["data"]["flw_ref"]
             narration = obj["data"]["narration"]
