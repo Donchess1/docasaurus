@@ -445,8 +445,8 @@ def settle_merchant_escrow_charges(
         currency="NGN",
         provider="MYBALANCE",
         meta={
-            "title": "Escrow Settlement",
-            "description": f"Free Escrow Reversal",
+            # "title": "Escrow Settlement",
+            "description": "Merchant Escrow Settlement",
             "escrow_transaction": str(transaction.id),
         },
     )

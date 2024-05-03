@@ -267,6 +267,26 @@ class PayoutConfigSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate_buyer_amount(self, value):
+        buyer_charge_type = self.initial_data.get("buyer_charge_type")
+        if (
+            (buyer_charge_type == "PERCENTAGE"
+            and value > 100)
+            or buyer_charge_type == "NO_FEES"
+        ):
+            return 0
+        return value
+
+    def validate_seller_amount(self, value):
+        seller_charge_type = self.initial_data.get("seller_charge_type")
+        if (
+            (seller_charge_type == "PERCENTAGE"
+            and value > 100)
+            or seller_charge_type == "NO_FEES"
+        ):
+            return 0
+        return value
+
     def validate(self, data):
         name = data.get("name")
         merchant = self.context.get("merchant")

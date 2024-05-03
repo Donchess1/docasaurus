@@ -95,7 +95,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             "status": "PENDING",
             "type": "ESCROW",
             "provider": "MYBALANCE",
-            "mode": "Web",
+            "mode": "WEB",
             "amount": amount,
             "charge": charge,
             "meta": {"title": title, "description": purpose},

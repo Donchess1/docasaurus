@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -36,19 +37,23 @@ env = "live" if ENVIRONMENT == "production" else "test"
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
-    author_name = serializers.SerializerMethodField()
+    # author_name = serializers.SerializerMethodField()
+    parties = serializers.SerializerMethodField()
+    payment_breakdown = serializers.SerializerMethodField()
 
     class Meta:
         model = EscrowMeta
         fields = (
-            "id",
-            "author",
-            "author_name",
-            "purpose",
-            "item_type",
+            # "id",
+            # "author",
+            # "author_name",
+            # "purpose",
+            # "item_type",
             "item_quantity",
             "delivery_date",
-            "meta",
+            # "meta",
+            "parties",
+            "payment_breakdown",
             # "partner_email",
             # "delivery_tolerance",
             # "charge",
@@ -59,6 +64,12 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
     def get_author_name(self, obj):
         return obj.transaction_id.user_id.name
 
+    def get_parties(self, obj):
+        return obj.meta.get("parties", None)
+
+    def get_payment_breakdown(self, obj):
+        return obj.meta.get("payment_breakdown", None)
+
 
 class MerchantTransactionSerializer(serializers.ModelSerializer):
     # locked_amount = serializers.SerializerMethodField()
@@ -68,20 +79,20 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = (
             "id",
-            "user_id",
+            # "user_id",
             "status",
             "type",
             "mode",
             "reference",
-            "narration",
+            # "narration",
             "amount",
             "charge",
-            "remitted_amount",
+            # "remitted_amount",
             "currency",
-            "provider",
-            "provider_tx_reference",
+            # "provider",
+            # "provider_tx_reference",
             "meta",
-            "merchant",
+            # "merchant",
             "verified",
             # "locked_amount",
             "escrow",
@@ -91,20 +102,20 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "created_at",
             "updated_at",
-            "provider_tx_reference",
+            # "provider_tx_reference",
             "meta",
-            "merchant",
+            # "merchant",
             "verified",
-            "user_id",
+            # "user_id",
             "type",
             "mode",
             "reference",
-            "narration",
+            # "narration",
             "amount",
             "charge",
-            "remitted_amount",
+            # "remitted_amount",
             "currency",
-            "locked_amount",
+            # "locked_amount",
             "escrow",
             "provider",
         )
@@ -179,6 +190,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             merchant, amount, merchant_payout_config
         )
         merchant_buyer_charge = merchant_user_charges.get("buyer_charge")
+        merchant_seller_charge = merchant_user_charges.get("seller_charge")
         escrow_txn_instance, escrow_txn_meta = create_merchant_escrow_transaction(
             merchant,
             buyer,
@@ -200,7 +212,13 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         payment_breakdown = {
             "base_amount": str(amount),
             "buyer_escrow_fees": str(charge),
-            "merchant_fees": str(merchant_buyer_charge),
+            "seller_escrow_fees": str(charge),
+            "buyer_merchant_fees": str(merchant_buyer_charge),
+            "seller_merchant_fees": str(merchant_seller_charge),
+            "total_merchant_fees": str(
+                Decimal(str(merchant_buyer_charge))
+                + Decimal(str(merchant_seller_charge))
+            ),
             "total_payable": str(amount_to_charge),
             "currency": "NGN",
         }

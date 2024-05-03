@@ -397,6 +397,12 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 message="Customer does not exist for merchant",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
+        if merchant_customer.user_type != "BUYER":
+            return Response(
+                success=False,
+                message="Only a buyer can unlock funds",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
         serializer = self.serializer_class(
             data=request.data,
             context={

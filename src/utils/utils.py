@@ -179,7 +179,7 @@ def get_withdrawal_fee(amount):
 
 
 def deconstruct_merchant_widget_key(key):
-    if len(key) != 320:
+    if not len(key) in [320, 321]:
         return None
     return {"token": key[72:-4], "merchant_id": key[36:72]}
 
