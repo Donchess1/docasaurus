@@ -140,8 +140,7 @@ class MerchantCustomerView(generics.CreateAPIView):
 
     @authorized_api_call
     def post(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = Merchant.objects.filter(id=merchant_id).first()
+        merchant = request.merchant
         serializer = self.get_serializer(
             data=request.data, context={"merchant": merchant}
         )
@@ -160,8 +159,7 @@ class MerchantCustomerView(generics.CreateAPIView):
 
     @authorized_api_call
     def get(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = Merchant.objects.filter(id=merchant_id).first()
+        merchant = request.merchant
         customers = merchant.customer_set.all()
         serialized_customers = CustomerUserProfileSerializer(
             customers, many=True, context={"merchant": merchant}

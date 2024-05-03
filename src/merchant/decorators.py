@@ -25,7 +25,7 @@ def authorized_api_call(view_func):
             return Response(
                 success=False,
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                message="Invalid API key lenght",
+                message="Malformed API key",
             )
         scrambled_identity = api_key[14:46]
         identity = unflatten_uuid(scrambled_identity)

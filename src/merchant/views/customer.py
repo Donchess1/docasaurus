@@ -59,8 +59,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
     )
     @authorized_api_call
     def post(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = Merchant.objects.filter(id=merchant_id).first()
+        merchant = request.merchant
         serializer = self.serializer_class(
             data=request.data,
             context={
@@ -345,7 +344,6 @@ class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=resource,
             )
-        print("CACHE DATA", resource)
         data = resource.get("data")
         successful, resource = initiate_gateway_withdrawal_transaction(user, data)
         return (

@@ -3,7 +3,6 @@ from rest_framework import status, viewsets
 from merchant.decorators import authorized_api_call
 from merchant.models.base import PayoutConfig
 from merchant.serializers.merchant import PayoutConfigSerializer
-from merchant.utils import get_merchant_by_id
 from utils.response import Response
 
 
@@ -14,14 +13,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
 
     @authorized_api_call
     def create(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         serializer = self.get_serializer(
             data=request.data, context={"merchant": merchant}
         )
@@ -47,14 +39,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
 
     @authorized_api_call
     def list(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         queryset = self.queryset.filter(merchant=merchant)
         serializer = self.get_serializer(queryset, many=True)
         return Response(
@@ -66,14 +51,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
 
     @authorized_api_call
     def retrieve(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         instance = self.get_object()
         if instance.merchant != merchant:
             return Response(
@@ -91,14 +69,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
 
     @authorized_api_call
     def destroy(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         instance = self.get_object()
         if instance.merchant != merchant:
             return Response(

@@ -53,14 +53,7 @@ class MerchantTransactionListView(generics.ListAPIView):
     )
     @authorized_api_call
     def list(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         queryset = self.get_queryset().filter(merchant=merchant, type="ESCROW")
         filtered_queryset = self.filter_queryset(queryset)
         qs = self.paginate_queryset(filtered_queryset)
@@ -88,14 +81,7 @@ class MerchantSettlementTransactionListView(generics.ListAPIView):
     )
     @authorized_api_call
     def list(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         queryset = self.get_queryset().filter(
             merchant=merchant, type="MERCHANT_SETTLEMENT"
         )
@@ -126,14 +112,7 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
     )
     @authorized_api_call
     def post(self, request, *args, **kwargs):
-        merchant_id = request.headers.get("X-IDENTITY")
-        merchant = get_merchant_by_id(merchant_id)
-        if not merchant:
-            return Response(
-                success=False,
-                message="Merchant does not exist",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        merchant = request.merchant
         serializer = self.get_serializer(
             data=request.data, context={"merchant": merchant}
         )
