@@ -21,7 +21,6 @@ def authorized_api_call(view_func):
                 message="Invalid header. Provide API key",
             )
         # test_env_sample_key = "MYBTSTSECK-" + random_text(3) + reversed_and_flattened_api_key_id + raw_api_key"
-        print("API key lenght:", len(api_key))
         if len(api_key) != 110:
             return Response(
                 success=False,
