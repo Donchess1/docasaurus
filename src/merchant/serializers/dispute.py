@@ -53,7 +53,7 @@ class MerchantEscrowDisputeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"transaction": "Delivery date is not due yet"}
             )
-        return None
+        return data
 
     @transaction.atomic
     def create(self, validated_data):
