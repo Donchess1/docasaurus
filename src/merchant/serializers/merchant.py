@@ -270,20 +270,16 @@ class PayoutConfigSerializer(serializers.ModelSerializer):
     def validate_buyer_amount(self, value):
         buyer_charge_type = self.initial_data.get("buyer_charge_type")
         if (
-            (buyer_charge_type == "PERCENTAGE"
-            and value > 100)
-            or buyer_charge_type == "NO_FEES"
-        ):
+            buyer_charge_type == "PERCENTAGE" and value > 100
+        ) or buyer_charge_type == "NO_FEES":
             return 0
         return value
 
     def validate_seller_amount(self, value):
         seller_charge_type = self.initial_data.get("seller_charge_type")
         if (
-            (seller_charge_type == "PERCENTAGE"
-            and value > 100)
-            or seller_charge_type == "NO_FEES"
-        ):
+            seller_charge_type == "PERCENTAGE" and value > 100
+        ) or seller_charge_type == "NO_FEES":
             return 0
         return value
 

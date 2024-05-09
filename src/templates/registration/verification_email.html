@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" style="box-sizing: border-box; margin: 0; padding: 0;">
 <head>
@@ -29,7 +30,7 @@
       <p class="body-text" style="box-sizing: border-box; margin: 0; padding: 0; font-style: normal; font-weight: 400; font-size: 18px; line-height: 24px; color: #1E1E1E; max-width: 488px;">Hey <span class="customer-name" style="box-sizing: border-box; margin: 0; padding: 0;">{{name}},</span></p><br style="box-sizing: border-box; margin: 0; padding: 0;">
       <p class="body-text" style="box-sizing: border-box; margin: 0; padding: 0; font-style: normal; font-weight: 400; font-size: 18px; line-height: 24px; color: #1E1E1E; max-width: 488px;">Use the confirmation code below to verify your email and proceed to complete your account setup.</p>
       <div class="inner-box" style="box-sizing: border-box; position: relative; max-width: 321px; height: 80px; background-color: #FFF2E8; border-radius: 7px; padding: 13px 47px 13px 47px; margin: 30px auto 10px;">
-        <p class="code" style="box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; font-weight: 700px; font-size: 42px; line-height: 42px; color: #FD7E14; letter-spacing: 10px; width: fit-content; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">{{{otp}}}</p>
+        <p class="code" style="box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; font-weight: 700px; font-size: 42px; line-height: 42px; color: #FD7E14; letter-spacing: 10px; width: fit-content; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">{{otp}}</p>
       </div>
       <p class="expire-time" style="box-sizing: border-box; margin: 0; padding: 0; text-align: center; margin-bottom: 30px;">Expires in 10 minutes.</p>
       <p class="box-footer" style="box-sizing: border-box; margin: 0; padding: 0; font-size: 13px; font-style: normal; font-weight: 400; line-height: 22px; color: #999999;">If you did not sign up for this account, you can ignore this email and the account will be deleted automatically after 5 days.</p>
@@ -43,11 +44,11 @@
       <div class="company" style="box-sizing: border-box; margin: 0; padding: 0; display: flex; gap: 20px; font-weight: 700;">
         <a href="" style="box-sizing: border-box; margin: 0; padding: 0; text-decoration: none; line-height: 18px; font-size: 13px; color: #3A3A3A;">Terms & Conditions</a> <a href="" style="box-sizing: border-box; margin: 0; padding: 0; text-decoration: none; line-height: 18px; font-size: 13px; color: #3A3A3A;">Privacy policy</a> <a href="" style="box-sizing: border-box; margin: 0; padding: 0; text-decoration: none; line-height: 18px; font-size: 13px; color: #3A3A3A;">Contact us</a>
       </div>
-      <p class="footer" style="box-sizing: border-box; margin: 0; padding: 0; font-size: 13px; font-weight: 500; color: #999999; margin-top: 50px;">This message was sent to <span class="user's-mail" style="box-sizing: border-box; margin: 0; padding: 0;">{{recipient}}</span>. If you don't want to receive these emails from My Balance in the future, you can <a class="Unsubscribe--unsubscribeLink" href="{{{profile_edit_url}}}" target="_blank" style="box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; text-decoration: none;">
+      <!-- <p class="footer" style="box-sizing: border-box; margin: 0; padding: 0; font-size: 13px; font-weight: 500; color: #999999; margin-top: 50px;">This message was sent to <span class="user's-mail" style="box-sizing: border-box; margin: 0; padding: 0;">{{recipient}}</span>. If you don't want to receive these emails from My Balance in the future, you can <a class="Unsubscribe--unsubscribeLink" href="{{profile_edit_url}}" target="_blank" style="box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; text-decoration: none;">
         edit your profile
-      </a> or  <a class="Unsubscribe--unsubscribeLink" href="{{{unsubscribe}}}" target="_blank" style="box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; text-decoration: none;">
+      </a> or  <a class="Unsubscribe--unsubscribeLink" href="{{unsubscribe}}" target="_blank" style="box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; text-decoration: none;">
         unsubscribe.
-      </a></p>
+      </a></p> -->
     </div>
   </main>
 </body>

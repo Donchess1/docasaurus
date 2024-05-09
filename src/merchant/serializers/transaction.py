@@ -6,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.third_party.main import ThirdPartyAPI
 from merchant.utils import (
@@ -132,7 +133,10 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         if not instance:
             return None
         serializer = EscrowTransactionMetaSerializer(instance=instance)
-        return serializer.data
+        data = serializer.data
+        dispute = Dispute.objects.filter(transaction=obj).first()
+        data["dispute_raised"] = True if dispute else False
+        return data
 
 
 class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
