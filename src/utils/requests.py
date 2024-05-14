@@ -23,11 +23,11 @@ class Requests:
                 "status": "error",
                 "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
-            return Response(
-                message="Third Party Service not available.",
-                success=False,
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            # return Response(
+            #     message="Third Party Service not available.",
+            #     success=False,
+            #     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            # )
 
         data = response.json()
         data["status_code"] = response.status_code
@@ -57,11 +57,11 @@ class Requests:
                 "status": "error",
                 "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
             }
-            return Response(
-                message="Third Party Service not available.",
-                success=False,
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            # return Response(
+            #     message="Third Party Service not available.",
+            #     success=False,
+            #     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            # )
 
         data = response.json()
         data["status_code"] = response.status_code
