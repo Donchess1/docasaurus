@@ -16,6 +16,7 @@ class Requests:
             response = requests.get(url)
 
         if response.status_code in [503, 500]:
+            print("THIRD PARTY SERVICE NOT AVAILABLE!")
             return Response(
                 message="Third Party Service not available.",
                 success=False,
@@ -24,7 +25,6 @@ class Requests:
 
         data = response.json()
         data["status_code"] = response.status_code
-        data["status"] = "error"
         return data
 
     @classmethod
@@ -44,6 +44,7 @@ class Requests:
             response = requests.post(url)
 
         if response.status_code in [503, 500]:
+            print("THIRD PARTY SERVICE NOT AVAILABLE!")
             return Response(
                 message="Third Party Service not available.",
                 success=False,
@@ -52,7 +53,6 @@ class Requests:
 
         data = response.json()
         data["status_code"] = response.status_code
-        data["status"] = "error"
         return data
 
     @classmethod
