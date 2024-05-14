@@ -17,6 +17,7 @@ class Requests:
 
         if response.status_code in [503, 500]:
             print("THIRD PARTY SERVICE NOT AVAILABLE!")
+            print("THIRD PARTY STATUS CODE:", response.status_code)
             return {
                 "message": "Third party service unavailable. Please try again later.",
                 "success": False,
@@ -51,6 +52,7 @@ class Requests:
 
         if response.status_code in [503, 500]:
             print("THIRD PARTY SERVICE NOT AVAILABLE!")
+            print("THIRD PARTY STATUS CODE:", response.status_code)
             return {
                 "message": "Third party service unavailable. Please try again later.",
                 "success": False,
