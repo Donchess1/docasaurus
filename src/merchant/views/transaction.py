@@ -124,7 +124,6 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
             )
         flw_init_txn_data, payment_breakdown = self.perform_create(serializer)
         obj = self.flw_api.initiate_payment_link(flw_init_txn_data)
-        print("MERCH INIT PAYMENT LINK OBJ", obj)
         if obj["status"] == "error":
             return Response(
                 success=False,

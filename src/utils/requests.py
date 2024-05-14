@@ -19,11 +19,12 @@ class Requests:
             return Response(
                 message="Third Party Service not available.",
                 success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         data = response.json()
         data["status_code"] = response.status_code
+        data["status"] = "error"
         return data
 
     @classmethod
@@ -46,11 +47,12 @@ class Requests:
             return Response(
                 message="Third Party Service not available.",
                 success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         data = response.json()
         data["status_code"] = response.status_code
+        data["status"] = "error"
         return data
 
     @classmethod
