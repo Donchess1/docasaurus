@@ -57,22 +57,25 @@ def unflatten_uuid(flattened_uuid):
 
 
 def add_commas_to_transaction_amount(number):
-    number_str = str(number).split(".")[0]
-    # Reverse the string
-    reversed_str = number_str[::-1]
-
+    number = str(number)
+    # Round the number to 2 decimal places
+    number = round(float(number), 2)
+    # Split the number into integer and decimal parts
+    integer_part, decimal_part = str(number).split(".")
+    # Reverse the integer part
+    reversed_int = integer_part[::-1]
     # Initialize variables
     result = ""
     count = 0
-
     # Iterate through the reversed string
-    for char in reversed_str:
+    for char in reversed_int:
         result = char + result
         count += 1
         # Add comma after every third character, except for the last group
-        if count % 3 == 0 and count != len(reversed_str):
+        if count % 3 == 0 and count != len(reversed_int):
             result = "," + result
-
+    # Add the decimal part back, ensuring it has 2 digits
+    result = f"{result}.{decimal_part.zfill(2)}"
     return result
 
 

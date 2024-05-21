@@ -1,5 +1,6 @@
 import os
 from decimal import Decimal
+from time import time
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -139,14 +140,23 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         return data
 
 
-class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
-    purpose = serializers.CharField()
-    item_type = serializers.CharField(max_length=255)
-    item_quantity = serializers.IntegerField()
+class EscrowItemSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    description = serializers.CharField()
+    category = serializers.ChoiceField(choices=["GOODS", "SERVICE"])
+    item_quantity = serializers.IntegerField(min_value=1)
     delivery_date = serializers.DateField()
     amount = serializers.IntegerField()
-    buyer = serializers.EmailField()
+
+
+class EscrowEntitySerializer(serializers.Serializer):
     seller = serializers.EmailField()
+    items = EscrowItemSerializer(many=True)
+
+
+class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
+    buyer = serializers.EmailField()
+    entities = EscrowEntitySerializer(many=True)
 
     def validate_buyer(self, value):
         merchant = self.context.get("merchant")
@@ -155,66 +165,61 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError("Buyer does not exist.")
         return value
 
-    def validate_seller(self, value):
-        merchant = self.context.get("merchant")
+    def validate_seller(self, value, merchant):
         user_list = get_merchant_customers_by_user_type(merchant, "SELLER")
-        if not escrow_user_is_valid(value, user_list):
-            raise serializers.ValidationError("Seller does not exist.")
-        return value
+        return True if escrow_user_is_valid(value, user_list) else False
 
     def validate_delivery_date(self, value):
         today = timezone.now().date()
-        if value < today:
-            raise serializers.ValidationError(
-                "Delivery date cannot be earlier that today."
-            )
-        return value
+        return False if value < today else True
 
     def validate_amount(self, value):
-        if env == "test" and value > 30000:
-            raise serializers.ValidationError("Use amounts less than NGN30,000")
-        return value
+        return False if env == "test" and value > 20000 else True
+
+    def validate_entities(self, entities):
+        merchant = self.context.get("merchant")
+        for entity in entities:
+            seller_email = entity.get("seller")
+            if not self.validate_seller(seller_email, merchant):
+                raise serializers.ValidationError(
+                    f"Seller {seller_email} does not exist."
+                )
+            for item in entity.get("items"):
+                title = item.get("title")
+                delivery_date = item.get("delivery_date")
+                amount = item.get("amount")
+                if not self.validate_delivery_date(delivery_date):
+                    raise serializers.ValidationError(
+                        f"Delivery date for {seller_email} to deliver {title} cannot be in the past."
+                    )
+                if not self.validate_amount(amount):
+                    raise serializers.ValidationError(
+                        f"Amount for {title} should be NGN 20,000 or less."
+                    )
+        return entities
 
     @transaction.atomic
     def create(self, validated_data):
         merchant = self.context.get("merchant")
-        amount = validated_data.get("amount")
-        purpose = validated_data.get("purpose")
-        title = validated_data.get("item_type")
-        item_type = validated_data.get("item_type")
-        item_quantity = validated_data.get("item_quantity")
-        delivery_date = validated_data.get("delivery_date")
         buyer = validated_data.get("buyer")
-        seller = validated_data.get("seller")
-        charge, amount_payable = get_escrow_fees(amount)
-        tx_ref = generate_random_text(length=20)
+        entities = validated_data.get("entities")
+        total_amount = 0
+        for entity in entities:
+            for item in entity["items"]:
+                total_amount += int(item["amount"])
+                item["delivery_date"] = str(item["delivery_date"])
 
+        charge, amount_payable = get_escrow_fees(total_amount)
         merchant_payout_config = get_merchant_active_payout_configuration(merchant)
         merchant_user_charges = get_merchant_transaction_charges(
-            merchant, amount, merchant_payout_config
+            merchant, total_amount, merchant_payout_config
         )
         merchant_buyer_charge = merchant_user_charges.get("buyer_charge")
         merchant_seller_charge = merchant_user_charges.get("seller_charge")
-        escrow_txn_instance, escrow_txn_meta = create_merchant_escrow_transaction(
-            merchant,
-            buyer,
-            seller,
-            charge,
-            amount,
-            purpose,
-            title,
-            tx_ref,
-            item_type,
-            item_quantity,
-            delivery_date,
-            merchant_payout_config,
-        )
 
-        payer = User.objects.filter(email=buyer).first()
-        amount_to_charge = amount + charge + int(merchant_buyer_charge)
-
+        amount_to_charge = total_amount + charge + int(merchant_buyer_charge)
         payment_breakdown = {
-            "base_amount": str(amount),
+            "base_amount": str(total_amount),
             "buyer_escrow_fees": str(charge),
             "seller_escrow_fees": str(charge),
             "buyer_merchant_fees": str(merchant_buyer_charge),
@@ -226,15 +231,20 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "total_payable": str(amount_to_charge),
             "currency": "NGN",
         }
-        escrow_txn_meta.meta.update({"payment_breakdown": payment_breakdown})
-        escrow_txn_meta.save()
-        new_tx_ref = generate_txn_reference()
+        tx_ref = generate_txn_reference()
+        payer = User.objects.filter(email=buyer).first()
+        meta = {
+            "payment_breakdown": "payment_breakdown",
+            "seller_escrow_breakdown": entities,
+            "merchant": str(merchant.id),
+            "payout_config": str(merchant_payout_config.id),
+        }
         deposit_txn = generate_deposit_transaction_for_escrow(
-            escrow_txn_instance, payer, amount_to_charge, new_tx_ref
+            payer, amount_to_charge, tx_ref, meta
         )
 
         flw_txn_data = {
-            "tx_ref": new_tx_ref,
+            "tx_ref": tx_ref,
             "amount": amount_to_charge,
             "currency": "NGN",
             "redirect_url": f"{MERCHANT_REDIRECT_BASE_URL}",
@@ -248,7 +258,6 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
             },
             "meta": {
-                "escrow_transaction_reference": escrow_txn_instance.reference,
                 "total_payable_amount": str(amount_to_charge),
             },
         }

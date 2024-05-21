@@ -10,7 +10,7 @@ from rest_framework.decorators import action
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
 from merchant.decorators import authorized_api_call
-from merchant.models import Merchant
+from merchant.models import CustomerMerchant, Merchant, PayoutConfig
 from merchant.serializers.transaction import (
     CreateMerchantEscrowTransactionSerializer,
     MerchantEscrowRedirectPayloadSerializer,
@@ -18,6 +18,7 @@ from merchant.serializers.transaction import (
     UnlockMerchantEscrowTransactionSerializer,
 )
 from merchant.utils import (
+    create_bulk_merchant_escrow_transactions,
     get_customer_merchant_instance,
     get_merchant_by_id,
     get_merchant_escrow_users,
@@ -221,14 +222,6 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             and obj["data"]["currency"] == txn.currency
             and obj["data"]["charged_amount"] >= txn.amount
         ):
-            escrow_txn_ref = obj["data"]["meta"]["escrow_transaction_reference"]
-            total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
-            escrow_txn = Transaction.objects.filter(reference=escrow_txn_ref).first()
-            escrow_txn.verified = True
-            escrow_txn.status = "SUCCESSFUL"
-            escrow_txn.save()
-            escrow_amount_to_charge = total_payable_amount_to_charge
-
             flw_ref = obj["data"]["flw_ref"]
             narration = obj["data"]["narration"]
             txn.verified = True
@@ -246,100 +239,63 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 }
             )
             txn.save()
+            total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
             customer_email = obj["data"]["customer"]["email"]
             amount_charged = obj["data"]["charged_amount"]
-            try:
-                user = User.objects.get(email=customer_email)
-                profile = user.userprofile
-                profile.wallet_balance += int(amount_charged)
-                profile.locked_amount += int(escrow_txn.amount)
-                profile.save()
-                profile.wallet_balance -= Decimal(str(escrow_amount_to_charge))
-                profile.save()
 
-                seller_email = escrow_txn.escrowmeta.meta.get("parties")["seller"]
-                instance = LockedAmount.objects.create(
-                    transaction=escrow_txn,
-                    user=user,
-                    seller_email=seller_email,
-                    amount=escrow_txn.amount,
-                    status="ESCROW",
-                )
-                instance.save()
-
-                merchant = escrow_txn.merchant
-                escrow_users = get_merchant_escrow_users(escrow_txn, merchant)
-                buyer = escrow_users.get("buyer")
-                seller = escrow_users.get("seller")
-
-                # Notify Buyer via email address and in-app
-                buyer_values = {
-                    "recipient": user.email,
-                    "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(str(escrow_amount_to_charge))}",
-                    "transaction_id": f"{(escrow_txn.reference).upper()}",
-                    "item_name": escrow_txn.meta.get("title"),
-                    "merchant_platform": merchant.name,
-                    "seller_name": seller.alternate_name,
-                }
-                txn_tasks.send_lock_funds_merchant_buyer_email(user.email, buyer_values)
-                UserNotification.objects.create(
-                    user=user,
-                    category="FUNDS_LOCKED_BUYER",
-                    title=notifications.FUNDS_LOCKED_BUYER_TITLE,
-                    content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
-                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
-                )
-
-                seller_values = {
-                    "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
-                    "transaction_id": f"{(escrow_txn.reference).upper()}",
-                    "item_name": escrow_txn.meta.get("title"),
-                    "delivery_date": parse_date(escrow_txn.escrowmeta.delivery_date),
-                    "buyer_name": buyer.alternate_name,
-                    "buyer_phone": buyer.alternate_phone_number,
-                    "buyer_email": buyer.customer.user.email,
-                    "merchant_platform": merchant.name,
-                }
-                txn_tasks.send_lock_funds_merchant_seller_email(
-                    seller_email, seller_values
-                )
-                # Create Notification for Seller
-                UserNotification.objects.create(
-                    user=seller.customer.user,
-                    category="FUNDS_LOCKED_SELLER",
-                    title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
-                    content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
-                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
-                )
-
-                merchant_values = {
-                    "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(str(escrow_amount_to_charge))}",
-                    "transaction_id": (escrow_txn.reference).upper(),
-                    "item_name": escrow_txn.meta["title"],
-                    "delivery_date": parse_date(escrow_txn.escrowmeta.delivery_date),
-                    "seller_name": seller.alternate_name,
-                    "seller_phone": seller.alternate_phone_number,
-                    "seller_email": seller.customer.user.email,
-                    "buyer_name": buyer.alternate_name,
-                    "buyer_phone": buyer.alternate_phone_number,
-                    "buyer_email": buyer.customer.user.email,
-                    "merchant_platform": escrow_txn.merchant.name,
-                }
-                txn_tasks.send_lock_funds_merchant_email(
-                    merchant.user_id.email, merchant_values
-                )
-            # TODO: Send real-time Notification
-            except User.DoesNotExist:
+            user = User.objects.filter(email=customer_email).first()
+            if not user:
                 return Response(
                     success=False,
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
+            profile = user.userprofile
+            profile.wallet_balance += int(amount_charged)
+            profile.locked_amount += int(txn.amount)
+            profile.save()
+            profile.wallet_balance -= Decimal(str(total_payable_amount_to_charge))
+            profile.save()
+
+            escrow_entities = txn.meta.get("seller_escrow_breakdown")
+            payout_config_id = txn.meta.get("payout_config")
+            payout_config = PayoutConfig.objects.filter(id=payout_config_id).first()
+            merchant_id = txn.meta.get("merchant")
+            merchant = get_merchant_by_id(merchant_id)
+
+            # create bulk escrow transactions from entities data
+            escrows = create_bulk_merchant_escrow_transactions(
+                merchant, user, escrow_entities, txn, payout_config
+            )
+            products = []
+            for transaction in escrows:
+                escrow_users = get_merchant_escrow_users(transaction, merchant)
+                seller: CustomerMerchant = escrow_users.get("seller")
+                products.append(
+                    {
+                        "name": transaction.escrowmeta.item_type,
+                        "quantity": transaction.escrowmeta.item_quantity,
+                        "amount": f"NGN {add_commas_to_transaction_amount(str(transaction.amount))}",
+                        "store_owner": seller.alternate_name,
+                    }
+                )
+                UserNotification.objects.create(
+                    user=user,
+                    category="FUNDS_LOCKED_BUYER",
+                    title=notifications.FUNDS_LOCKED_BUYER_TITLE,
+                    content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{transaction.reference}",
+                )
+            buyer_values = {
+                "date": parse_datetime(txn.updated_at),
+                "amount_funded": f"NGN {add_commas_to_transaction_amount(str(amount_charged))}",
+                "merchant_platform": merchant.name,
+                "products": products,
+            }
+            txn_tasks.send_lock_funds_merchant_buyer_email(user.email, buyer_values)
+
         buyer_redirect_url = None
-        redirect_urls = get_merchant_users_redirect_url(escrow_txn.merchant)
+        redirect_urls = get_merchant_users_redirect_url(merchant)
         if redirect_urls:
             buyer_redirect_url = redirect_urls.get("buyer_redirect_url")
 
@@ -347,8 +303,8 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             success=True,
             status_code=status.HTTP_200_OK,
             data={
-                "transaction_reference": escrow_txn_ref,
-                "amount": escrow_amount_to_charge,
+                "transaction_reference": txn.reference,
+                "amount": total_payable_amount_to_charge,
                 "redirect_url": buyer_redirect_url
                 if buyer_redirect_url
                 else f"{FRONTEND_BASE_URL}/login",

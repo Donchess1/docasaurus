@@ -80,6 +80,13 @@ class EscrowMeta(models.Model):
         null=True,
         blank=True,
     )
+    parent_payment_transaction = models.ForeignKey(
+        Transaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="parent_payment_transaction",
+    )
     meta = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
