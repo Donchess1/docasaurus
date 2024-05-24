@@ -11,8 +11,6 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         obj = validate_email_body(value)
-        print("Email:", value)
-        print("Validated email:", obj)
         if obj[0]:
             raise serializers.ValidationError(obj[1])
         user = User.objects.filter(email=value).first()
