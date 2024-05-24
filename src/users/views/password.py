@@ -63,7 +63,7 @@ class ForgotPasswordView(generics.GenericAPIView):
             "recipient": email,
             "password_reset_link": f"{RESET_PASSWORD_URL}/{otp_key}",
         }
-        tasks.send_reset_password_request_email(email, dynamic_values)
+        tasks.send_reset_password_request_email.delay(email, dynamic_values)
 
         return Response(
             success=True,
@@ -115,7 +115,7 @@ class ResetPasswordView(generics.GenericAPIView):
             "recipient": email,
         }
 
-        tasks.send_reset_password_success_email(email, dynamic_values)
+        tasks.send_reset_password_success_email.delay(email, dynamic_values)
 
         return Response(
             success=True,
@@ -153,7 +153,7 @@ class ChangePasswordView(generics.GenericAPIView):
             "recipient": email,
         }
 
-        tasks.send_reset_password_success_email(email, dynamic_values)
+        tasks.send_reset_password_success_email.delay(email, dynamic_values)
 
         return Response(
             success=True,

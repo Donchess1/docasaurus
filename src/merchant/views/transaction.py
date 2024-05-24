@@ -292,7 +292,9 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 "merchant_platform": merchant.name,
                 "products": products,
             }
-            txn_tasks.send_lock_funds_merchant_buyer_email(user.email, buyer_values)
+            txn_tasks.send_lock_funds_merchant_buyer_email.delay(
+                user.email, buyer_values
+            )
 
         buyer_redirect_url = None
         redirect_urls = get_merchant_users_redirect_url(merchant)

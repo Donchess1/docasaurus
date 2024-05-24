@@ -294,7 +294,7 @@ def notify_seller_escrow_transaction_via_email(
         "buyer_email": buyer.customer.user.email,
         "merchant_platform": merchant.name,
     }
-    txn_tasks.send_lock_funds_merchant_seller_email(
+    txn_tasks.send_lock_funds_merchant_seller_email.delay(
         seller.customer.user.email, seller_values
     )
     # Create Notification for Seller
@@ -327,7 +327,9 @@ def notify_merchant_escrow_transaction_via_email(
         "buyer_email": buyer.customer.user.email,
         "merchant_platform": escrow_txn.merchant.name,
     }
-    txn_tasks.send_lock_funds_merchant_email(merchant.user_id.email, merchant_values)
+    txn_tasks.send_lock_funds_merchant_email.delay(
+        merchant.user_id.email, merchant_values
+    )
 
 
 @transaction.atomic
@@ -573,7 +575,9 @@ def settle_merchant_escrow_charges(
         "buyer_email": buyer.customer.user.email,
         "merchant_platform": transaction.merchant.name,
     }
-    tasks.send_unlock_funds_merchant_email(merchant.user_id.email, merchant_values)
+    tasks.send_unlock_funds_merchant_email.delay(
+        merchant.user_id.email, merchant_values
+    )
 
 
 def unlock_customer_escrow_transactions(transactions: list, user: User):
@@ -663,8 +667,10 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
                 "amount_unlocked": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
             }
 
-            tasks.send_unlock_funds_merchant_seller_email(seller.email, seller_values)
-            tasks.send_unlock_funds_merchant_buyer_email(user.email, buyer_values)
+            tasks.send_unlock_funds_merchant_seller_email.delay(
+                seller.email, seller_values
+            )
+            tasks.send_unlock_funds_merchant_buyer_email.delay(user.email, buyer_values)
 
             # Create Notification for Buyer
             UserNotification.objects.create(

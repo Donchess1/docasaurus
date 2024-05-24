@@ -300,7 +300,7 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
             "expiry_time_minutes": "10 minutes",
             "action_description": f"confirm withdrawal of NGN {add_commas_to_transaction_amount(int(amount))} from your wallet",
         }
-        tasks.send_merchant_wallet_withdrawal_confirmation_email(
+        tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
             user.email, dynamic_values
         )
 

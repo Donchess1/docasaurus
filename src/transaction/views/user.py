@@ -254,7 +254,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_author_is_seller": transaction_author_is_seller,
                 "reasons": response,
             }
-            tasks.send_rejected_escrow_transaction_email(
+            tasks.send_rejected_escrow_transaction_email.delay(
                 transaction_author.email, values
             )
 
@@ -280,7 +280,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
             if not transaction_author_is_seller:
-                tasks.send_approved_escrow_transaction_email(
+                tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
 
@@ -456,8 +456,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     "buyer_name": user.name,
                 }
                 # Notify both buyer and seller of payment details
-                tasks.send_lock_funds_seller_email(seller.email, seller_values)
-                tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                tasks.send_lock_funds_seller_email.delay(seller.email, seller_values)
+                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
 
                 # Create Notification for Seller
                 UserNotification.objects.create(
@@ -468,7 +468,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
                 )
             else:
-                tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
 
             # Create Notification for Buyer
             UserNotification.objects.create(
@@ -746,8 +746,8 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "amount": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
                 "transaction_fee": f"N{seller_charges}",
             }
-            tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
-            tasks.send_unlock_funds_seller_email(seller.email, seller_values)
+            tasks.send_unlock_funds_buyer_email.delay(user.email, buyer_values)
+            tasks.send_unlock_funds_seller_email.delay(seller.email, seller_values)
 
             # Create Notification for Buyer
             UserNotification.objects.create(

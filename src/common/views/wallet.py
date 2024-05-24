@@ -225,7 +225,7 @@ class FundWalletRedirectView(GenericAPIView):
                     "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
-                console_tasks.send_wallet_funding_email(email, values)
+                console_tasks.send_wallet_funding_email.delay(email, values)
                 # Create Notification
                 UserNotification.objects.create(
                     user=user,
@@ -415,7 +415,9 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         "item_name": escrow_txn.meta["title"],
                         "buyer_name": user.name,
                     }
-                    txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
+                    txn_tasks.send_lock_funds_seller_email.delay(
+                        seller.email, seller_values
+                    )
                     # Create Notification for Seller
                     UserNotification.objects.create(
                         user=seller,
@@ -425,9 +427,13 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                     )
 
-                    txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                    txn_tasks.send_lock_funds_buyer_email.delay(
+                        user.email, buyer_values
+                    )
                 else:
-                    txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                    txn_tasks.send_lock_funds_buyer_email.delay(
+                        user.email, buyer_values
+                    )
 
                 #  Create Notification for Buyer
                 UserNotification.objects.create(
@@ -722,7 +728,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "account_name": data.get("fullname"),
                 "account_number": data.get("account_number"),
             }
-            console_tasks.send_wallet_withdrawal_email(email, values)
+            console_tasks.send_wallet_withdrawal_email.delay(email, values)
 
             # Create Notification
             UserNotification.objects.create(
