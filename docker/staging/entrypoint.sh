@@ -31,7 +31,8 @@ wait_for_postgres() {
     suggest_unrecoverable_after=30
     start=$(date +%s)
     while true; do
-        if PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -p "${POSTGRES_PORT}" -lqt | cut -d \| -f 1 | grep -qw "${POSTGRES_DB}"; then
+        # Try to connect to the target database
+        if PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -p "${POSTGRES_PORT}" -d "${POSTGRES_DB}" -c '\q'; then
             echo "========================================="
             echo "PostgreSQL is available"
             echo "========================================="
