@@ -115,10 +115,10 @@ class MerchantEscrowDisputeSerializer(serializers.ModelSerializer):
             "delivery_date": parse_date(transaction.escrowmeta.delivery_date),
         }
 
-        tasks.send_dispute_raised_via_merchant_widget_author_email(
+        tasks.send_dispute_raised_via_merchant_widget_author_email.delay(
             user.email, author_values
         )
-        tasks.send_dispute_raised_via_merchant_widget_receiver_email(
+        tasks.send_dispute_raised_via_merchant_widget_receiver_email.delay(
             partner.email, recipient_values
         )
         return dispute

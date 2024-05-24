@@ -281,7 +281,7 @@ class GenerateOneTimeLoginCodeView(generics.GenericAPIView):
             "otp": otp,
             "recipient": email,
         }
-        tasks.send_one_time_login_code_email(email, dynamic_values)
+        tasks.send_one_time_login_code_email.delay(email, dynamic_values)
 
         return Response(
             success=True,

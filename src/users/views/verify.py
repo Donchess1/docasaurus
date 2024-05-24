@@ -85,7 +85,7 @@ class VerifyOTPView(GenericAPIView):
             if user.is_buyer
             else GET_STARTED_BUYER_URL,
         }
-        tasks.send_welcome_email(email, dynamic_values)
+        tasks.send_welcome_email.delay(email, dynamic_values)
 
         token = self.jwt_client.sign(user.id)
         user.userprofile.last_login_date = timezone.now()
@@ -129,7 +129,7 @@ class ResendAccountVerificationOTPView(GenericAPIView):
         if user.is_verified:
             return Response(
                 success=False,
-                message="This account has been verified!",
+                message="This account has already been verified!",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -158,7 +158,7 @@ class ResendAccountVerificationOTPView(GenericAPIView):
             "recipient": email,
             "profile_edit_url": EDIT_PROFILE_URL,
         }
-        tasks.send_invitation_email(email, dynamic_values)
+        tasks.send_invitation_email.delay(email, dynamic_values)
 
         return Response(
             success=True,
