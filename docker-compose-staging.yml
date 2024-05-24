@@ -1,8 +1,8 @@
 version: "3.8"
 
 services:
-  # api: &api
-  api:
+  api: &api
+  # api:
     build:
       context: .
       dockerfile: ./docker/staging/Dockerfile
@@ -13,11 +13,11 @@ services:
     #   - "80:8000"
     env_file:
       - ./.env
-    # depends_on:
+    depends_on:
     #   - db
-    #   - redis
-    # networks:
-    #   - myb
+      - redis
+    networks:
+      - myb
   nginx:
     image: nginx:latest
     volumes:
@@ -26,6 +26,9 @@ services:
       - "80:8000"
     depends_on:
       - api
+    networks:
+      - myb
+
   # db:
   #   image: postgres:14.5-alpine3.16
   #   restart: always
@@ -38,28 +41,28 @@ services:
   #   networks:
   #     - myb
 
-  # redis:
-  #   image: redis:alpine
-  #   networks:
-  #     - myb
+  redis:
+    image: redis:alpine
+    networks:
+      - myb
 
-  # celery:
-  #   <<: *api
-  #   command: >
-  #     sh -c "celery -A core worker -l INFO --logfile=celery.log"
-  #   ports: []
-  #   volumes:
-  #     - ./src:/app
-  #   env_file:
-  #     - ./.env
-  #   depends_on:
-  #     - api
-  #   networks:
-  #     - myb
+  celery:
+    <<: *api
+    command: >
+      sh -c "celery -A core worker -l INFO --logfile=celery.log"
+    ports: []
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+    networks:
+      - myb
 
 volumes:
   myb-dev-static-data:
   myb-dev-db:
-# networks:
-#     myb:
-#       driver: bridge
+networks:
+    myb:
+      driver: bridge
