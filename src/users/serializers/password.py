@@ -11,11 +11,12 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         obj = validate_email_body(value)
+        print("Email:", value)
+        print("Validated email:", obj)
         if obj[0]:
             raise serializers.ValidationError(obj[1])
-        try:
-            User.objects.get(email=value)
-        except User.DoesNotExist:
+        user = User.objects.filter(email=value).first()
+        if not user:
             raise serializers.ValidationError("User with this email does not exist.")
         return value.lower()
 
