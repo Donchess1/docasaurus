@@ -182,9 +182,9 @@ def get_withdrawal_fee(amount):
 
 
 def deconstruct_merchant_widget_key(key):
-    if not len(key) in [320, 321]:
-        return None
-    return {"token": key[72:-4], "merchant_id": key[36:72]}
+    parts = key.split("&:%")[0].split("8q&Z!")
+    x = parts[0]
+    return {"token": parts[1], "merchant_id": x[36:]}
 
 
 def get_escrow_fees(amount):

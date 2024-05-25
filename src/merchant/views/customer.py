@@ -78,12 +78,13 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
         user_type = obj.user_type
         token = self.jwt_client.sign(user.id)
         access_key = token["access_token"]
-        payload = {
-            "session_lifetime": "120MINS",
-            "url": f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{generate_random_text(36)}{str(merchant.id)}{access_key}{generate_random_text(4)}"
+        merchant_id = str(merchant.id)
+        url = (
+            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{generate_random_text(36)}{merchant_id}8q&Z!{access_key}&:%{generate_random_text(36)}"
             if user_type == "BUYER"
-            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{generate_random_text(36)}{str(merchant.id)}{access_key}{generate_random_text(4)}",
-        }
+            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{generate_random_text(36)}{merchant_id}8q&Z!{access_key}&:%{generate_random_text(36)}"
+        )
+        payload = {"session_lifetime": "120MINS", "url": url}
         return Response(
             success=True,
             message="Widget session created successfully",
