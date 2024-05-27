@@ -450,7 +450,7 @@ def get_customer_merchant_instance(email, merchant):
     return instance
 
 
-def get_merchant_escrow_users(escrow_txn, merchant):
+def get_merchant_escrow_users(escrow_txn: Transaction, merchant: Merchant):
     meta = escrow_txn.escrowmeta.meta
     if not meta:
         return None

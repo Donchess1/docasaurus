@@ -2,10 +2,12 @@ from rest_framework import serializers
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from transaction.serializers.locked_amount import LockedAmountSerializer
+from utils.transaction import get_escrow_transaction_users
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
+    parties = serializers.SerializerMethodField()
 
     class Meta:
         model = EscrowMeta
@@ -18,6 +20,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             "item_type",
             "item_quantity",
             "delivery_date",
+            "parties",
             "delivery_tolerance",
             "charge",
             "meta",
@@ -27,6 +30,27 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
 
     def get_author_name(self, obj):
         return obj.transaction_id.user_id.name
+
+    def get_parties(self, obj):
+        users = get_escrow_transaction_users(obj.transaction_id)
+        buyer = users.get("BUYER")
+        seller = users.get("SELLER")
+        merchant = users.get("MERCHANT")
+        parties = {
+            "buyer": {
+                "name": buyer["name"] if buyer else "",
+                "email": buyer["email"] if buyer else "",
+            },
+            "seller": {
+                "name": seller["name"] if seller else "",
+                "email": seller["email"] if seller else "",
+            },
+            "merchant": {
+                "name": merchant["name"] if merchant else "",
+                "email": merchant["email"] if merchant else "",
+            },
+        }
+        return parties
 
 
 class UserTransactionSerializer(serializers.ModelSerializer):

@@ -76,7 +76,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
         today = timezone.now().date()
         if delivery_date < today:
             raise serializers.ValidationError(
-                {"delivery_date": "Delivery date is not due yet."}
+                {"delivery_date": "You cannot set a date in the past."}
             )
 
         return data

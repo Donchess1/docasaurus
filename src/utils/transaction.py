@@ -1,4 +1,9 @@
+from django.contrib.auth import get_user_model
+
 from console.models.transaction import Transaction
+from merchant.utils import get_merchant_escrow_users
+
+User = get_user_model()
 
 
 def get_escrow_transaction_stakeholders(tx_ref):
@@ -15,7 +20,42 @@ def get_escrow_transaction_stakeholders(tx_ref):
         return {"BUYER": buyer_email, "SELLER": seller_email}
 
     except Transaction.DoesNotExist:
-        return None
+        return {}
+
+
+def get_escrow_transaction_users(transaction: Transaction) -> dict:
+    # transaction.mode == ["Web", "MERCHANT_API"]
+    if (transaction.mode).upper() == "WEB":
+        if transaction.escrowmeta.author == "BUYER":
+            buyer = transaction.user_id
+            seller = User.objects.filter(
+                email=transaction.escrowmeta.partner_email
+            ).first()
+        else:
+            seller = transaction.user_id
+            buyer = User.objects.filter(
+                email=transaction.escrowmeta.partner_email
+            ).first()
+        return {
+            "BUYER": {"name": buyer.name, "email": buyer.email},
+            "SELLER": {"name": seller.name, "email": seller.email},
+            "MERCHANT": {"name": "MyBalance", "email": "mybalance@oinvent.com"},
+        }
+    else:
+        parties = get_merchant_escrow_users(transaction, transaction.merchant)
+        buyer = parties.get("buyer")
+        seller = parties.get("seller")
+        return {
+            "BUYER": {"name": buyer.alternate_name, "email": buyer.customer.user.email},
+            "SELLER": {
+                "name": seller.alternate_name,
+                "email": seller.customer.user.email,
+            },
+            "MERCHANT": {
+                "name": transaction.merchant.user_id.name,
+                "email": transaction.merchant.user_id.email,
+            },
+        }
 
 
 def get_merchant_escrow_transaction_stakeholders(id):
