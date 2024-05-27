@@ -77,8 +77,28 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_lock_funds_merchant_buyer_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("LOCK_MERCHANT_FUNDS_BUYER")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_lock_funds_seller_email(cls, email: str, values: dict):
         template_id = cls.template_handler.get_template("LOCK_FUNDS_SELLER")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_lock_funds_merchant_seller_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("LOCK_MERCHANT_FUNDS_SELLER")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_lock_funds_merchant_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template(
+            "LOCK_MERCHANT_FUNDS_NOTIFY_MERCHANT"
+        )
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
@@ -89,8 +109,28 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_unlock_funds_merchant_buyer_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("UNLOCK_MERCHANT_FUNDS_BUYER")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_unlock_funds_seller_email(cls, email: str, values: dict):
         template_id = cls.template_handler.get_template("UNLOCK_FUNDS_SELLER")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_unlock_funds_merchant_seller_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template("UNLOCK_MERCHANT_FUNDS_SELLER")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_unlock_funds_merchant_email(cls, email: str, values: dict):
+        template_id = cls.template_handler.get_template(
+            "UNLOCK_MERCHANT_FUNDS_NOTIFY_MERCHANT"
+        )
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
@@ -101,8 +141,28 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
+    def send_dispute_raised_via_merchant_widget_author_email(
+        cls, email: str, values: dict
+    ):
+        template_id = cls.template_handler.get_template(
+            "MERCHANT_WIDGET_DISPUTE_RAISED_AUTHOR"
+        )
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
     def send_dispute_raised_receiver_email(cls, email: str, values: dict):
         template_id = cls.template_handler.get_template("DISPUTE_RAISED_RECIPIENT")
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
+
+    @classmethod
+    def send_dispute_raised_via_merchant_widget_receiver_email(
+        cls, email: str, values: dict
+    ):
+        template_id = cls.template_handler.get_template(
+            "MERCHANT_WIDGET_DISPUTE_RAISED_RECIPIENT"
+        )
         dynamic_template_data = DynamicTemplateData(values)
         return cls.send_email(email, template_id, dynamic_template_data)
 
@@ -113,13 +173,16 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
-    def send_webhook_notification_email_plain(cls, email: str, values: dict):
-        subject = "Webhook Notification"
-        webhook_html_content = values.get("webhook_html_content", None)
-        html_content = webhook_html_content
-        return cls.send_plain_email(email, subject, html_content)
+    def send_merchant_wallet_withdrawal_confirmation_email(
+        cls, email: str, values: dict
+    ):
+        template_id = cls.template_handler.get_template(
+            "MERCHANT_USER_WALLET_WITHDRAWAL_VERIFICATION"
+        )
+        dynamic_template_data = DynamicTemplateData(values)
+        return cls.send_email(email, template_id, dynamic_template_data)
 
-    # BASE HANDLERS
+    # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, template_id: str, dynamic_template_data: dict):
         to_email = To(email)
@@ -151,3 +214,5 @@ class EmailClient:
         except Exception as e:
             print(e)
             return False
+
+    # ENTRY POINT

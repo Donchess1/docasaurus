@@ -31,7 +31,12 @@ from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.transaction import get_escrow_transaction_stakeholders
-from utils.utils import format_rejected_reasons, generate_txn_reference, parse_datetime
+from utils.utils import (
+    add_commas_to_transaction_amount,
+    format_rejected_reasons,
+    generate_txn_reference,
+    parse_datetime,
+)
 
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
@@ -48,9 +53,16 @@ class UserTransactionListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         # Transactions where user is the main user or user is involved in escrow
-        queryset = Transaction.objects.filter(
-            Q(user_id=user) | Q(escrowmeta__partner_email=user.email)
-        ).order_by("-created_at")
+        queryset = (
+            Transaction.objects.filter(
+                Q(user_id=user)
+                | Q(escrowmeta__partner_email=user.email)
+                | Q(escrowmeta__meta__parties__buyer=user.email)
+                | Q(escrowmeta__meta__parties__seller=user.email)
+            )
+            .order_by("-created_at")
+            .distinct()
+        )
         return queryset
 
     @swagger_auto_schema(
@@ -242,7 +254,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_author_is_seller": transaction_author_is_seller,
                 "reasons": response,
             }
-            tasks.send_rejected_escrow_transaction_email(
+            tasks.send_rejected_escrow_transaction_email.delay(
                 transaction_author.email, values
             )
 
@@ -268,7 +280,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
             if not transaction_author_is_seller:
-                tasks.send_approved_escrow_transaction_email(
+                tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
 
@@ -426,7 +438,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 "first_name": user.name.split(" ")[0],
                 "recipient": user.email,
                 "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"N{txn.amount}",
+                "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                 "transaction_id": reference,
                 "item_name": txn.meta["title"],
                 # "seller_name": seller.name,
@@ -438,14 +450,14 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
                     "date": parse_datetime(txn.updated_at),
-                    "amount_funded": f"N{txn.amount}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                     "transaction_id": reference,
                     "item_name": txn.meta["title"],
                     "buyer_name": user.name,
                 }
                 # Notify both buyer and seller of payment details
-                tasks.send_lock_funds_seller_email(seller.email, seller_values)
-                tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                tasks.send_lock_funds_seller_email.delay(seller.email, seller_values)
+                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
 
                 # Create Notification for Seller
                 UserNotification.objects.create(
@@ -456,7 +468,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
                 )
             else:
-                tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
 
             # Create Notification for Buyer
             UserNotification.objects.create(
@@ -719,7 +731,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "bank_name": escrow_meta.get("bank_name"),
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
-                "amount": f"N{txn.amount}",
+                "amount": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
             }
             seller_values = {
                 "first_name": seller.name.split(" ")[0],
@@ -731,11 +743,11 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "bank_name": escrow_meta.get("bank_name"),
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
-                "amount": f"N{amount_to_credit_seller}",
+                "amount": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
                 "transaction_fee": f"N{seller_charges}",
             }
-            tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
-            tasks.send_unlock_funds_seller_email(seller.email, seller_values)
+            tasks.send_unlock_funds_buyer_email.delay(user.email, buyer_values)
+            tasks.send_unlock_funds_seller_email.delay(seller.email, seller_values)
 
             # Create Notification for Buyer
             UserNotification.objects.create(

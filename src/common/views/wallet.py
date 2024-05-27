@@ -24,6 +24,7 @@ from utils.html import generate_flw_payment_webhook_html
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
+    add_commas_to_transaction_amount,
     calculate_payment_amount_to_charge,
     generate_txn_reference,
     get_withdrawal_fee,
@@ -221,10 +222,10 @@ class FundWalletRedirectView(GenericAPIView):
                     "first_name": user.name.split(" ")[0],
                     "recipient": email,
                     "date": parse_datetime(txn.created_at),
-                    "amount_funded": f"N{str(txn.amount)}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                     "wallet_balance": f"N{str(profile.wallet_balance)}",
                 }
-                console_tasks.send_wallet_funding_email(email, values)
+                console_tasks.send_wallet_funding_email.delay(email, values)
                 # Create Notification
                 UserNotification.objects.create(
                     user=user,
@@ -315,6 +316,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             )
 
         obj = self.flw_api.verify_transaction(flw_transaction_id)
+        print("FLW TRANSACTION VALIDATION VIA API ----->", obj)
 
         if obj["status"] == "error":
             msg = obj["message"]
@@ -396,7 +398,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     "first_name": user.name.split(" ")[0],
                     "recipient": user.email,
                     "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"N{escrow_txn.amount}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
                     "transaction_id": escrow_txn.reference,
                     "item_name": escrow_txn.meta["title"],
                     # "seller_name": seller.name,
@@ -408,12 +410,14 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         "first_name": seller.name.split(" ")[0],
                         "recipient": seller.email,
                         "date": parse_datetime(escrow_txn.updated_at),
-                        "amount_funded": f"N{escrow_txn.amount}",
+                        "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
                         "transaction_id": escrow_txn.reference,
                         "item_name": escrow_txn.meta["title"],
                         "buyer_name": user.name,
                     }
-                    txn_tasks.send_lock_funds_seller_email(seller.email, seller_values)
+                    txn_tasks.send_lock_funds_seller_email.delay(
+                        seller.email, seller_values
+                    )
                     # Create Notification for Seller
                     UserNotification.objects.create(
                         user=seller,
@@ -423,9 +427,13 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                     )
 
-                    txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                    txn_tasks.send_lock_funds_buyer_email.delay(
+                        user.email, buyer_values
+                    )
                 else:
-                    txn_tasks.send_lock_funds_buyer_email(user.email, buyer_values)
+                    txn_tasks.send_lock_funds_buyer_email.delay(
+                        user.email, buyer_values
+                    )
 
                 #  Create Notification for Buyer
                 UserNotification.objects.create(
@@ -448,6 +456,8 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     message="Profile not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
+            retry_validation = self.flw_api.verify_transaction(flw_transaction_id)
+            print("FLW TRANSACTION VALIDATION VIA API ----->", retry_validation)
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
@@ -595,7 +605,6 @@ class WalletWithdrawalView(GenericAPIView):
         txn.meta.update({"description": f"FLW Transaction {tx_ref}", "note": msg})
         txn.save()
 
-        # TODO: Send email notification
         print("DATA FOR WALLET DEBIT:", obj["data"])
 
         return Response(
@@ -625,7 +634,8 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 message="Invalid authorization token.",
                 status_code=status.HTTP_403_FORBIDDEN,
             )
-
+        print("WITHDRAW CALLBACK FUNCTION CALLED")
+        print("REQUEST DATA---->", request.data)
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -718,7 +728,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "account_name": data.get("fullname"),
                 "account_number": data.get("account_number"),
             }
-            console_tasks.send_wallet_withdrawal_email(email, values)
+            console_tasks.send_wallet_withdrawal_email.delay(email, values)
 
             # Create Notification
             UserNotification.objects.create(

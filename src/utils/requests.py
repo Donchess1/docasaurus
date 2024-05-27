@@ -16,11 +16,19 @@ class Requests:
             response = requests.get(url)
 
         if response.status_code in [503, 500]:
-            return Response(
-                message="Third Party Service not available.",
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            print("THIRD PARTY SERVICE NOT AVAILABLE!")
+            print("THIRD PARTY STATUS CODE:", response.status_code)
+            return {
+                "message": "Third party service unavailable. Please try again later.",
+                "success": False,
+                "status": "error",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+            # return Response(
+            #     message="Third Party Service not available.",
+            #     success=False,
+            #     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            # )
 
         data = response.json()
         data["status_code"] = response.status_code
@@ -43,11 +51,19 @@ class Requests:
             response = requests.post(url)
 
         if response.status_code in [503, 500]:
-            return Response(
-                message="Third Party Service not available.",
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            print("THIRD PARTY SERVICE NOT AVAILABLE!")
+            print("THIRD PARTY STATUS CODE:", response.status_code)
+            return {
+                "message": "Third party service unavailable. Please try again later.",
+                "success": False,
+                "status": "error",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
+            # return Response(
+            #     message="Third Party Service not available.",
+            #     success=False,
+            #     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            # )
 
         data = response.json()
         data["status_code"] = response.status_code

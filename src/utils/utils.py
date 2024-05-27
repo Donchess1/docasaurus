@@ -7,17 +7,76 @@ from uuid import uuid4
 
 from django.core.validators import RegexValidator
 
-from users.models import BankAccount
-
-# from core.resources.flutterwave import FlwAPI
-
-# flw_api = FlwAPI
-
 
 def parse_datetime(datetime_input):
     val = str(datetime_input)[:-6]
     parsed_datetime = datetime.fromisoformat(val)  # Removed the timezone offset
+    parsed_datetime += timedelta(hours=1)  # Offset by an hour ahead
     return parsed_datetime.strftime("%B %d, %Y %I:%M%p")
+
+
+def parse_date(date_input):
+    # Convert date to string
+    val = str(date_input)
+    parsed_date = datetime.fromisoformat(val)
+    day = parsed_date.strftime("%d").lstrip("0")  # Remove leading zero
+    month = parsed_date.strftime("%b.")
+    year = parsed_date.strftime("%Y")
+
+    # Add appropriate suffix to the day
+    if day.endswith("1") and day != "11":
+        suffix = "st"
+    elif day.endswith("2") and day != "12":
+        suffix = "nd"
+    elif day.endswith("3") and day != "13":
+        suffix = "rd"
+    else:
+        suffix = "th"
+
+    formatted_date = f"{month} {day}{suffix} {year}"
+    return formatted_date
+
+
+def custom_flatten_uuid(uuid_string):
+    """Flatten a UUID string by removing dashes and reverses the string."""
+    return uuid_string.replace("-", "")[::-1]
+
+
+def unflatten_uuid(flattened_uuid):
+    flattened_uuid = flattened_uuid[::-1]
+    """Deflatten a flattened UUID string by reversing the string and adding dashes."""
+    return "-".join(
+        [
+            flattened_uuid[:8],
+            flattened_uuid[8:12],
+            flattened_uuid[12:16],
+            flattened_uuid[16:20],
+            flattened_uuid[20:],
+        ]
+    )
+
+
+def add_commas_to_transaction_amount(number):
+    number = str(number)
+    # Round the number to 2 decimal places
+    number = round(float(number), 2)
+    # Split the number into integer and decimal parts
+    integer_part, decimal_part = str(number).split(".")
+    # Reverse the integer part
+    reversed_int = integer_part[::-1]
+    # Initialize variables
+    result = ""
+    count = 0
+    # Iterate through the reversed string
+    for char in reversed_int:
+        result = char + result
+        count += 1
+        # Add comma after every third character, except for the last group
+        if count % 3 == 0 and count != len(reversed_int):
+            result = "," + result
+    # Add the decimal part back, ensuring it has 2 digits
+    result = f"{result}.{decimal_part.zfill(2)}"
+    return result
 
 
 def calculate_payment_amount_to_charge(amount, percent):
@@ -89,17 +148,8 @@ def generate_random_text(length):
     )
 
 
-def add_60_minutes():
-    current_datetime = datetime.now()
-    new_datetime = current_datetime + timedelta(minutes=60)
-    formatted_datetime = new_datetime.strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )  # Formats the datetime as "YYYY-MM-DD HH:MM:SS"
-    return formatted_datetime
-
-
 def generate_txn_reference():
-    random_text = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    random_text = "".join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
     now = datetime.now()
     year = str(now.year)
@@ -129,6 +179,12 @@ def get_withdrawal_fee(amount):
     charge = 0  # temporarily disable withdrawal fee
     amount_payable = amount + charge
     return charge, amount_payable
+
+
+def deconstruct_merchant_widget_key(key):
+    parts = key.split("&:%")[0].split("8q&Z!")
+    x = parts[0]
+    return {"token": parts[1], "merchant_id": x[36:]}
 
 
 def get_escrow_fees(amount):
