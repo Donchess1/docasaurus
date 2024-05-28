@@ -279,13 +279,6 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                         "store_owner": seller.alternate_name,
                     }
                 )
-                UserNotification.objects.create(
-                    user=user,
-                    category="FUNDS_LOCKED_BUYER",
-                    title=notifications.FUNDS_LOCKED_BUYER_TITLE,
-                    content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
-                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{transaction.reference}",
-                )
             buyer_values = {
                 "date": parse_datetime(txn.updated_at),
                 "amount_funded": f"NGN {add_commas_to_transaction_amount(str(amount_charged))}",
@@ -294,6 +287,14 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             }
             txn_tasks.send_lock_funds_merchant_buyer_email.delay(
                 user.email, buyer_values
+            )
+            amt = add_commas_to_transaction_amount(str(amount_charged))
+            UserNotification.objects.create(
+                user=user,
+                category="FUNDS_LOCKED_BUYER",
+                title=notifications.FundsLockedBuyerNotification(amt).TITLE,
+                content=notifications.FundsLockedBuyerNotification(amt).CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{transaction.reference}",
             )
 
         buyer_redirect_url = None

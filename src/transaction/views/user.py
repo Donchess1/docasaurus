@@ -434,11 +434,13 @@ class LockEscrowFundsView(generics.CreateAPIView):
             profile.locked_amount += int(txn.amount)
             profile.save()
 
+            escrow_amount = add_commas_to_transaction_amount(txn.amount)
+
             buyer_values = {
                 "first_name": user.name.split(" ")[0],
                 "recipient": user.email,
                 "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+                "amount_funded": f"NGN {escrow_amount}",
                 "transaction_id": reference,
                 "item_name": txn.meta["title"],
                 # "seller_name": seller.name,
@@ -450,7 +452,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
                     "date": parse_datetime(txn.updated_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+                    "amount_funded": f"NGN {escrow_amount}",
                     "transaction_id": reference,
                     "item_name": txn.meta["title"],
                     "buyer_name": user.name,
@@ -463,8 +465,12 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 UserNotification.objects.create(
                     user=seller,
                     category="FUNDS_LOCKED_SELLER",
-                    title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
-                    content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+                    title=notifications.FundsLockedSellerNotification(
+                        escrow_amount
+                    ).TITLE,
+                    content=notifications.FundsLockedSellerNotification(
+                        escrow_amount
+                    ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
                 )
             else:
@@ -474,8 +480,10 @@ class LockEscrowFundsView(generics.CreateAPIView):
             UserNotification.objects.create(
                 user=user,
                 category="FUNDS_LOCKED_BUYER",
-                title=notifications.FUNDS_LOCKED_BUYER_TITLE,
-                content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                title=notifications.FundsLockedBuyerNotification(escrow_amount).TITLE,
+                content=notifications.FundsLockedBuyerNotification(
+                    escrow_amount
+                ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )
             # TODO: Send real-time Notification
@@ -753,8 +761,12 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             UserNotification.objects.create(
                 user=user,
                 category="FUNDS_UNLOCKED_BUYER",
-                title=notifications.FUNDS_UNLOCKED_BUYER_TITLE,
-                content=notifications.FUNDS_UNLOCKED_BUYER_CONTENT,
+                title=notifications.FundsUnlockedBuyerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).TITLE,
+                content=notifications.FundsUnlockedBuyerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )
 
@@ -762,8 +774,12 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             UserNotification.objects.create(
                 user=seller,
                 category="FUNDS_UNLOCKED_SELLER",
-                title=notifications.FUNDS_UNLOCKED_CONFIRMATION_TITLE,
-                content=notifications.FUNDS_UNLOCKED_CONFIRMATION_CONTENT,
+                title=notifications.FundsUnlockedSellerNotification(
+                    add_commas_to_transaction_amount(amount_to_credit_seller)
+                ).TITLE,
+                content=notifications.FundsUnlockedSellerNotification(
+                    add_commas_to_transaction_amount(amount_to_credit_seller)
+                ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )
 

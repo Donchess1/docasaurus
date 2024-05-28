@@ -293,9 +293,10 @@ def notify_seller_escrow_transaction_via_email(
     merchant: Merchant,
     escrow_txn: Transaction,
 ):
+    escrow_amount = add_commas_to_transaction_amount(escrow_txn.amount)
     seller_values = {
         "date": parse_datetime(escrow_txn.updated_at),
-        "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
+        "amount_funded": f"NGN {escrow_amount}",
         "transaction_id": f"{(escrow_txn.reference).upper()}",
         "item_name": escrow_txn.meta.get("title"),
         "delivery_date": parse_date(escrow_txn.escrowmeta.delivery_date),
@@ -311,8 +312,8 @@ def notify_seller_escrow_transaction_via_email(
     UserNotification.objects.create(
         user=seller.customer.user,
         category="FUNDS_LOCKED_SELLER",
-        title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
-        content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+        title=notifications.FundsLockedSellerNotification(escrow_amount).TITLE,
+        content=notifications.FundsLockedSellerNotification(escrow_amount).CONTENT,
         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn.reference}",
     )
 
@@ -686,8 +687,12 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
             UserNotification.objects.create(
                 user=user,
                 category="FUNDS_UNLOCKED_BUYER",
-                title=notifications.FUNDS_UNLOCKED_BUYER_TITLE,
-                content=notifications.FUNDS_UNLOCKED_BUYER_CONTENT,
+                title=notifications.FundsUnlockedBuyerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).TITLE,
+                content=notifications.FundsUnlockedBuyerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
             )
 
@@ -695,8 +700,12 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
             UserNotification.objects.create(
                 user=seller,
                 category="FUNDS_UNLOCKED_SELLER",
-                title=notifications.FUNDS_UNLOCKED_CONFIRMATION_TITLE,
-                content=notifications.FUNDS_UNLOCKED_CONFIRMATION_CONTENT,
+                title=notifications.FundsUnlockedSellerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).TITLE,
+                content=notifications.FundsUnlockedSellerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
             )
             # Settle Merchant Funds
