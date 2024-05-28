@@ -66,8 +66,8 @@ def verify_merchant_widget_token_key(key):
     if not cache_data or not cache_data["is_valid"]:
         return False, "Widget session is invalid or expired!"
 
-    cache_data["is_valid"] = False
-    cache.delete(key)
+    # cache_data["is_valid"] = False
+    # cache.delete(key)
     return True, cache_data
 
 

@@ -86,7 +86,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             "access_key": access_key,
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 10)  # 10 minutes
+        cache.set(otp_key, value, 60 * 60 * 5)  # 5 minutes
         url = (
             f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{otp_key}"
             if user_type == "BUYER"
