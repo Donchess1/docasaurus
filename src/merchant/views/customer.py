@@ -79,11 +79,20 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
         token = self.jwt_client.sign(user.id)
         access_key = token["access_token"]
         merchant_id = str(merchant.id)
+
+        otp_key = generate_txn_reference()
+        value = {
+            "merchant_id": merchant_id,
+            "access_key": access_key,
+            "is_valid": True,
+        }
+        cache.set(otp_key, value, 60 * 60 * 10)  # 10 minutes
         url = (
-            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{generate_random_text(36)}{merchant_id}8q&Z!{access_key}&:%{generate_random_text(36)}"
+            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{otp_key}"
             if user_type == "BUYER"
-            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{generate_random_text(36)}{merchant_id}8q&Z!{access_key}&:%{generate_random_text(36)}"
+            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{otp_key}"
         )
+
         payload = {"session_lifetime": "120MINS", "url": url}
         return Response(
             success=True,

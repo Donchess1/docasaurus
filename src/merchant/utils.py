@@ -61,6 +61,16 @@ def verify_otp(otp, temp_id):
     return True, cache_data
 
 
+def verify_merchant_widget_token_key(key):
+    cache_data = cache.get(key)
+    if not cache_data or not cache_data["is_valid"]:
+        return False, "Widget session is invalid or expired!"
+
+    cache_data["is_valid"] = False
+    cache.delete(key)
+    return True, cache_data
+
+
 @transaction.atomic
 def initiate_gateway_withdrawal_transaction(user, data):
     amount = data.get("amount")

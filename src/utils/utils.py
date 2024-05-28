@@ -181,12 +181,6 @@ def get_withdrawal_fee(amount):
     return charge, amount_payable
 
 
-def deconstruct_merchant_widget_key(key):
-    parts = key.split("&:%")[0].split("8q&Z!")
-    x = parts[0]
-    return {"token": parts[1], "merchant_id": x[36:]}
-
-
 def get_escrow_fees(amount):
     if amount < 100000:
         charge_percentage = 0.015  # 1.5%
