@@ -393,12 +393,12 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     status="ESCROW",
                 )
                 instance.save()
-
+                escrow_amount = add_commas_to_transaction_amount(escrow_txn.amount)
                 buyer_values = {
                     "first_name": user.name.split(" ")[0],
                     "recipient": user.email,
                     "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
+                    "amount_funded": f"NGN {escrow_amount}",
                     "transaction_id": escrow_txn.reference,
                     "item_name": escrow_txn.meta["title"],
                     # "seller_name": seller.name,
@@ -410,7 +410,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         "first_name": seller.name.split(" ")[0],
                         "recipient": seller.email,
                         "date": parse_datetime(escrow_txn.updated_at),
-                        "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_txn.amount)}",
+                        "amount_funded": f"NGN {escrow_amount}",
                         "transaction_id": escrow_txn.reference,
                         "item_name": escrow_txn.meta["title"],
                         "buyer_name": user.name,
@@ -422,8 +422,12 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     UserNotification.objects.create(
                         user=seller,
                         category="FUNDS_LOCKED_SELLER",
-                        title=notifications.FUNDS_LOCKED_CONFIRMATION_TITLE,
-                        content=notifications.FUNDS_LOCKED_CONFIRMATION_CONTENT,
+                        title=notifications.FundsLockedSellerNotification(
+                            escrow_amount
+                        ).TITLE,
+                        content=notifications.FundsLockedSellerNotification(
+                            escrow_amount
+                        ).CONTENT,
                         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                     )
 
@@ -439,8 +443,12 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 UserNotification.objects.create(
                     user=user,
                     category="FUNDS_LOCKED_BUYER",
-                    title=notifications.FUNDS_LOCKED_BUYER_TITLE,
-                    content=notifications.FUNDS_LOCKED_BUYER_CONTENT,
+                    title=notifications.FundsLockedBuyerNotification(
+                        escrow_amount
+                    ).TITLE,
+                    content=notifications.FundsLockedBuyerNotification(
+                        escrow_amount
+                    ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                 )
             # TODO: Send real-time Notification
