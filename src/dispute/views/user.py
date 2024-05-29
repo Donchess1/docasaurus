@@ -115,8 +115,8 @@ class UserDisputeView(generics.ListCreateAPIView):
             "amount": transaction.amount,
         }
 
-        dispute_tasks.send_dispute_raised_author_email(user.email, author_values)
-        dispute_tasks.send_dispute_raised_receiver_email(
+        dispute_tasks.send_dispute_raised_author_email.delay(user.email, author_values)
+        dispute_tasks.send_dispute_raised_receiver_email.delay(
             partner.email, recipient_values
         )
 

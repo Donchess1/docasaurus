@@ -123,7 +123,9 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [
+            os.path.join(ROOT_DIR, "templates"),
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -279,10 +281,6 @@ SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
 }
 
-
-EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
-DEFAULT_FROM_EMAIL = os.getenv("FROM_EMAIL")
-
 # DRF API LOGGER SETTINGS
 DRF_API_LOGGER_DATABASE = True
 DRF_API_LOGGER_SIGNAL = True
@@ -303,3 +301,13 @@ DRF_API_LOGGER_SLOW_API_ABOVE = (
 DRF_API_LOGGER_TIME_ZONE = "Africa/Lagos"  # see the API information in local timezone
 DRF_API_LOGGER_PATH_TYPE = "ABSOLUTE"
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
+# EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = os.getenv("FROM_EMAIL")
+
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
+EMAIL_HOST = os.environ.get("EMAIL_HOST")
+EMAIL_PORT = os.environ.get("EMAIL_PORT")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")

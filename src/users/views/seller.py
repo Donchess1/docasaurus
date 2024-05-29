@@ -67,7 +67,7 @@ class RegisterSellerView(CreateAPIView):
             "recipient": email,
             "profile_edit_url": EDIT_PROFILE_URL,
         }
-        tasks.send_invitation_email(email, dynamic_values)
+        tasks.send_invitation_email.delay(email, dynamic_values)
 
         return Response(
             success=True,

@@ -53,6 +53,17 @@ class JWTClient(User):
             return None
 
     @classmethod
+    def authenticate_token(cls, token):
+        try:
+            decoded_token = jwt.decode(
+                token, cls.jwt_secret, algorithms=[cls.algorithm]
+            )
+            return decoded_token["user_id"]
+        except Exception as e:
+            print(e)
+            return None
+
+    @classmethod
     def admin_auth(cls, headers):
         new_token = jwt.encode()
 

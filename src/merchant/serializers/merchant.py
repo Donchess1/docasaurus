@@ -3,7 +3,7 @@ from django.db import models, transaction
 from rest_framework import serializers
 
 from business.models.business import Business
-from merchant.models import Customer, CustomerMerchant, Merchant
+from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, PayoutConfig
 from merchant.utils import (
     create_or_update_customer_user,
     customer_phone_numer_exists_for_merchant,
@@ -31,17 +31,11 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "merchant_name",
             "description",
             "address",
-            "enable_payout_splitting",
-            "payout_splitting_ratio",
-            "escrow_redirect_url",
             "phone",
             "email",
         )
 
     def validate(self, data):
-        enable_payout_splitting = data.get("enable_payout_splitting", False)
-        payout_splitting_ratio = data.get("payout_splitting_ratio", None)
-
         if User.objects.filter(phone=data["phone"]).exists():
             raise serializers.ValidationError(
                 {"phone": "This phone number is already in use."}
@@ -52,13 +46,6 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
                 {"email": "This email address is already in use."}
             )
 
-        if enable_payout_splitting and payout_splitting_ratio is None:
-            raise serializers.ValidationError(
-                {
-                    "payout_splitting_ratio": "Payout splitting ratio must be provided when enabled."
-                }
-            )
-
         data["email"] = data.get("email", "").lower()
         data["merchant_name"] = data.get("merchant_name", "").upper()
 
@@ -66,12 +53,14 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        password = generate_random_text(15)
         user_data = {
             "email": validated_data["email"],
             "phone": validated_data["phone"],
             "name": validated_data["name"],
-            "password": generate_random_text(15),
+            "password": password,
             "is_merchant": True,
+            "is_verified": True,
         }
         user = User.objects.create_user(**user_data)
 
@@ -86,30 +75,42 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "name": validated_data.get("merchant_name"),
             "description": validated_data.get("description"),
             "address": validated_data.get("address"),
-            "enable_payout_splitting": validated_data.get("enable_payout_splitting"),
-            "payout_splitting_ratio": validated_data.get("payout_splitting_ratio"),
-            "escrow_redirect_url": validated_data.get("escrow_redirect_url"),
         }
         merchant = Merchant.objects.create(**merchant_data)
-        return merchant
+        config = PayoutConfig.objects.create(merchant=merchant, name="Default Config")
+        return password, merchant
 
 
 class MerchantSerializer(serializers.ModelSerializer):
+    email = serializers.SerializerMethodField()
+
     class Meta:
         model = Merchant
         fields = "__all__"
+
+    def get_email(self, obj):
+        return obj.user_id.email
 
 
 class MerchantDetailSerializer(serializers.ModelSerializer):
-    user_profile = serializers.SerializerMethodField()
+    wallet_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = Merchant
-        fields = "__all__"
+        fields = (
+            "id",
+            "name",
+            "description",
+            "address",
+            "wallet_balance",
+            "created_at",
+            "updated_at",
+        )
 
-    def get_user_profile(self, obj):
+    def get_wallet_balance(self, obj):
         user_profile = UserProfile.objects.get(user_id=obj.user_id)
-        return UserProfileSerializer(user_profile).data
+        # data = UserProfileSerializer(user_profile).data
+        return str(user_profile.wallet_balance)
 
 
 class CustomerUserProfileSerializer(serializers.ModelSerializer):
@@ -117,18 +118,18 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     phone_number = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
     user_type = serializers.SerializerMethodField()
-    merchant_name = serializers.SerializerMethodField()
+    # merchant_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
         fields = (
-            "id",
+            # "id",
             "user_type",
             "created_at",
             "updated_at",
             "full_name",
             "phone_number",
-            "merchant_name",
+            # "merchant_name",
             "email",
         )
 
@@ -239,3 +240,61 @@ class CustomerWidgetSessionSerializer(serializers.Serializer):
 class CustomerWidgetSessionPayloadSerializer(serializers.Serializer):
     widget_url = serializers.URLField()
     session_lifetime = serializers.CharField()
+
+
+class ApiKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApiKey
+        fields = ["name"]
+
+
+class PayoutConfigSerializer(serializers.ModelSerializer):
+    merchant = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = PayoutConfig
+        fields = [
+            "id",
+            "merchant",
+            "buyer_charge_type",
+            "buyer_amount",
+            "name",
+            "seller_charge_type",
+            "seller_amount",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate_buyer_amount(self, value):
+        buyer_charge_type = self.initial_data.get("buyer_charge_type")
+        if (
+            buyer_charge_type == "PERCENTAGE" and value > 100
+        ) or buyer_charge_type == "NO_FEES":
+            return 0
+        return value
+
+    def validate_seller_amount(self, value):
+        seller_charge_type = self.initial_data.get("seller_charge_type")
+        if (
+            seller_charge_type == "PERCENTAGE" and value > 100
+        ) or seller_charge_type == "NO_FEES":
+            return 0
+        return value
+
+    def validate(self, data):
+        name = data.get("name")
+        merchant = self.context.get("merchant")
+        if PayoutConfig.objects.filter(merchant=merchant, name=name).exists():
+            raise serializers.ValidationError(
+                {"name": "Payout config with this name already exists."}
+            )
+        return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        PayoutConfig.objects.filter(merchant=validated_data["merchant"]).update(
+            is_active=False
+        )
+        return super().create(validated_data)

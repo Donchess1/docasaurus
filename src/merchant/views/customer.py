@@ -6,26 +6,44 @@ from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import action
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
+from core.resources.cache import Cache
 from core.resources.jwt_client import JWTClient
+from merchant import tasks
+from merchant.decorators import authorized_api_call
 from merchant.models import Merchant
 from merchant.serializers.dispute import MerchantEscrowDisputeSerializer
 from merchant.serializers.merchant import (
     CustomerWidgetSessionPayloadSerializer,
     CustomerWidgetSessionSerializer,
 )
-from merchant.serializers.transaction import MerchantTransactionSerializer
+from merchant.serializers.transaction import (
+    ConfirmMerchantWalletWithdrawalSerializer,
+    InitiateMerchantWalletWithdrawalSerializer,
+    MerchantTransactionSerializer,
+)
 from merchant.utils import (
     get_customer_merchant_instance,
     get_merchant_by_id,
+    initiate_gateway_withdrawal_transaction,
     validate_request,
+    verify_otp,
 )
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
-from utils.utils import generate_random_text
+from utils.utils import (
+    add_commas_to_transaction_amount,
+    generate_otp,
+    generate_random_text,
+    generate_temp_id,
+    generate_txn_reference,
+    get_withdrawal_fee,
+)
 
 CUSTOMER_WIDGET_BUYER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BUYER_BASE_URL", "")
 CUSTOMER_WIDGET_SELLER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_SELLER_BASE_URL", "")
+
+cache = Cache()
 
 
 class CustomerWidgetSessionView(generics.GenericAPIView):
@@ -39,15 +57,9 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             201: CustomerWidgetSessionPayloadSerializer,
         },
     )
+    @authorized_api_call
     def post(self, request, *args, **kwargs):
-        request_is_valid, resource = validate_request(request)
-        if not request_is_valid:
-            return Response(
-                success=False,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message=resource,
-            )
-        merchant = resource
+        merchant = request.merchant
         serializer = self.serializer_class(
             data=request.data,
             context={
@@ -66,12 +78,22 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
         user_type = obj.user_type
         token = self.jwt_client.sign(user.id)
         access_key = token["access_token"]
-        payload = {
-            "session_lifetime": "120MINS",
-            "url": f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{generate_random_text(36)}{str(merchant.id)}{access_key}{generate_random_text(4)}"
-            if user_type == "BUYER"
-            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{generate_random_text(36)}{str(merchant.id)}{access_key}{generate_random_text(4)}",
+        merchant_id = str(merchant.id)
+
+        otp_key = generate_txn_reference()
+        value = {
+            "merchant_id": merchant_id,
+            "access_key": access_key,
+            "is_valid": True,
         }
+        cache.set(otp_key, value, 60 * 60 * 5)  # 5 minutes
+        url = (
+            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{otp_key}"
+            if user_type == "BUYER"
+            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{otp_key}"
+        )
+
+        payload = {"session_lifetime": "120MINS", "url": url}
         return Response(
             success=True,
             message="Widget session created successfully",
@@ -117,7 +139,9 @@ class CustomerTransactionListView(generics.ListAPIView):
                 message="Customer does not exist for merchant",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        merchant_transactions_queryset = self.get_queryset().filter(merchant=merchant)
+        merchant_transactions_queryset = self.get_queryset().filter(
+            merchant=merchant, type="ESCROW"
+        )
         customer_queryset = merchant_transactions_queryset.filter(
             Q(escrowmeta__partner_email=customer_email)
             | Q(escrowmeta__meta__parties__buyer=customer_email)
@@ -239,4 +263,110 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
             message="Dispute created successfully",
             status_code=status.HTTP_201_CREATED,
             data=ser.data,
+        )
+
+
+class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
+    serializer_class = InitiateMerchantWalletWithdrawalSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @swagger_auto_schema(
+        operation_description="Initiate withdrawal from seller dashboard",
+    )
+    def post(self, request):
+        user = request.user
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "user": user,
+            },
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        otp = generate_otp()
+        otp_key = generate_temp_id()
+
+        payload = {
+            "temp_id": otp_key,
+        }
+        value = {
+            "otp": otp,
+            "data": dict(data),
+            "is_valid": True,
+        }
+        cache.set(otp_key, value, 60 * 60 * 10)
+
+        merchant_platform = data.get("merchant_platform")
+        amount = data.get("amount")
+
+        dynamic_values = {
+            "otp": otp,
+            "merchant_platform": merchant_platform,
+            "expiry_time_minutes": "10 minutes",
+            "action_description": f"confirm withdrawal of NGN {add_commas_to_transaction_amount(int(amount))} from your wallet",
+        }
+        tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
+            user.email, dynamic_values
+        )
+
+        return Response(
+            success=True,
+            message="Withdrawal initiated",
+            status_code=status.HTTP_200_OK,
+            data=payload,
+        )
+
+
+class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
+    serializer_class = ConfirmMerchantWalletWithdrawalSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @swagger_auto_schema(
+        operation_description="Confirm wallet withdrawal on merchant widget",
+    )
+    def post(self, request):
+        user = request.user
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "user": user,
+            },
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        otp = data.get("otp")
+        temp_id = data.get("temp_id")
+
+        is_valid, resource = verify_otp(otp, temp_id)
+        if not is_valid:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=resource,
+            )
+        data = resource.get("data")
+        successful, resource = initiate_gateway_withdrawal_transaction(user, data)
+        return (
+            Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=resource,
+            )
+            if not successful
+            else Response(
+                success=True,
+                message="Withdrawal is currently being processed",
+                status_code=status.HTTP_200_OK,
+                data=resource,
+            )
         )

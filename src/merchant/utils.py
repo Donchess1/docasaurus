@@ -1,15 +1,39 @@
 import datetime
+import hashlib
+import hmac
+import os
+import time
 from decimal import Decimal
 
+import bcrypt
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import OuterRef, Q, Subquery
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
-from merchant.models import Customer, CustomerMerchant, Merchant
+from core.resources.cache import Cache
+from core.resources.flutterwave import FlwAPI
+from merchant import tasks
+from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, PayoutConfig
+from notifications.models.notification import UserNotification
+from transaction import tasks as txn_tasks
 from users.models import UserProfile
-from utils.utils import generate_random_text, generate_txn_reference
+from utils.text import notifications
+from utils.utils import (
+    add_commas_to_transaction_amount,
+    generate_random_text,
+    generate_txn_reference,
+    get_escrow_fees,
+    parse_date,
+    parse_datetime,
+)
 
 User = get_user_model()
+cache = Cache()
+flw_api = FlwAPI
+BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
 def validate_request(request):
@@ -23,6 +47,79 @@ def validate_request(request):
         return [False, "Request Forbidden. Invalid API Key"]
 
 
+def verify_otp(otp, temp_id):
+    cache_data = cache.get(temp_id)
+    if not cache_data or not cache_data["is_valid"]:
+        return False, "OTP is invalid or expired!"
+
+    if cache_data["otp"] != otp:
+        return False, "Invalid OTP!"
+
+    cache_data["is_valid"] = False
+    cache.delete(temp_id)
+
+    return True, cache_data
+
+
+def verify_merchant_widget_token_key(key):
+    cache_data = cache.get(key)
+    if not cache_data or not cache_data["is_valid"]:
+        return False, "Widget session is invalid or expired!"
+
+    # cache_data["is_valid"] = False
+    # cache.delete(key)
+    return True, cache_data
+
+
+@transaction.atomic
+def initiate_gateway_withdrawal_transaction(user, data):
+    amount = data.get("amount")
+    bank_code = data.get("bank_code")
+    account_number = data.get("account_number")
+    merchant_platform = data.get("merchant_platform_name")
+    tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
+    description = "MyBalance Wallet Withdrawal"
+    email = user.email
+
+    txn = Transaction.objects.create(
+        user_id=user,
+        type="WITHDRAW",
+        amount=amount,
+        mode="MERCHANT_API",
+        status="PENDING",
+        reference=tx_ref,
+        currency="NGN",
+        provider="FLUTTERWAVE",
+        meta={"title": "Wallet debit"},
+    )
+    # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
+    tx_data = {
+        "account_bank": bank_code,
+        "account_number": account_number,
+        "amount": int(amount),
+        "narration": description,
+        "reference": tx_ref,
+        "currency": "NGN",
+        "meta": {
+            "amount_to_debit": amount,
+            "customer_email": email,
+            "tx_ref": tx_ref,
+        },
+        # "callback_url": f"{BACKEND_BASE_URL}/v1/shared/withdraw-callback",
+    }
+
+    obj = flw_api.initiate_payout(tx_data)
+    msg = obj["message"]
+    txn.meta.update({"description": f"FLW Transaction: {tx_ref}", "note": msg})
+    txn.save()
+    if obj["status"] == "error":
+        return False, msg
+    return (
+        True,
+        {"transaction_reference": tx_ref},
+    )
+
+
 def get_merchant_by_id(merchant_id):
     """
     Retrieve Merchant Instance by ID
@@ -30,9 +127,78 @@ def get_merchant_by_id(merchant_id):
     try:
         instance = Merchant.objects.filter(id=merchant_id).first()
     except Exception as e:
+        print("Error retrieving Merchant", str(e))
+        instance = None
+    return instance
+
+
+def get_merchant_users_redirect_url(merchant: Merchant) -> dict:
+    """
+    Retrieve Merchant Redicrect URLs for Buyer and Seller
+    """
+    try:
+        instance = ApiKey.objects.filter(merchant=merchant).first()
+        if instance:
+            return {
+                "buyer_redirect_url": instance.buyer_redirect_url,
+                "seller_redirect_url": instance.seller_redirect_url,
+            }
+    except Exception as e:
+        print("Error retrieving Merchant Redirect URLs", str(e))
+        return None
+
+
+def get_merchant_by_email(email):
+    """
+    Retrieve Merchant Instance by ID
+    """
+    try:
+        user = User.objects.filter(email=email).first()
+        instance = Merchant.objects.filter(user_id=user).first()
+    except Exception as e:
         print("Error", str(e))
         instance = None
     return instance
+
+
+def get_merchant_active_payout_configuration(merchant: Merchant) -> PayoutConfig:
+    """
+    Retrieve Merchant Payout configuration
+    """
+    try:
+        instance = PayoutConfig.objects.filter(
+            merchant=merchant, is_active=True
+        ).first()
+    except Exception as e:
+        instance = None
+    return instance
+
+
+def calculate_percentage_charge(amount, payout_config_value):
+    return (amount * payout_config_value) / 100
+
+
+def get_merchant_transaction_charges(
+    merchant: Merchant, amount: int, payout_config: PayoutConfig
+) -> dict:
+    """
+    Retrieve Merchant Payout for escrow amount
+    """
+    charges = {}
+    for role, payment_type, amount_field in [
+        ("buyer", payout_config.buyer_charge_type, "buyer_amount"),
+        ("seller", payout_config.seller_charge_type, "seller_amount"),
+    ]:
+        if payment_type == "NO_FEES":
+            charges[f"{role}_charge"] = 0
+        elif payment_type == "FLAT_FEE":
+            payout_config_value = getattr(payout_config, amount_field)
+            charges[f"{role}_charge"] = payout_config_value
+        else:
+            payout_config_value = getattr(payout_config, amount_field)
+            charge = calculate_percentage_charge(amount, payout_config_value)
+            charges[f"{role}_charge"] = charge
+    return charges
 
 
 def customer_phone_numer_exists_for_merchant(merchant, phone_number):
@@ -117,65 +283,167 @@ def get_merchant_customers_by_user_type(merchant, user_type):
     ]
 
 
-def check_escrow_user_is_valid(email, merchant_customer_type_list):
+def escrow_user_is_valid(email, merchant_customer_type_list):
     return True if email in merchant_customer_type_list else False
 
 
-def create_merchant_escrow_transaction(
-    merchant,
-    buyer,
-    seller,
-    charge,
-    amount,
-    purpose,
-    title,
-    tx_ref,
-    item_type,
-    item_quantity,
-    delivery_date,
+def notify_seller_escrow_transaction_via_email(
+    seller: CustomerMerchant,
+    buyer: CustomerMerchant,
+    merchant: Merchant,
+    escrow_txn: Transaction,
 ):
+    escrow_amount = add_commas_to_transaction_amount(escrow_txn.amount)
+    seller_values = {
+        "date": parse_datetime(escrow_txn.updated_at),
+        "amount_funded": f"NGN {escrow_amount}",
+        "transaction_id": f"{(escrow_txn.reference).upper()}",
+        "item_name": escrow_txn.meta.get("title"),
+        "delivery_date": parse_date(escrow_txn.escrowmeta.delivery_date),
+        "buyer_name": buyer.alternate_name,
+        "buyer_phone": buyer.alternate_phone_number,
+        "buyer_email": buyer.customer.user.email,
+        "merchant_platform": merchant.name,
+    }
+    txn_tasks.send_lock_funds_merchant_seller_email.delay(
+        seller.customer.user.email, seller_values
+    )
+    # Create Notification for Seller
+    UserNotification.objects.create(
+        user=seller.customer.user,
+        category="FUNDS_LOCKED_SELLER",
+        title=notifications.FundsLockedSellerNotification(escrow_amount).TITLE,
+        content=notifications.FundsLockedSellerNotification(escrow_amount).CONTENT,
+        action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn.reference}",
+    )
+
+
+def notify_merchant_escrow_transaction_via_email(
+    seller: CustomerMerchant,
+    buyer: CustomerMerchant,
+    merchant: Merchant,
+    escrow_txn: Transaction,
+):
+    merchant_values = {
+        "date": parse_datetime(escrow_txn.updated_at),
+        "amount_funded": f"NGN {add_commas_to_transaction_amount(str(escrow_txn.amount))}",
+        "transaction_id": (escrow_txn.reference).upper(),
+        "item_name": escrow_txn.meta["title"],
+        "delivery_date": parse_date(escrow_txn.escrowmeta.delivery_date),
+        "seller_name": seller.alternate_name,
+        "seller_phone": seller.alternate_phone_number,
+        "seller_email": seller.customer.user.email,
+        "buyer_name": buyer.alternate_name,
+        "buyer_phone": buyer.alternate_phone_number,
+        "buyer_email": buyer.customer.user.email,
+        "merchant_platform": escrow_txn.merchant.name,
+    }
+    txn_tasks.send_lock_funds_merchant_email.delay(
+        merchant.user_id.email, merchant_values
+    )
+
+
+@transaction.atomic
+def create_merchant_escrow_transaction(
+    merchant: Merchant,
+    buyer_email: str,
+    seller_email: str,
+    item: dict,
+    source: Transaction,
+    payout_config: PayoutConfig,
+):
+    title = item.get("title")
+    description = item.get("description")
+    category = item.get("category")
+    item_quantity = item.get("item_quantity")
+    delivery_date = item.get("delivery_date")
+    amount = item.get("amount")
+    charge, amount_payable = get_escrow_fees(amount)
+    tx_ref = generate_txn_reference()
+
     transaction_data = {
         "user_id": merchant.user_id,
-        "status": "PENDING",
+        "status": "SUCCESSFUL",
         "type": "ESCROW",
         "provider": "MYBALANCE",
         "mode": "MERCHANT_API",
         "merchant": merchant,
-        "amount": amount,
-        "charge": charge,
-        "meta": {"title": title, "description": purpose},
+        "amount": int(amount),
+        "charge": int(charge),
+        "meta": {
+            "title": title,
+            "description": description,
+            "category": category,
+            "source_payment_transaction": str(source),
+        },
         "reference": tx_ref,
         "provider_tx_reference": tx_ref,
     }
-    transaction = Transaction.objects.create(**transaction_data)
+    escrow_txn = Transaction.objects.create(**transaction_data)
 
     escrow_meta_data = {
         "author": "MERCHANT",
-        "transaction_id": transaction,
-        "partner_email": buyer,
-        "purpose": purpose,
-        "item_type": item_type,
+        "transaction_id": escrow_txn,
+        "partner_email": buyer_email,
+        "purpose": description,
+        "item_type": title,
         "item_quantity": item_quantity,
         "delivery_date": delivery_date,
         "delivery_tolerance": 3,
-        "meta": {"parties": {"buyer": buyer, "seller": seller}},
+        "payout_config": payout_config,
+        "parent_payment_transaction": source,
+        "meta": {"parties": {"buyer": buyer_email, "seller": seller_email}},
     }
-    escrow_meta = EscrowMeta.objects.create(**escrow_meta_data)
-    return transaction
+    escrow_txn_meta = EscrowMeta.objects.create(**escrow_meta_data)
+
+    buyer: CustomerMerchant = get_customer_merchant_instance(buyer_email, merchant)
+    seller: CustomerMerchant = get_customer_merchant_instance(seller_email, merchant)
+    locked_amount = LockedAmount.objects.create(
+        transaction=escrow_txn,
+        user=buyer.customer.user,
+        seller_email=seller_email,
+        amount=escrow_txn.amount,
+        status="ESCROW",
+    )
+    notify_seller_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
+    notify_merchant_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
+
+    return escrow_txn
 
 
-def generate_deposit_transaction_for_escrow(escrow_txn, buyer, amount, tx_ref):
-    email = buyer.email
+def create_bulk_merchant_escrow_transactions(
+    merchant: Merchant,
+    buyer: User,
+    entities: dict,
+    source: Transaction,
+    payout_config: PayoutConfig,
+):
+    escrows = []
+    for entity in entities:
+        seller_email = entity["seller"]
+        items = entity["items"]
+        for item in items:
+            txn = create_merchant_escrow_transaction(
+                merchant, buyer.email, seller_email, item, source, payout_config
+            )
+            escrows.append(txn)
+    return escrows
 
+
+def generate_deposit_transaction_for_escrow(
+    user: User, amount: Decimal, tx_ref: str, meta: dict
+):
+    meta.update({"title": "Escrow transaction fund"})
     deposit_txn = Transaction.objects.create(
-        user_id=buyer,
+        user_id=user,
         type="DEPOSIT",
+        mode="MERCHANT_API",
         amount=amount,
         status="PENDING",
         reference=tx_ref,
         currency="NGN",
         provider="FLUTTERWAVE",
-        meta={"title": "Escrow transaction fund"},
+        meta=meta,
     )
 
     return deposit_txn
@@ -193,7 +461,7 @@ def get_customer_merchant_instance(email, merchant):
     return instance
 
 
-def get_merchant_escrow_users(escrow_txn, merchant):
+def get_merchant_escrow_users(escrow_txn: Transaction, merchant: Merchant):
     meta = escrow_txn.escrowmeta.meta
     if not meta:
         return None
@@ -233,15 +501,17 @@ def get_transaction_by_id(id):
         return None
 
 
-def check_transactions_are_valid_escrows(transactions):
+def transactions_are_invalid_escrows(transactions):
     for id in transactions:
         transaction = get_transaction_by_id(id)
+        if not transaction:
+            continue
         if transaction.type != "ESCROW":
-            return False
-    return True
+            return True
+    return False
 
 
-def check_transactions_delivery_date_has_elapsed(transactions: list[str]) -> bool:
+def transactions_delivery_date_has_not_elapsed(transactions: list[str]) -> bool:
     for id in transactions:
         transaction = get_transaction_by_id(id)
         if not transaction:
@@ -252,22 +522,94 @@ def check_transactions_delivery_date_has_elapsed(transactions: list[str]) -> boo
     return False
 
 
-def check_transactions_already_unlocked(transactions):
+def transactions_are_already_unlocked(transactions):
     for id in transactions:
         transaction = get_transaction_by_id(id)
+        if not transaction:
+            continue
         if transaction.status == "SETTLED":
-            return False
-    return True
+            return True
+    return False
 
 
-def unlock_customer_escrow_transactions(transactions, user):
+def settle_merchant_escrow_charges(
+    transaction: Transaction, merchant: Merchant
+) -> None:
+    merchant_payout_config = (
+        transaction.escrowmeta.payout_config
+        if transaction.escrowmeta.payout_config
+        else get_merchant_active_payout_configuration(merchant)
+    )
+    merchant_user_charges = get_merchant_transaction_charges(
+        merchant, transaction.amount, merchant_payout_config
+    )
+    buyer_charge = merchant_user_charges.get("buyer_charge")
+    seller_charge = merchant_user_charges.get("seller_charge")
+    merchant_settlement = buyer_charge + seller_charge
+    tx_ref = generate_txn_reference()
+    settlement_txn = Transaction.objects.create(
+        user_id=merchant.user_id,
+        type="MERCHANT_SETTLEMENT",
+        merchant=merchant,
+        amount=int(merchant_settlement),
+        status="SUCCESSFUL",
+        reference=tx_ref,
+        currency="NGN",
+        provider="MYBALANCE",
+        meta={
+            # "title": "Escrow Settlement",
+            "description": "Merchant Escrow Settlement",
+            "escrow_transaction": str(transaction.id),
+        },
+    )
+    merchant.user_id.userprofile.wallet_balance += int(merchant_settlement)
+    merchant.user_id.userprofile.save()
+
+    escrow_users = get_merchant_escrow_users(transaction, merchant)
+    buyer = escrow_users.get("buyer")
+    seller = escrow_users.get("seller")
+
+    merchant_values = {
+        "date": parse_datetime(transaction.updated_at),
+        "amount_settled": f"NGN {add_commas_to_transaction_amount(str(merchant_settlement))}",
+        "transaction_amount": f"NGN {add_commas_to_transaction_amount(str(transaction.amount))}",
+        "buyer_charges": f"NGN {add_commas_to_transaction_amount(str(buyer_charge))}",
+        "seller_charges": f"NGN {add_commas_to_transaction_amount(str(seller_charge))}",
+        "transaction_id": (transaction.reference).upper(),
+        "item_name": transaction.meta["title"],
+        "delivery_date": parse_date(transaction.escrowmeta.delivery_date),
+        "seller_name": seller.alternate_name,
+        "seller_phone": seller.alternate_phone_number,
+        "seller_email": seller.customer.user.email,
+        "buyer_name": buyer.alternate_name,
+        "buyer_phone": buyer.alternate_phone_number,
+        "buyer_email": buyer.customer.user.email,
+        "merchant_platform": transaction.merchant.name,
+    }
+    tasks.send_unlock_funds_merchant_email.delay(
+        merchant.user_id.email, merchant_values
+    )
+
+
+def unlock_customer_escrow_transactions(transactions: list, user: User):
     for id in transactions:
         id = str(id)
-        print("STARTUNG TO UNLOCK TRANSACTION with ID: " + id)
         try:
             txn = get_transaction_by_id(id)
             txn.status = "FUFILLED"
             txn.save()
+
+            merchant = txn.merchant
+            transaction_payout_config = (
+                txn.escrowmeta.payout_config
+                if txn.escrowmeta.payout_config
+                else get_merchant_active_payout_configuration(merchant)
+            )
+            merchant_user_charges = get_merchant_transaction_charges(
+                merchant, txn.amount, transaction_payout_config
+            )
+            merchant_seller_charge = merchant_user_charges.get("seller_charge")
+
             # Move amount from Buyer's Locked Balance to Unlocked Balance
             profile = user.userprofile
             profile.locked_amount -= Decimal(str(txn.amount))
@@ -275,10 +617,9 @@ def unlock_customer_escrow_transactions(transactions, user):
 
             # Evaluating free escrow transactions
             buyer_free_escrow_credits = int(profile.free_escrow_transactions)
-            amount_to_credit_seller = int(txn.amount - txn.charge)
+            seller_charges = int(txn.charge) + int(merchant_seller_charge)
+            amount_to_credit_seller = int(txn.amount - seller_charges)
             seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
-            print("SELLER", seller)
-            seller_charges = int(txn.charge)
             if buyer_free_escrow_credits > 0:
                 # reverse charges to buyer wallet & deplete free credits
                 profile.free_escrow_transactions -= 1
@@ -301,70 +642,91 @@ def unlock_customer_escrow_transactions(transactions, user):
 
             if seller.userprofile.free_escrow_transactions > 0:
                 # credit full amount to seller and deplete free credits
-                amount_to_credit_seller = int(txn.amount)
-                seller_charges = 0
+                amount_to_credit_seller = int(txn.amount) - int(merchant_seller_charge)
+                seller_charges = int(merchant_seller_charge)
                 seller.userprofile.free_escrow_transactions -= 1
                 seller.userprofile.save()
 
             profile.save()
-            instance = LockedAmount.objects.get(transaction=txn)
+            locked_amount_instance = LockedAmount.objects.get(transaction=txn)
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
-            seller = User.objects.get(email=instance.seller_email)
-            seller_profile = seller.userprofile
-            seller_profile.wallet_balance += int(amount_to_credit_seller)
-            seller_profile.save()
+            seller.userprofile.wallet_balance += int(amount_to_credit_seller)
+            seller.userprofile.save()
 
-            instance.status = "SETTLED"
-            instance.save()
+            locked_amount_instance.status = "SETTLED"
+            locked_amount_instance.save()
 
-            # Notify Buyer & Seller that funds has been unlocked from escrow via email.
-            # escrow_meta = txn.escrowmeta.meta
-            # buyer_values = {
-            #     "first_name": user.name.split(" ")[0],
-            #     "recipient": user.email,
-            #     "date": parse_datetime(txn.updated_at),
-            #     "transaction_id": reference,
-            #     "item_name": txn.meta["title"],
-            #     "seller_name": seller.name,
-            #     "bank_name": escrow_meta.get("bank_name"),
-            #     "account_name": escrow_meta.get("account_name"),
-            #     "account_number": escrow_meta.get("account_number"),
-            #     "amount": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
-            # }
-            # seller_values = {
-            #     "first_name": seller.name.split(" ")[0],
-            #     "recipient": seller.email,
-            #     "date": parse_datetime(txn.updated_at),
-            #     "transaction_id": reference,
-            #     "item_name": txn.meta["title"],
-            #     "buyer_name": user.name,
-            #     "bank_name": escrow_meta.get("bank_name"),
-            #     "account_name": escrow_meta.get("account_name"),
-            #     "account_number": escrow_meta.get("account_number"),
-            #     "amount": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
-            #     "transaction_fee": f"N{seller_charges}",
-            # }
-            # tasks.send_unlock_funds_buyer_email(user.email, buyer_values)
-            # tasks.send_unlock_funds_seller_email(seller.email, seller_values)
+            seller_values = {
+                "date": parse_datetime(txn.updated_at),
+                "transaction_id": (txn.reference).upper(),
+                "item_name": txn.meta["title"],
+                "customer_name": user.name,
+                "customer_email": user.email,
+                "merchant_platform": (txn.merchant.name).upper(),
+                "amount_unlocked": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+                "amount_settled": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
+                "transaction_fee": f"NGN {add_commas_to_transaction_amount(seller_charges)}",
+            }
+            buyer_values = {
+                "date": parse_datetime(txn.updated_at),
+                "transaction_id": (txn.reference).upper(),
+                "item_name": txn.meta["title"],
+                "seller_name": seller.name,
+                "seller_email": seller.email,
+                "merchant_platform": (txn.merchant.name).upper(),
+                "amount_unlocked": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+            }
+
+            tasks.send_unlock_funds_merchant_seller_email.delay(
+                seller.email, seller_values
+            )
+            tasks.send_unlock_funds_merchant_buyer_email.delay(user.email, buyer_values)
 
             # Create Notification for Buyer
-            # UserNotification.objects.create(
-            #     user=user,
-            #     category="FUNDS_UNLOCKED_BUYER",
-            #     title=notifications.FUNDS_UNLOCKED_BUYER_TITLE,
-            #     content=notifications.FUNDS_UNLOCKED_BUYER_CONTENT,
-            #     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
-            # )
+            UserNotification.objects.create(
+                user=user,
+                category="FUNDS_UNLOCKED_BUYER",
+                title=notifications.FundsUnlockedBuyerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).TITLE,
+                content=notifications.FundsUnlockedBuyerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
+            )
 
             # Create Notification for Seller
-            # UserNotification.objects.create(
-            #     user=seller,
-            #     category="FUNDS_UNLOCKED_SELLER",
-            #     title=notifications.FUNDS_UNLOCKED_CONFIRMATION_TITLE,
-            #     content=notifications.FUNDS_UNLOCKED_CONFIRMATION_CONTENT,
-            #     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
-            # )
+            UserNotification.objects.create(
+                user=seller,
+                category="FUNDS_UNLOCKED_SELLER",
+                title=notifications.FundsUnlockedSellerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).TITLE,
+                content=notifications.FundsUnlockedSellerNotification(
+                    add_commas_to_transaction_amount(txn.amount)
+                ).CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
+            )
+            # Settle Merchant Funds
+            settle_merchant_escrow_charges(txn, merchant)
         except Exception as e:
-            print(f"Exception occurred: {str(e)}")
-        print("FINISHED UNLOCKING TRANSACTION")
+            print(
+                f"Exception occurred while unlocking funds with transaction {id}: {str(e)}"
+            )
+            return False
+    return True
+
+
+def generate_api_key(merchant_id):
+    api_key = hmac.new(
+        settings.SECRET_KEY.encode("utf-8"),
+        merchant_id.encode("utf-8") + time.ctime().encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    hashed_api_key = bcrypt.hashpw(api_key.encode("utf-8"), bcrypt.gensalt())
+    return api_key, hashed_api_key.decode("utf-8")
+
+
+def verify_api_key(api_key: str, hashed_api_key: str) -> bool:
+    return bcrypt.checkpw(api_key.encode("utf-8"), hashed_api_key.encode("utf-8"))
