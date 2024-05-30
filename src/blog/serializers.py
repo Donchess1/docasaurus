@@ -27,14 +27,18 @@ class BlogPostSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         markdown_file = validated_data.pop("markdown_file")
-        html_content = parse_markdown_file(markdown_file)
-        validated_data["content"] = html_content
+        # html_content = parse_markdown_file(markdown_file)
+        # validated_data["content"] = html_content
+        markdown_content = markdown_file.read().decode("utf-8")
+        validated_data["content"] = markdown_content
         return super().create(validated_data)
 
     @transaction.atomic
     def update(self, instance, validated_data):
         markdown_file = validated_data.pop("markdown_file", None)
         if markdown_file:
-            html_content = parse_markdown_file(markdown_file)
-            validated_data["content"] = html_content
+            # html_content = parse_markdown_file(markdown_file)
+            # validated_data["content"] = html_content
+            markdown_content = markdown_file.read().decode("utf-8")
+            validated_data["content"] = markdown_content
         return super().update(instance, validated_data)
