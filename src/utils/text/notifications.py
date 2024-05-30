@@ -7,14 +7,14 @@ class BaseNotification:
 class WalletDepositNotification(BaseNotification):
     def __init__(self, amount):
         TITLE = "Deposit Confirmation"
-        CONTENT = f"You deposited NGN {amount} into your Wallet. Your funds are now securely stored with us. Kindly check your email for more information"
+        CONTENT = f"You deposited NGN {amount} into your Wallet. Your funds are now securely stored with us. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class WalletWithdrawalNotification(BaseNotification):
     def __init__(self, amount):
         TITLE = "Withdrawal Confirmation"
-        CONTENT = f"You withdrew NGN {amount} from your Wallet. Your requested amount has been processed. Your requested amount has been processed into your bank account. Kindly check your email for more information."
+        CONTENT = f"You withdrew NGN {amount} from your Wallet. Your requested amount has been processed into your bank account. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
@@ -42,7 +42,7 @@ class FundsUnlockedBuyerNotification(BaseNotification):
 class FundsUnlockedSellerNotification(BaseNotification):
     def __init__(self, amount):
         TITLE = "Funds Unlocked Confirmation"
-        CONTENT = f"NGN {amount} has been unlocked for you. You now have full access to your account for transactions. Kindly check your email for more information"
+        CONTENT = f"NGN {amount} has been unlocked for you. You now have full access to your account for transactions. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
