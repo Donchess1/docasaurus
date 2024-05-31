@@ -11,7 +11,7 @@ def send_invitation_email(email, values):
 
 @shared_task
 def send_welcome_email(email, values):
-    EmailClient.send_welcome_email(email, values)
+    EmailClientv2.send_welcome_email(email, values)
 
 
 @shared_task
