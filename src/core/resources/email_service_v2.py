@@ -33,6 +33,13 @@ class EmailClientV2:
         subject = "Wallet Funded 🎉"
         return cls.send_email(email, subject, html_content)
 
+    @classmethod
+    def send_wallet_withdrawal_email(cls, email: str, context: dict):
+        template_name = "wallet_withdrawal.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Wallet Withdrawal 🎉"
+        return cls.send_email(email, subject, html_content)
+
     # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, subject: str, html_body: dict):

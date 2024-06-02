@@ -731,7 +731,8 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             values = {
                 "first_name": user.name.split(" ")[0],
                 "recipient": email,
-                "amount_funded": str(txn.amount),
+                "transaction_reference": (txn.reference).upper(),
+                "amount_withdrawn": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                 "date": parse_datetime(txn.created_at),
                 "bank_name": data.get("bank_name"),
                 "account_name": data.get("fullname"),
