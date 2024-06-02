@@ -20,14 +20,14 @@ class EmailClientV2:
         return cls.send_email(email, subject, html_content)
 
     @classmethod
-    def send_welcome_email(cls, email: str, context: dict):
+    def send_onboarding_successful_email(cls, email: str, context: dict):
         template_name = "welcome_onboard.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Welcome to MyBalance 🎉"
         return cls.send_email(email, subject, html_content)
 
     @classmethod
-    def send_wallet_funding_email(cls, email: str, context: dict):
+    def send_fund_wallet_email(cls, email: str, context: dict):
         template_name = "wallet_funded.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Wallet Funded 🎉"

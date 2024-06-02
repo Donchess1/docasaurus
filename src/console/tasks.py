@@ -10,5 +10,5 @@ def send_wallet_withdrawal_email(email, values):
 
 
 @shared_task
-def send_wallet_funding_email(email, values):
-    EmailClientV2.send_wallet_funding_email(email, values)
+def send_fund_wallet_email(email, values):
+    EmailClientV2.send_fund_wallet_email(email, values)

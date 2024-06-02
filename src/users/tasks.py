@@ -10,8 +10,8 @@ def send_invitation_email(email, values):
 
 
 @shared_task
-def send_welcome_email(email, values):
-    EmailClientV2.send_welcome_email(email, values)
+def send_onboarding_successful_email(email, values):
+    EmailClientV2.send_onboarding_successful_email(email, values)
 
 
 @shared_task

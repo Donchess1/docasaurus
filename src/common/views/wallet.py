@@ -226,7 +226,7 @@ class FundWalletRedirectView(GenericAPIView):
                     "wallet_balance": f"NGN {add_commas_to_transaction_amount(str(profile.wallet_balance))}",
                     "transaction_reference": f"{(txn.reference).upper()}",
                 }
-                console_tasks.send_wallet_funding_email.delay(email, values)
+                console_tasks.send_fund_wallet_email.delay(email, values)
                 # Create Notification
                 UserNotification.objects.create(
                     user=user,
