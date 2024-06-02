@@ -198,21 +198,3 @@ class EmailClient:
             print(e)
             # TODO: Log Email Message and Status
             return False
-
-    @classmethod
-    def send_plain_email(cls, email: str, subject: str, html_content: str):
-        message = Mail(
-            from_email=cls.FROM_EMAIL,
-            to_emails=email,
-            subject=subject,
-            html_content=html_content,
-        )
-        try:
-            response = cls.sg_client.send(message)
-            print("SUCCESSFUL -->", response.status_code == 202)
-            return response.status_code == 202
-        except Exception as e:
-            print(e)
-            return False
-
-    # ENTRY POINT

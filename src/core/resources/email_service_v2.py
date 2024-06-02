@@ -14,16 +14,23 @@ class EmailClient:
 
     @classmethod
     def send_account_verification_email(cls, email: str, context: dict):
-        template_name = "registration/verification_email.html"
+        template_name = "account_verification.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Verify Your Account"
         return cls.send_email(email, subject, html_content)
 
     @classmethod
     def send_welcome_email(cls, email: str, context: dict):
-        template_name = "registration/welcome_email.html"
+        template_name = "welcome_onboard.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Welcome to MyBalance 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_wallet_funding_email(cls, email: str, context: dict):
+        template_name = "wallet_funded.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Wallet Funded 🎉"
         return cls.send_email(email, subject, html_content)
 
     # ENTRY POINT
