@@ -1,17 +1,17 @@
 from celery import shared_task
 
 from core.resources.email_service import EmailClient
-from core.resources.email_service_v2 import EmailClient as EmailClientv2
+from core.resources.email_service_v2 import EmailClientV2
 
 
 @shared_task
 def send_invitation_email(email, values):
-    EmailClientv2.send_account_verification_email(email, values)
+    EmailClientV2.send_account_verification_email(email, values)
 
 
 @shared_task
-def send_welcome_email(email, values):
-    EmailClientv2.send_welcome_email(email, values)
+def send_onboarding_successful_email(email, values):
+    EmailClientV2.send_onboarding_successful_email(email, values)
 
 
 @shared_task

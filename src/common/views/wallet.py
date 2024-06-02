@@ -171,7 +171,7 @@ class FundWalletRedirectView(GenericAPIView):
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}[]",
+                message=f"FLW Err: {msg}",
             )
 
         if obj["data"]["status"] == "failed":
@@ -181,7 +181,7 @@ class FundWalletRedirectView(GenericAPIView):
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}",
+                message=f"FLW Failed: {msg}",
             )
 
         if (
@@ -223,9 +223,10 @@ class FundWalletRedirectView(GenericAPIView):
                     "recipient": email,
                     "date": parse_datetime(txn.created_at),
                     "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
-                    "wallet_balance": f"N{str(profile.wallet_balance)}",
+                    "wallet_balance": f"NGN {add_commas_to_transaction_amount(str(profile.wallet_balance))}",
+                    "transaction_reference": f"{(txn.reference).upper()}",
                 }
-                console_tasks.send_wallet_funding_email.delay(email, values)
+                console_tasks.send_fund_wallet_email.delay(email, values)
                 # Create Notification
                 UserNotification.objects.create(
                     user=user,
@@ -730,7 +731,8 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             values = {
                 "first_name": user.name.split(" ")[0],
                 "recipient": email,
-                "amount_funded": str(txn.amount),
+                "transaction_reference": (txn.reference).upper(),
+                "amount_withdrawn": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
                 "date": parse_datetime(txn.created_at),
                 "bank_name": data.get("bank_name"),
                 "account_name": data.get("fullname"),

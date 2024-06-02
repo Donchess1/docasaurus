@@ -9,21 +9,35 @@ from django.utils.html import strip_tags
 logger = logging.getLogger(__name__)
 
 
-class EmailClient:
+class EmailClientV2:
     FROM_EMAIL = f"MyBalance <mybalance@oinvent.com>"
 
     @classmethod
     def send_account_verification_email(cls, email: str, context: dict):
-        template_name = "registration/verification_email.html"
+        template_name = "account_verification.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Verify Your Account"
         return cls.send_email(email, subject, html_content)
 
     @classmethod
-    def send_welcome_email(cls, email: str, context: dict):
-        template_name = "registration/welcome_email.html"
+    def send_onboarding_successful_email(cls, email: str, context: dict):
+        template_name = "welcome_onboard.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Welcome to MyBalance 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_fund_wallet_email(cls, email: str, context: dict):
+        template_name = "wallet_funded.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Wallet Funded 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_wallet_withdrawal_email(cls, email: str, context: dict):
+        template_name = "wallet_withdrawal.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Wallet Withdrawal 🎉"
         return cls.send_email(email, subject, html_content)
 
     # ENTRY POINT

@@ -85,7 +85,7 @@ class VerifyOTPView(GenericAPIView):
             if user.is_buyer
             else GET_STARTED_BUYER_URL,
         }
-        tasks.send_welcome_email.delay(email, dynamic_values)
+        tasks.send_onboarding_successful_email.delay(email, dynamic_values)
 
         token = self.jwt_client.sign(user.id)
         user.userprofile.last_login_date = timezone.now()
