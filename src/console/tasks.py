@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from core.resources.email_service import EmailClient
-from core.resources.email_service_v2 import EmailClient as EmailClientV2
+from core.resources.email_service_v2 import EmailClientV2
 
 
 @shared_task

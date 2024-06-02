@@ -9,7 +9,7 @@ from django.utils.html import strip_tags
 logger = logging.getLogger(__name__)
 
 
-class EmailClient:
+class EmailClientV2:
     FROM_EMAIL = f"MyBalance <mybalance@oinvent.com>"
 
     @classmethod
