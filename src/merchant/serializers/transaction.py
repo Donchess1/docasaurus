@@ -25,6 +25,7 @@ from merchant.utils import (
     unlock_customer_escrow_transactions,
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
+from transaction.services import get_escrow_transaction_parties_info
 from utils.utils import (
     generate_random_text,
     generate_txn_reference,
@@ -67,7 +68,9 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
         return obj.transaction_id.user_id.name
 
     def get_parties(self, obj):
-        return obj.meta.get("parties", None)
+        # return obj.meta.get("parties", None)
+        parties = get_escrow_transaction_parties_info(obj.transaction_id)
+        return parties
 
     def get_payment_breakdown(self, obj):
         return obj.meta.get("payment_breakdown", None)
