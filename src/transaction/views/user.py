@@ -250,7 +250,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_id": instance.reference,
                 "item_name": instance.meta["title"],
                 "partner_name": partner.name,
-                "amount": instance.amount,
+                "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
                 "reasons": response,
             }
@@ -276,7 +276,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_id": instance.reference,
                 "item_name": instance.meta["title"],
                 "partner_name": partner.name,
-                "amount": instance.amount,
+                "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
             if not transaction_author_is_seller:

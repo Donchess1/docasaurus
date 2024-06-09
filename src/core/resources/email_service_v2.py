@@ -61,6 +61,20 @@ class EmailClientV2:
         subject = "Wallet Withdrawal 🎉"
         return cls.send_email(email, subject, html_content)
 
+    @classmethod
+    def send_approved_escrow_transaction_email(cls, email: str, context: dict):
+        template_name = "escrow_transaction_approved.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Offer Approved 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_rejected_escrow_transaction_email(cls, email: str, context: dict):
+        template_name = "escrow_transaction_rejected.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Offer Rejected 😩"
+        return cls.send_email(email, subject, html_content)
+
     # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, subject: str, html_body: dict):
