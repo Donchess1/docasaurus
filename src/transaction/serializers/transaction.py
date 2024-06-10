@@ -61,13 +61,13 @@ class EscrowTransactionSerializer(serializers.Serializer):
         bank_account_number = data.get("bank_account_number")
 
         banks = ThirdPartyAPI.list_banks()
+        if not banks:
+            raise serializers.ValidationError({"bank": ["Error fetching list of banks"]})
         bank_name = banks["banks_map"].get(bank_code)
 
         obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)
         if obj["status"] in ["error", False]:
-            raise serializers.ValidationError(
-                {"bank": ["Please provide valid bank account details"]}
-            )
+            raise serializers.ValidationError({"bank": [obj["message"]]})
         data["bank_name"] = bank_name
         data["account_name"] = obj["data"]["account_name"]
 
