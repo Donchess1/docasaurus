@@ -43,6 +43,6 @@ class UserBankAccountListCreateView(generics.ListCreateAPIView):
         return Response(
             success=True,
             status_code=status.HTTP_201_CREATED,
-            message="Bank account retrieved successfully",
+            message="Bank accounts retrieved successfully",
             data=serializer.data,
         )
