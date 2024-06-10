@@ -10,7 +10,7 @@ from core.resources.third_party.main import ThirdPartyAPI
 from utils.email import validate_email_body
 from utils.utils import (
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
-    generate_random_text,
+    generate_txn_reference,
     get_escrow_fees,
 )
 
@@ -88,7 +88,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
         purpose = validated_data.get("purpose")
         title = validated_data.get("item_type")
         charge, amount_payable = get_escrow_fees(amount)
-        tx_ref = generate_random_text(length=12)
+        tx_ref = generate_txn_reference()
 
         transaction_data = {
             "user_id": user,

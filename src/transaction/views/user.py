@@ -457,10 +457,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     "item_name": txn.meta["title"],
                     "buyer_name": user.name,
                 }
-                # Notify both buyer and seller of payment details
+                # Notify seller of payment details only if they initiated transaction
                 tasks.send_lock_funds_seller_email.delay(seller.email, seller_values)
-                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
-
                 # Create Notification for Seller
                 UserNotification.objects.create(
                     user=seller,
@@ -473,9 +471,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
                 )
-            else:
-                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
 
+            tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
             # Create Notification for Buyer
             UserNotification.objects.create(
                 user=user,
