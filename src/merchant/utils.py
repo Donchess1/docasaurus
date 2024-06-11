@@ -405,6 +405,10 @@ def create_merchant_escrow_transaction(
         amount=escrow_txn.amount,
         status="ESCROW",
     )
+
+    seller.customer.user.userprofile.locked_amount += int(escrow_txn.amount)
+    seller.customer.user.userprofile.save()
+
     notify_seller_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
     notify_merchant_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
 
@@ -652,6 +656,7 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller.userprofile.wallet_balance += int(amount_to_credit_seller)
+            seller.userprofile.locked_amount -= Decimal(str(txn.amount))
             seller.userprofile.save()
 
             locked_amount_instance.status = "SETTLED"

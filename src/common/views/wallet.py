@@ -375,7 +375,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
 
             try:
                 user = User.objects.get(email=customer_email)
-                profile = UserProfile.objects.get(user_id=user)
+                profile = user.userprofile
                 profile.wallet_balance += int(amount_charged)
                 profile.locked_amount += int(escrow_txn.amount)
                 profile.save()
@@ -407,6 +407,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 # Only notify seller if they initiated the transaction
                 if escrow_txn.escrowmeta.author == "SELLER":
                     seller = escrow_txn.user_id
+
+                    seller.userprofile.locked_amount += int(escrow_txn.amount)
+                    seller.userprofile.save()
+
                     seller_values = {
                         "first_name": seller.name.split(" ")[0],
                         "recipient": seller.email,

@@ -62,7 +62,9 @@ class EscrowTransactionSerializer(serializers.Serializer):
 
         banks = ThirdPartyAPI.list_banks()
         if not banks:
-            raise serializers.ValidationError({"bank": ["Error fetching list of banks"]})
+            raise serializers.ValidationError(
+                {"bank": ["Error fetching list of banks"]}
+            )
         bank_name = banks["banks_map"].get(bank_code)
 
         obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)

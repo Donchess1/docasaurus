@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
@@ -131,10 +133,14 @@ class DisputeDetailView(generics.GenericAPIView):
             amount_to_credit_buyer = int(
                 instance.transaction.amount + instance.transaction.charge
             )
-            profile = UserProfile.objects.get(user_id=buyer)
+            profile = buyer.userprofile
             profile.wallet_balance += int(amount_to_credit_buyer)
-            profile.locked_amount -= int(instance.transaction.amount)
+            profile.locked_amount -= Decimal(str(instance.transaction.amount))
             profile.save()
+            seller.userprofile.locked_amount -= Decimal(
+                str(instance.transaction.amount)
+            )
+            seller.userprofile.save()
         else:
             # Move amount from buyer Locked amount to unlocked amount
             # Move amount to seller wallet and remove charges only if there are no free transaction credit
@@ -149,8 +155,13 @@ class DisputeDetailView(generics.GenericAPIView):
                 amount_to_credit_seller = int(instance.transaction.amount)
 
             seller.userprofile.wallet_balance += amount_to_credit_seller
+            seller.userprofile.locked_amount -= Decimal(
+                str(instance.transaction.amount)
+            )
             seller.userprofile.save()
+
             buyer.userprofile.locked_amount -= int(instance.transaction.amount)
+            buyer.userprofile.unlocked_amount += int(instance.transaction.amount)
             buyer.userprofile.save()
 
         instance.status = "RESOLVED"

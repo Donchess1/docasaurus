@@ -283,6 +283,8 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
+                partner.userprofile.locked_amount += int(instance.amount)
+                partner.userprofile.save()
 
                 # Create Notification
                 UserNotification.objects.create(
@@ -448,6 +450,10 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             if txn.escrowmeta.author == "SELLER":
                 seller = txn.user_id
+
+                seller.userprofile.locked_amount += int(txn.amount)
+                seller.userprofile.save()
+
                 seller_values = {
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
@@ -717,8 +723,9 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller = User.objects.get(email=instance.seller_email)
-            seller_profile = UserProfile.objects.get(user_id=seller)
+            seller_profile = seller.userprofile
             seller_profile.wallet_balance += int(amount_to_credit_seller)
+            seller_profile.locked_amount -= Decimal(str(txn.amount))
             seller_profile.save()
 
             instance.status = "SETTLED"
