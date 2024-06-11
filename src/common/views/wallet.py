@@ -585,7 +585,7 @@ class WalletWithdrawalView(GenericAPIView):
             "account_bank": bank_code,
             "account_number": account_number,
             "amount": int(amount),
-            "narration": description,
+            "narration": description if description else "MyBalance TRF",
             "reference": tx_ref,
             "currency": "NGN",
             "meta": {

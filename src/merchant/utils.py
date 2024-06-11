@@ -78,7 +78,7 @@ def initiate_gateway_withdrawal_transaction(user, data):
     account_number = data.get("account_number")
     merchant_platform = data.get("merchant_platform_name")
     tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
-    description = "MyBalance Wallet Withdrawal"
+    description = "MyBalance TRF-API"
     email = user.email
 
     txn = Transaction.objects.create(

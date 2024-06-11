@@ -14,6 +14,6 @@ class FundWalletBankTransferPayloadSerializer(serializers.Serializer):
 
 class WalletWithdrawalAmountSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
-    description = serializers.CharField()
+    description = serializers.CharField(required=False)
     bank_code = serializers.CharField()
     account_number = serializers.CharField(max_length=10, min_length=10)
