@@ -1,5 +1,6 @@
 from django.urls import path
 
+from users.views.bank import UserBankAccountListCreateView
 from users.views.buyer import RegisterBuyerView
 from users.views.login import LoginView
 from users.views.password import (
@@ -26,6 +27,11 @@ urlpatterns = [
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
     path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
     path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
+    path(
+        "bank-accounts",
+        UserBankAccountListCreateView.as_view(),
+        name="user-bank-accounts",
+    ),
     path(
         "resend-otp",
         ResendAccountVerificationOTPView.as_view(),

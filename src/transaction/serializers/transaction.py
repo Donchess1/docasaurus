@@ -10,7 +10,7 @@ from core.resources.third_party.main import ThirdPartyAPI
 from utils.email import validate_email_body
 from utils.utils import (
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
-    generate_random_text,
+    generate_txn_reference,
     get_escrow_fees,
 )
 
@@ -61,13 +61,15 @@ class EscrowTransactionSerializer(serializers.Serializer):
         bank_account_number = data.get("bank_account_number")
 
         banks = ThirdPartyAPI.list_banks()
+        if not banks:
+            raise serializers.ValidationError(
+                {"bank": ["Error fetching list of banks"]}
+            )
         bank_name = banks["banks_map"].get(bank_code)
 
         obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)
         if obj["status"] in ["error", False]:
-            raise serializers.ValidationError(
-                {"bank": ["Please provide valid bank account details"]}
-            )
+            raise serializers.ValidationError({"bank": [obj["message"]]})
         data["bank_name"] = bank_name
         data["account_name"] = obj["data"]["account_name"]
 
@@ -88,7 +90,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
         purpose = validated_data.get("purpose")
         title = validated_data.get("item_type")
         charge, amount_payable = get_escrow_fees(amount)
-        tx_ref = generate_random_text(length=12)
+        tx_ref = generate_txn_reference()
 
         transaction_data = {
             "user_id": user,

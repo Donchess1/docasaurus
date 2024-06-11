@@ -250,7 +250,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_id": instance.reference,
                 "item_name": instance.meta["title"],
                 "partner_name": partner.name,
-                "amount": instance.amount,
+                "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
                 "reasons": response,
             }
@@ -276,13 +276,15 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_id": instance.reference,
                 "item_name": instance.meta["title"],
                 "partner_name": partner.name,
-                "amount": instance.amount,
+                "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
             if not transaction_author_is_seller:
                 tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
+                partner.userprofile.locked_amount += int(instance.amount)
+                partner.userprofile.save()
 
                 # Create Notification
                 UserNotification.objects.create(
@@ -448,6 +450,10 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             if txn.escrowmeta.author == "SELLER":
                 seller = txn.user_id
+
+                seller.userprofile.locked_amount += int(txn.amount)
+                seller.userprofile.save()
+
                 seller_values = {
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
@@ -457,10 +463,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     "item_name": txn.meta["title"],
                     "buyer_name": user.name,
                 }
-                # Notify both buyer and seller of payment details
+                # Notify seller of payment details only if they initiated transaction
                 tasks.send_lock_funds_seller_email.delay(seller.email, seller_values)
-                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
-
                 # Create Notification for Seller
                 UserNotification.objects.create(
                     user=seller,
@@ -473,9 +477,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
                 )
-            else:
-                tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
 
+            tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
             # Create Notification for Buyer
             UserNotification.objects.create(
                 user=user,
@@ -720,8 +723,9 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller = User.objects.get(email=instance.seller_email)
-            seller_profile = UserProfile.objects.get(user_id=seller)
+            seller_profile = seller.userprofile
             seller_profile.wallet_balance += int(amount_to_credit_seller)
+            seller_profile.locked_amount -= Decimal(str(txn.amount))
             seller_profile.save()
 
             instance.status = "SETTLED"

@@ -27,6 +27,27 @@ class EmailClientV2:
         return cls.send_email(email, subject, html_content)
 
     @classmethod
+    def send_one_time_login_code_email(cls, email: str, context: dict):
+        template_name = "one_time_login.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "One-Time Login Code 🔐"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_reset_password_request_email(cls, email: str, context: dict):
+        template_name = "reset_password_request.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Reset MyBalance Password 🛠️🔐"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_reset_password_success_email(cls, email: str, context: dict):
+        template_name = "reset_password_successful.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "MyBalance Password Reset Successful 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
     def send_fund_wallet_email(cls, email: str, context: dict):
         template_name = "wallet_funded.html"
         html_content = render_to_string(template_name=template_name, context=context)
@@ -38,6 +59,34 @@ class EmailClientV2:
         template_name = "wallet_withdrawal.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Wallet Withdrawal 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_approved_escrow_transaction_email(cls, email: str, context: dict):
+        template_name = "escrow_transaction_approved.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Offer Approved 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_rejected_escrow_transaction_email(cls, email: str, context: dict):
+        template_name = "escrow_transaction_rejected.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Offer Rejected 😩"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_lock_funds_buyer_email(cls, email: str, context: dict):
+        template_name = "escrow_funds_locked_buyer.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Locked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_lock_funds_seller_email(cls, email: str, context: dict):
+        template_name = "escrow_funds_locked_seller.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Locked 🎉"
         return cls.send_email(email, subject, html_content)
 
     # ENTRY POINT

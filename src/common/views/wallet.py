@@ -375,7 +375,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
 
             try:
                 user = User.objects.get(email=customer_email)
-                profile = UserProfile.objects.get(user_id=user)
+                profile = user.userprofile
                 profile.wallet_balance += int(amount_charged)
                 profile.locked_amount += int(escrow_txn.amount)
                 profile.save()
@@ -399,14 +399,18 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     "first_name": user.name.split(" ")[0],
                     "recipient": user.email,
                     "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"NGN {escrow_amount}",
+                    "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_amount)}",
                     "transaction_id": escrow_txn.reference,
                     "item_name": escrow_txn.meta["title"],
                     # "seller_name": seller.name,
                 }
-
+                # Only notify seller if they initiated the transaction
                 if escrow_txn.escrowmeta.author == "SELLER":
                     seller = escrow_txn.user_id
+
+                    seller.userprofile.locked_amount += int(escrow_txn.amount)
+                    seller.userprofile.save()
+
                     seller_values = {
                         "first_name": seller.name.split(" ")[0],
                         "recipient": seller.email,
@@ -432,14 +436,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                     )
 
-                    txn_tasks.send_lock_funds_buyer_email.delay(
-                        user.email, buyer_values
-                    )
-                else:
-                    txn_tasks.send_lock_funds_buyer_email.delay(
-                        user.email, buyer_values
-                    )
-
+                txn_tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
                 #  Create Notification for Buyer
                 UserNotification.objects.create(
                     user=user,

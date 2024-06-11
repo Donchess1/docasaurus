@@ -15,8 +15,6 @@ from core.resources.third_party.data.store import (
     VOTER_CARD_DATA,
 )
 from core.resources.zeeh_africa import ZeehAfricaAPI
-from users.models.bank_account import BankAccount
-from users.serializers.bank_account import BankAccountSerializer
 from utils.utils import (
     RECORD_NOT_FOUND_PAYLOAD,
     TEST_BANK_CODE_1,

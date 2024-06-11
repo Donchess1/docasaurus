@@ -5,7 +5,6 @@ from rest_framework.permissions import AllowAny
 
 from common.serializers.banks import (
     BankAccountPayloadSerializer,
-    BankAccountSerializer,
     BankListSerializer,
     ValidateBankAccountSerializer,
 )
