@@ -13,7 +13,7 @@ class UserNotificationSerializer(serializers.ModelSerializer):
             "title",
             "content",
             "is_seen",
-            # "action_url",
+            "action_url",
             "created_at",
             "updated_at",
         )
