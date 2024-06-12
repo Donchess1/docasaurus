@@ -47,6 +47,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
         banks = cache.get("banks")
         if banks is None:
             banks = ThirdPartyAPI.list_banks()
+            print("BANKS FETCHING VIA INITIATED ESCROW", banks)
             if not banks.get("status") or banks.get("status") == "error":
                 raise serializers.ValidationError(
                     "Error occurred while retrieving list of banks from third party"
