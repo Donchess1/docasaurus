@@ -279,7 +279,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
-            if not transaction_author_is_seller:
+            if not transaction_author_is_seller:  # INITIATED BY BUYER
                 tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
@@ -292,6 +292,32 @@ class UserTransactionDetailView(generics.GenericAPIView):
                     category="ESCROW_APPROVED",
                     title=notifications.ESCROW_TRANSACTION_APPROVED_TITLE,
                     content=notifications.ESCROW_TRANSACTION_APPROVED_CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
+                )
+                # Notify Seller that payment has also been made.
+                seller = partner
+                escrow_amount = add_commas_to_transaction_amount(instance.amount)
+                seller_values = {
+                    "first_name": seller.name.split(" ")[0],
+                    "recipient": seller.email,
+                    "date": parse_datetime(instance.updated_at),
+                    "amount_funded": f"NGN {escrow_amount}",
+                    "transaction_id": instance.reference,
+                    "item_name": instance.meta["title"],
+                    "buyer_name": transaction_author.name,
+                }
+                # Notify seller of payment details only if they initiated transaction
+                tasks.send_lock_funds_seller_email.delay(seller.email, seller_values)
+                # Create Notification for Seller
+                UserNotification.objects.create(
+                    user=seller,
+                    category="FUNDS_LOCKED_SELLER",
+                    title=notifications.FundsLockedSellerNotification(
+                        escrow_amount
+                    ).TITLE,
+                    content=notifications.FundsLockedSellerNotification(
+                        escrow_amount
+                    ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
                 )
                 # TODO: Send real-time Notification
