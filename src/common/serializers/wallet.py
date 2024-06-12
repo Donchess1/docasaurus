@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 class WalletAmountSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
+    currency = serializers.CharField(default="NGN", required=False)
 
 
 class FundWalletBankTransferPayloadSerializer(serializers.Serializer):

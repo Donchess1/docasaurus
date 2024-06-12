@@ -57,6 +57,7 @@ class FundWalletView(GenericAPIView):
             )
         data = serializer.validated_data
         amount = data.get("amount", None)
+        currency = data.get("currency")
 
         tx_ref = generate_txn_reference()
         email = user.email
@@ -67,7 +68,7 @@ class FundWalletView(GenericAPIView):
             amount=amount,
             status="PENDING",
             reference=tx_ref,
-            currency="NGN",
+            currency=currency,
             provider="FLUTTERWAVE",
             meta={"title": "Wallet credit"},
         )
@@ -76,7 +77,7 @@ class FundWalletView(GenericAPIView):
         tx_data = {
             "tx_ref": tx_ref,
             "amount": amount,
-            "currency": "NGN",
+            "currency": currency,
             # "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/payment-redirect",
             "redirect_url": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
             "customer": {
