@@ -16,7 +16,7 @@ services:
     env_file:
       - ./.env
     depends_on:
-    #   - db
+      - db
       - redis
     networks:
       - myb
@@ -31,17 +31,21 @@ services:
     networks:
       - myb
 
-  # db:
-  #   image: postgres:14.5-alpine3.16
-  #   restart: always
-  #   ports:
-  #     - "5435:5435"
-  #   volumes:
-  #     - myb-dev-db:/var/lib/postgresql/data
-  #   env_file:
-  #     - ./.env
-  #   networks:
-  #     - myb
+  db:
+    image: postgres:14.5-alpine3.16
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - myb-dev-db:/var/lib/postgresql/data
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - myb
 
   redis:
     image: redis:alpine
