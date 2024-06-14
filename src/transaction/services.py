@@ -4,6 +4,7 @@ from utils.transaction import get_escrow_transaction_users
 
 def get_escrow_transaction_parties_info(transaction: Transaction) -> dict:
     users = get_escrow_transaction_users(transaction)
+    print("ESCROW USERS", users)
     buyer = users.get("BUYER")
     seller = users.get("SELLER")
     merchant = users.get("MERCHANT")

@@ -31,16 +31,27 @@ def get_escrow_transaction_users(transaction: Transaction) -> dict:
             seller = User.objects.filter(
                 email=transaction.escrowmeta.partner_email
             ).first()
+            return {
+                "BUYER": {"name": buyer.name, "email": buyer.email},
+                "SELLER": {
+                    "name": seller.name if seller else partner_email,
+                    "email": seller.email if seller else partner_email,
+                },
+                "MERCHANT": {"name": "MyBalance", "email": "mybalance@oinvent.com"},
+            }
         else:
             seller = transaction.user_id
             buyer = User.objects.filter(
                 email=transaction.escrowmeta.partner_email
             ).first()
-        return {
-            "BUYER": {"name": buyer.name, "email": buyer.email},
-            "SELLER": {"name": seller.name, "email": seller.email},
-            "MERCHANT": {"name": "MyBalance", "email": "mybalance@oinvent.com"},
-        }
+            return {
+                "BUYER": {
+                    "name": buyer.name if buyer else partner_email,
+                    "email": buyer.email if buyer else partner_email,
+                },
+                "SELLER": {"name": seller.name, "email": seller.email},
+                "MERCHANT": {"name": "MyBalance", "email": "mybalance@oinvent.com"},
+            }
     else:
         parties = get_merchant_escrow_users(transaction, transaction.merchant)
         buyer = parties.get("buyer")
