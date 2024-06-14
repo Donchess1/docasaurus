@@ -26,11 +26,10 @@ def get_escrow_transaction_stakeholders(tx_ref):
 def get_escrow_transaction_users(transaction: Transaction) -> dict:
     # transaction.mode == ["Web", "MERCHANT_API"]
     if (transaction.mode).upper() == "WEB":
+        partner_email = transaction.escrowmeta.partner_email
         if transaction.escrowmeta.author == "BUYER":
             buyer = transaction.user_id
-            seller = User.objects.filter(
-                email=transaction.escrowmeta.partner_email
-            ).first()
+            seller = User.objects.filter(email=partner_email).first()
             return {
                 "BUYER": {"name": buyer.name, "email": buyer.email},
                 "SELLER": {
@@ -41,9 +40,7 @@ def get_escrow_transaction_users(transaction: Transaction) -> dict:
             }
         else:
             seller = transaction.user_id
-            buyer = User.objects.filter(
-                email=transaction.escrowmeta.partner_email
-            ).first()
+            buyer = User.objects.filter(email=partner_email).first()
             return {
                 "BUYER": {
                     "name": buyer.name if buyer else partner_email,
