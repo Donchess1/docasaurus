@@ -31,12 +31,12 @@ def send_lock_funds_merchant_email(email, values):
 
 @shared_task
 def send_unlock_funds_buyer_email(email, values):
-    EmailClient.send_unlock_funds_buyer_email(email, values)
+    EmailClientV2.send_unlock_funds_buyer_email(email, values)
 
 
 @shared_task
 def send_unlock_funds_seller_email(email, values):
-    EmailClient.send_unlock_funds_seller_email(email, values)
+    EmailClientV2.send_unlock_funds_seller_email(email, values)
 
 
 @shared_task

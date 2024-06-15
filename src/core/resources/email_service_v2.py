@@ -89,6 +89,20 @@ class EmailClientV2:
         subject = "Escrow Funds Locked 🎉"
         return cls.send_email(email, subject, html_content)
 
+    @classmethod
+    def send_unlock_funds_buyer_email(cls, email: str, context: dict):
+        template_name = "escrow_funds_unlocked_buyer.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Unlocked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_unlock_funds_seller_email(cls, email: str, context: dict):
+        template_name = "escrow_funds_unlocked_seller.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Unlocked 🎉"
+        return cls.send_email(email, subject, html_content)
+
     # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, subject: str, html_body: dict):
