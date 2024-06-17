@@ -14,7 +14,7 @@ from users.models import UserProfile
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
-from utils.utils import parse_datetime
+from utils.utils import add_commas_to_transaction_amount, parse_datetime
 
 User = get_user_model()
 
@@ -92,6 +92,9 @@ class UserDisputeView(generics.ListCreateAPIView):
 
         dispute_author_is_seller = True if author == "SELLER" else False
         partner = buyer if dispute_author_is_seller else seller
+        transaction_amount = (
+            f"NGN {add_commas_to_transaction_amount(transaction.amount)}"
+        )
         author_values = {
             "first_name": user.name.split(" ")[0],
             "recipient": user.email,
@@ -101,7 +104,7 @@ class UserDisputeView(generics.ListCreateAPIView):
             "dispute_author_is_seller": dispute_author_is_seller,
             "partner_name": partner.name,
             "dispute_reason": reason,
-            "amount": transaction.amount,
+            "amount": transaction_amount,
         }
         recipient_values = {
             "first_name": partner.name.split(" ")[0],
@@ -112,7 +115,7 @@ class UserDisputeView(generics.ListCreateAPIView):
             "dispute_author_is_seller": not dispute_author_is_seller,
             "partner_name": user.name,
             "dispute_reason": reason,
-            "amount": transaction.amount,
+            "amount": transaction_amount,
         }
 
         dispute_tasks.send_dispute_raised_author_email.delay(user.email, author_values)

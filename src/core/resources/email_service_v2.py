@@ -103,6 +103,20 @@ class EmailClientV2:
         subject = "Escrow Funds Unlocked 🎉"
         return cls.send_email(email, subject, html_content)
 
+    @classmethod
+    def send_dispute_raised_author_email(cls, email: str, context: dict):
+        template_name = "dispute_raised_author.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Dispute Raised 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_dispute_raised_receiver_email(cls, email: str, context: dict):
+        template_name = "dispute_raised_recipient.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Transaction Disputed 🎉"
+        return cls.send_email(email, subject, html_content)
+
     # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, subject: str, html_body: dict):
