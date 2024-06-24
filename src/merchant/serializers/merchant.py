@@ -171,7 +171,7 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
 
 class RegisterCustomerSerializer(serializers.Serializer):
     customer_type = serializers.ChoiceField(
-        choices=("BUYER", "SELLER", "CUSTOM"), required=False
+        choices=("BUYER", "SELLER", "CUSTOM"),
     )
     email = serializers.EmailField()
     first_name = serializers.CharField()
@@ -191,16 +191,14 @@ class RegisterCustomerSerializer(serializers.Serializer):
 
         if customer_phone_numer_exists_for_merchant(merchant, phone_number):
             raise serializers.ValidationError(
-                {
-                    "phone_number": "This phone number is already in use by another customer."
-                }
+                {"phone_number": "Customer with phone number already exists."}
             )
 
         user = User.objects.filter(email=email).first()
         if user:
             if customer_with_email_exists_for_merchant(merchant, user):
                 raise serializers.ValidationError(
-                    {"email": "This email is already in use by another customer."}
+                    {"email": "Customer with email already exists."}
                 )
         return data
 

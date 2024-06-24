@@ -15,15 +15,19 @@ from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.flutterwave import FlwAPI
 from merchant import tasks
-from merchant.models import (ApiKey, Customer, CustomerMerchant, Merchant,
-                             PayoutConfig)
+from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, PayoutConfig
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
 from utils.text import notifications
-from utils.utils import (add_commas_to_transaction_amount,
-                         generate_random_text, generate_txn_reference,
-                         get_escrow_fees, parse_date, parse_datetime)
+from utils.utils import (
+    add_commas_to_transaction_amount,
+    generate_random_text,
+    generate_txn_reference,
+    get_escrow_fees,
+    parse_date,
+    parse_datetime,
+)
 
 User = get_user_model()
 cache = Cache()
