@@ -20,7 +20,7 @@ from core.resources.sockets.pusher import PusherSocket
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
-from utils.html import generate_flw_payment_webhook_html
+from users.models.wallet import Wallet
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
@@ -110,7 +110,7 @@ class FundWalletView(GenericAPIView):
 
 
 class FundWalletRedirectView(GenericAPIView):
-    serializer_class = WalletAmountSerializer
+    serializer_class = WalletAmountSerializer  # Placeholder Serializer
     permission_classes = [AllowAny]
     flw_api = FlwAPI
 
@@ -213,18 +213,19 @@ class FundWalletRedirectView(GenericAPIView):
             amount_charged = obj["data"]["charged_amount"]
 
             try:
-                user = User.objects.get(email=customer_email)
-                profile = UserProfile.objects.get(user_id=user)
-                profile.wallet_balance += int(txn.amount)
-                profile.save()
-
+                user = User.objects.filter(email=customer_email).first()
+                profile = user.userprofile
+                # profile.wallet_balance += int(txn.amount)
+                # profile.save()
+                user.credit_wallet(txn.amount, txn.currency)
+                wallet_exists, wallet = user.get_currency_wallet(txn.currency)
                 email = user.email
                 values = {
                     "first_name": user.name.split(" ")[0],
                     "recipient": email,
                     "date": parse_datetime(txn.created_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
-                    "wallet_balance": f"NGN {add_commas_to_transaction_amount(str(profile.wallet_balance))}",
+                    "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
+                    "wallet_balance": f"{txn.currency} {add_commas_to_transaction_amount(wallet.balance)}",
                     "transaction_reference": f"{(txn.reference).upper()}",
                 }
                 console_tasks.send_fund_wallet_email.delay(email, values)
@@ -232,8 +233,12 @@ class FundWalletRedirectView(GenericAPIView):
                 UserNotification.objects.create(
                     user=user,
                     category="DEPOSIT",
-                    title=notifications.WalletDepositNotification(txn.amount).TITLE,
-                    content=notifications.WalletDepositNotification(txn.amount).CONTENT,
+                    title=notifications.WalletDepositNotification(
+                        txn.amount, txn.currency
+                    ).TITLE,
+                    content=notifications.WalletDepositNotification(
+                        txn.amount, txn.currency
+                    ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
                 )
 
@@ -264,7 +269,7 @@ class FundWalletRedirectView(GenericAPIView):
 
 
 class FundEscrowTransactionRedirectView(GenericAPIView):
-    serializer_class = WalletAmountSerializer
+    serializer_class = WalletAmountSerializer  # Placeholder Serializer class
     permission_classes = [AllowAny]
     flw_api = FlwAPI
 
@@ -375,13 +380,21 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             amount_charged = obj["data"]["charged_amount"]
 
             try:
-                user = User.objects.get(email=customer_email)
-                profile = user.userprofile
-                profile.wallet_balance += int(amount_charged)
-                profile.locked_amount += int(escrow_txn.amount)
-                profile.save()
-                profile.wallet_balance -= Decimal(str(escrow_amount_to_charge))
-                profile.save()
+                user = User.objects.filter(email=customer_email).first()
+                # profile = user.userprofile
+                # profile.wallet_balance += int(amount_charged)
+                # profile.locked_amount += int(escrow_txn.amount)
+                # profile.save()
+                # profile.wallet_balance -= Decimal(str(escrow_amount_to_charge))
+                # profile.save()
+                user.credit_wallet(amount_charged, txn.currency)
+                user.debit_wallet(escrow_amount_to_charge, txn.currency)
+                user.update_locked_amount(
+                    amount=escrow_txn.amount,
+                    currency=txn.currency,
+                    mode="OUTWARD",
+                    type="CREDIT",
+                )
 
                 instance = LockedAmount.objects.create(
                     transaction=escrow_txn,
@@ -394,29 +407,36 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     amount=escrow_txn.amount,
                     status="ESCROW",
                 )
-                instance.save()
                 escrow_amount = add_commas_to_transaction_amount(escrow_txn.amount)
                 buyer_values = {
                     "first_name": user.name.split(" ")[0],
                     "recipient": user.email,
                     "date": parse_datetime(escrow_txn.updated_at),
-                    "amount_funded": f"NGN {add_commas_to_transaction_amount(escrow_amount)}",
+                    "amount_funded": f"{txn.currency} {escrow_amount}",
                     "transaction_id": escrow_txn.reference,
                     "item_name": escrow_txn.meta["title"],
                     # "seller_name": seller.name,
                 }
-                # Only notify seller if they initiated the transaction
+                # Only notify seller at this point if they initiated the transaction.
+                # If the buyer initiated, then the seller will be notified when they approve the transaction.
+                # This may not be immediate. Seller may take a while to approve the transaction.
+                # So we just default to use the created_at timestamp on LockedAmount instance above as time to avoid incorrect timestamps when email is sent out
                 if escrow_txn.escrowmeta.author == "SELLER":
                     seller = escrow_txn.user_id
-
-                    seller.userprofile.locked_amount += int(escrow_txn.amount)
-                    seller.userprofile.save()
+                    # seller.userprofile.locked_amount += int(escrow_txn.amount)
+                    # seller.userprofile.save()
+                    seller.update_locked_amount(
+                        amount=escrow_txn.amount,
+                        currency=escrow_txn.currency,
+                        mode="INWARD",
+                        type="CREDIT",
+                    )
 
                     seller_values = {
                         "first_name": seller.name.split(" ")[0],
                         "recipient": seller.email,
                         "date": parse_datetime(escrow_txn.updated_at),
-                        "amount_funded": f"NGN {escrow_amount}",
+                        "amount_funded": f"{escrow_txn.currency} {escrow_amount}",
                         "transaction_id": escrow_txn.reference,
                         "item_name": escrow_txn.meta["title"],
                         "buyer_name": user.name,
@@ -429,10 +449,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                         user=seller,
                         category="FUNDS_LOCKED_SELLER",
                         title=notifications.FundsLockedSellerNotification(
-                            escrow_amount
+                            escrow_amount, escrow_txn.currency
                         ).TITLE,
                         content=notifications.FundsLockedSellerNotification(
-                            escrow_amount
+                            escrow_amount, escrow_txn.currency
                         ).CONTENT,
                         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                     )
@@ -443,10 +463,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     user=user,
                     category="FUNDS_LOCKED_BUYER",
                     title=notifications.FundsLockedBuyerNotification(
-                        escrow_amount
+                        escrow_amount, escrow_txn.currency
                     ).TITLE,
                     content=notifications.FundsLockedBuyerNotification(
-                        escrow_amount
+                        escrow_amount, escrow_txn.currency
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
                 )
@@ -540,9 +560,8 @@ class WalletWithdrawalView(GenericAPIView):
         operation_description="Initiate withdrawal from user wallet",
     )
     def post(self, request):
-        user_id = request.user.id
-        user = User.objects.get(id=user_id)
-        profile = UserProfile.objects.get(user_id=user)
+        user = request.user
+        profile = user.userprofile
 
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
@@ -556,14 +575,17 @@ class WalletWithdrawalView(GenericAPIView):
         bank_code = data.get("bank_code", None)
         account_number = data.get("account_number", None)
         description = data.get("description", None)
+        currency = data.get("currency", "NGN")
 
         charge, total_amount = get_withdrawal_fee(int(amount))
 
-        if total_amount > profile.wallet_balance:
+        # if total_amount > profile.wallet_balance:
+        valid, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
+        if not valid:
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message="Insufficient funds.",
+                message=message,
             )
 
         tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
@@ -576,7 +598,7 @@ class WalletWithdrawalView(GenericAPIView):
             charge=charge,
             status="PENDING",
             reference=tx_ref,
-            currency="NGN",
+            currency=currency,
             provider="FLUTTERWAVE",
             meta={"title": "Wallet debit"},
         )
@@ -588,7 +610,7 @@ class WalletWithdrawalView(GenericAPIView):
             "amount": int(amount),
             "narration": description if description else "MyBalance TRF",
             "reference": tx_ref,
-            "currency": "NGN",
+            "currency": currency,
             "meta": {
                 "amount_to_debit": total_amount,
                 "customer_email": user.email,
@@ -709,15 +731,24 @@ class WalletWithdrawalCallbackView(GenericAPIView):
 
         try:
             user = User.objects.get(email=customer_email)
-            profile = UserProfile.objects.get(user_id=user)
-            profile.wallet_balance -= Decimal(str(amount_to_debit))
-            profile.withdrawn_amount += int(txn.amount)
-            profile.save()
+            # profile = UserProfile.objects.get(user_id=user)
+            # profile.wallet_balance -= Decimal(str(amount_to_debit))
+            # profile.withdrawn_amount += int(txn.amount)
+            # profile.save()
+            user.debit_wallet(amount_to_debit, txn.currency)
+            user.update_withdrawn_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+            )
 
             self.pusher.trigger(
                 f"WALLET_WITHDRAWAL_{tx_ref}",
                 "WALLET_WITHDRAWAL_SUCCESS",
-                {"status": "SUCCESSFUL", "message": msg, "amount": txn.amount},
+                {
+                    "status": "SUCCESSFUL",
+                    "message": msg,
+                    "amount": f"{txn.currency} {txn.amount}",
+                },
             )
 
             txn.status = "SUCCESSFUL"
@@ -730,7 +761,7 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 "first_name": user.name.split(" ")[0],
                 "recipient": email,
                 "transaction_reference": (txn.reference).upper(),
-                "amount_withdrawn": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+                "amount_withdrawn": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
                 "date": parse_datetime(txn.created_at),
                 "bank_name": data.get("bank_name"),
                 "account_name": data.get("fullname"),
@@ -742,8 +773,12 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             UserNotification.objects.create(
                 user=user,
                 category="WITHDRAWAL",
-                title=notifications.WalletWithdrawalNotification(txn.amount).TITLE,
-                content=notifications.WalletWithdrawalNotification(txn.amount).CONTENT,
+                title=notifications.WalletWithdrawalNotification(
+                    txn.amount, txn.currency
+                ).TITLE,
+                content=notifications.WalletWithdrawalNotification(
+                    txn.amount, txn.currency
+                ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
             )
             # TODO: Send real-time Notification

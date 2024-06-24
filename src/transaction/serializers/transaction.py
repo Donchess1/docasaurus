@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -9,6 +10,7 @@ from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from utils.email import validate_email_body
 from utils.utils import (
+    CURRENCIES,
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
     generate_txn_reference,
     get_escrow_fees,
@@ -24,6 +26,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
     item_quantity = serializers.IntegerField()
     delivery_date = serializers.DateField()
     amount = serializers.IntegerField()
+    currency = serializers.ChoiceField(choices=CURRENCIES, default="NGN")
     # bank_code = serializers.CharField(max_length=255)
     # bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()
@@ -83,10 +86,12 @@ class EscrowTransactionSerializer(serializers.Serializer):
 
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
         user = self.context["request"].user
         author = "BUYER" if user.is_buyer else "SELLER"
         amount = validated_data.get("amount")
+        currency = validated_data.get("currency")
         purpose = validated_data.get("purpose")
         title = validated_data.get("item_type")
         charge, amount_payable = get_escrow_fees(amount)
@@ -98,6 +103,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
             "type": "ESCROW",
             "provider": "MYBALANCE",
             "mode": "WEB",
+            "currency": currency,
             "amount": amount,
             "charge": charge,
             "meta": {"title": title, "description": purpose},
@@ -170,19 +176,31 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = self.context.get("user")
+        profile = user.userprofile
         transaction_reference = data.get("transaction_reference")
         amount_to_charge = data.get("amount_to_charge")
         transaction = Transaction.objects.get(reference=transaction_reference)
 
-        deficit = (
-            transaction.amount + transaction.charge
-        ) - user.userprofile.wallet_balance
+        # Evaluating free escrow transactions
+        buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+        amount_payable = transaction.amount + transaction.charge
+        if buyer_free_escrow_credits > 0:
+            # deplete free credits and make transaction free
+            profile.free_escrow_transactions -= 1
+            profile.save()
+            amount_payable = transaction.amount
+
+        status, resource = user.get_currency_wallet(transaction.currency)
+        if not status:
+            raise serializers.ValidationError({"wallet": [resource]})
+        wallet = resource
+        deficit = amount_payable - wallet.balance
 
         if amount_to_charge < deficit:
             raise serializers.ValidationError(
                 {
                     "amount_to_charge": [
-                        "Amount to charge must be greater than or equal to the deficit"
+                        f"Minimum amount to fund is {transaction.currency} {deficit}"
                     ]
                 }
             )

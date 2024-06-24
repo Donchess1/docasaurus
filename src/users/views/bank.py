@@ -42,7 +42,7 @@ class UserBankAccountListCreateView(generics.ListCreateAPIView):
         serializer = BankAccountSerializer(data, many=True)
         return Response(
             success=True,
-            status_code=status.HTTP_201_CREATED,
+            status_code=status.HTTP_200_OK,
             message="Bank accounts retrieved successfully",
             data=serializer.data,
         )

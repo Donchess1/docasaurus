@@ -10,8 +10,8 @@ from rest_framework import serializers
 from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.third_party.main import ThirdPartyAPI
+from merchant.models import PayoutConfig
 from merchant.utils import (
-    create_merchant_escrow_transaction,
     escrow_user_is_valid,
     generate_deposit_transaction_for_escrow,
     get_merchant_active_payout_configuration,
@@ -27,6 +27,7 @@ from merchant.utils import (
 from transaction.serializers.locked_amount import LockedAmountSerializer
 from transaction.services import get_escrow_transaction_parties_info
 from utils.utils import (
+    CURRENCIES,
     generate_random_text,
     generate_txn_reference,
     get_escrow_fees,
@@ -159,7 +160,18 @@ class EscrowEntitySerializer(serializers.Serializer):
 
 class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     buyer = serializers.EmailField()
+    payout_configuration = serializers.PrimaryKeyRelatedField(
+        queryset=PayoutConfig.objects.all(), required=False
+    )
+    currency = serializers.ChoiceField(choices=CURRENCIES, default="NGN")
     entities = EscrowEntitySerializer(many=True)
+
+    def validate_payout_configuration(self, value):
+        merchant = self.context.get("merchant")
+        valid_config = PayoutConfig.objects.filter(id=value).first()
+        if not valid_config:
+            raise serializers.ValidationError("Payout configuration does not exist.")
+        return valid_config
 
     def validate_buyer(self, value):
         merchant = self.context.get("merchant")
@@ -181,6 +193,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
 
     def validate_entities(self, entities):
         merchant = self.context.get("merchant")
+        currency = self.validated_data.get("currency")
         for entity in entities:
             seller_email = entity.get("seller")
             if not self.validate_seller(seller_email, merchant):
@@ -197,7 +210,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                     )
                 if not self.validate_amount(amount):
                     raise serializers.ValidationError(
-                        f"Amount for {title} should be NGN 20,000 or less."
+                        f"Amount for {title} should be {currency} 20,000 or less."
                     )
         return entities
 
@@ -206,6 +219,8 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         merchant = self.context.get("merchant")
         buyer = validated_data.get("buyer")
         entities = validated_data.get("entities")
+        currency = validated_data.get("currency")
+        payout_config = validated_data.get("payout_configuration", None)
         total_amount = 0
         for entity in entities:
             for item in entity["items"]:
@@ -213,17 +228,35 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 item["delivery_date"] = str(item["delivery_date"])
 
         charge, amount_payable = get_escrow_fees(total_amount)
-        merchant_payout_config = get_merchant_active_payout_configuration(merchant)
+        merchant_payout_config = (
+            get_merchant_active_payout_configuration(merchant)
+            if not payout_config
+            else payout_config
+        )
         merchant_user_charges = get_merchant_transaction_charges(
             merchant, total_amount, merchant_payout_config
         )
         merchant_buyer_charge = merchant_user_charges.get("buyer_charge")
         merchant_seller_charge = merchant_user_charges.get("seller_charge")
 
-        amount_to_charge = total_amount + charge + int(merchant_buyer_charge)
+        buyer_charge = charge
+        payer = User.objects.filter(email=buyer).first()
+        profile = payer.userprofile
+        escrow_credits_used = False
+        # Evaluating free escrow transactions
+        buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+        if buyer_free_escrow_credits > 0:
+            # reverse charges to buyer wallet & deplete free credits
+            profile.free_escrow_transactions -= 1
+            profile.save()
+            buyer_charge = 0
+            escrow_credits_used = True
+
+        amount_to_charge = total_amount + buyer_charge + int(merchant_buyer_charge)
         payment_breakdown = {
             "base_amount": str(total_amount),
-            "buyer_escrow_fees": str(charge),
+            "buyer_escrow_fees": str(buyer_charge),
+            "buyer_escrow_credits_used": escrow_credits_used,
             "seller_escrow_fees": str(charge),
             "buyer_merchant_fees": str(merchant_buyer_charge),
             "seller_merchant_fees": str(merchant_seller_charge),
@@ -232,10 +265,9 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 + Decimal(str(merchant_seller_charge))
             ),
             "total_payable": str(amount_to_charge),
-            "currency": "NGN",
+            "currency": currency,
         }
         tx_ref = generate_txn_reference()
-        payer = User.objects.filter(email=buyer).first()
         meta = {
             "payment_breakdown": "payment_breakdown",
             "seller_escrow_breakdown": entities,
@@ -243,13 +275,13 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "payout_config": str(merchant_payout_config.id),
         }
         deposit_txn = generate_deposit_transaction_for_escrow(
-            payer, amount_to_charge, tx_ref, meta
+            payer, amount_to_charge, tx_ref, meta, currency
         )
 
         flw_txn_data = {
             "tx_ref": tx_ref,
             "amount": amount_to_charge,
-            "currency": "NGN",
+            "currency": currency,
             "redirect_url": f"{MERCHANT_REDIRECT_BASE_URL}",
             "customer": {
                 "email": payer.email,
@@ -326,6 +358,7 @@ class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
 
 class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
+    currency = serializers.ChoiceField(choices=CURRENCIES)
     bank_code = serializers.CharField()
     account_number = serializers.CharField(max_length=10, min_length=10)
     merchant_id = serializers.UUIDField()
@@ -335,14 +368,17 @@ class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
         bank_code = data.get("bank_code")
         account_number = data.get("account_number")
         merchant_id = data.get("merchant_id")
+        currency = data.get("currency")
         user = self.context.get("user")
 
         merchant = get_merchant_by_id(merchant_id)
         if not merchant:
             raise serializers.ValidationError({"error": "Merchant does not exist"})
         charge, total_amount = get_withdrawal_fee(int(amount))
-        if total_amount > user.userprofile.wallet_balance:
-            raise serializers.ValidationError({"error": "Insufficient funds"})
+        # if total_amount > user.userprofile.wallet_balance:
+        status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
+        if not status:
+            raise serializers.ValidationError({"error": message})
 
         obj = ThirdPartyAPI.validate_bank_account(bank_code, account_number)
         if obj["status"] in ["error", False]:

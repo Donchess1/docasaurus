@@ -23,6 +23,9 @@ class RegisterSellerView(CreateAPIView):
     serializer_class = RegisterSellerSerializer
     permission_classes = [AllowAny]
 
+    def perform_create(self, serializer):
+        return serializer.save()
+
     @swagger_auto_schema(
         operation_description="Register a Seller",
         responses={
@@ -38,10 +41,9 @@ class RegisterSellerView(CreateAPIView):
                 errors=serializer.errors,
             )
 
-        self.perform_create(serializer)
-        email = serializer.validated_data.get("email")
-        password = serializer.validated_data.get("password")
-        name = serializer.validated_data["name"]
+        user = self.perform_create(serializer)
+        email = user.email
+        name = user.name
 
         otp = generate_otp()
         otp_key = generate_temp_id()
@@ -57,10 +59,6 @@ class RegisterSellerView(CreateAPIView):
             "is_valid": True,
         }
         cache.set(otp_key, value, 60 * 60 * 10)
-        user = User.objects.get(email=email)
-        user.set_password(password)
-        user.save()
-
         dynamic_values = {
             "name": name,
             "otp": otp,

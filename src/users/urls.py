@@ -22,6 +22,7 @@ from users.views.verify import (
     VerifyOneTimeLoginCodeView,
     VerifyOTPView,
 )
+from users.views.wallet import UserWalletListView
 
 urlpatterns = [
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
@@ -31,6 +32,11 @@ urlpatterns = [
         "bank-accounts",
         UserBankAccountListCreateView.as_view(),
         name="user-bank-accounts",
+    ),
+    path(
+        "wallets",
+        UserWalletListView.as_view(),
+        name="user-wallets",
     ),
     path(
         "resend-otp",
