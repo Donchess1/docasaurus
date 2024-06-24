@@ -15,19 +15,15 @@ from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.flutterwave import FlwAPI
 from merchant import tasks
-from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, PayoutConfig
+from merchant.models import (ApiKey, Customer, CustomerMerchant, Merchant,
+                             PayoutConfig)
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
 from utils.text import notifications
-from utils.utils import (
-    add_commas_to_transaction_amount,
-    generate_random_text,
-    generate_txn_reference,
-    get_escrow_fees,
-    parse_date,
-    parse_datetime,
-)
+from utils.utils import (add_commas_to_transaction_amount,
+                         generate_random_text, generate_txn_reference,
+                         get_escrow_fees, parse_date, parse_datetime)
 
 User = get_user_model()
 cache = Cache()
@@ -77,6 +73,7 @@ def initiate_gateway_withdrawal_transaction(user, data):
     bank_code = data.get("bank_code")
     account_number = data.get("account_number")
     merchant_platform = data.get("merchant_platform_name")
+    currency = data.get("currency", "NGN")
     tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
     description = "MyBalance TRF-API"
     email = user.email
@@ -88,7 +85,7 @@ def initiate_gateway_withdrawal_transaction(user, data):
         mode="MERCHANT_API",
         status="PENDING",
         reference=tx_ref,
-        currency="NGN",
+        currency=currency,
         provider="FLUTTERWAVE",
         meta={"title": "Wallet debit"},
     )
@@ -99,7 +96,7 @@ def initiate_gateway_withdrawal_transaction(user, data):
         "amount": int(amount),
         "narration": description,
         "reference": tx_ref,
-        "currency": "NGN",
+        "currency": currency,
         "meta": {
             "amount_to_debit": amount,
             "customer_email": email,
@@ -296,7 +293,7 @@ def notify_seller_escrow_transaction_via_email(
     escrow_amount = add_commas_to_transaction_amount(escrow_txn.amount)
     seller_values = {
         "date": parse_datetime(escrow_txn.updated_at),
-        "amount_funded": f"NGN {escrow_amount}",
+        "amount_funded": f"{escrow_txn.currency} {escrow_amount}",
         "transaction_id": f"{(escrow_txn.reference).upper()}",
         "item_name": escrow_txn.meta.get("title"),
         "delivery_date": parse_date(escrow_txn.escrowmeta.delivery_date),
@@ -312,8 +309,12 @@ def notify_seller_escrow_transaction_via_email(
     UserNotification.objects.create(
         user=seller.customer.user,
         category="FUNDS_LOCKED_SELLER",
-        title=notifications.FundsLockedSellerNotification(escrow_amount).TITLE,
-        content=notifications.FundsLockedSellerNotification(escrow_amount).CONTENT,
+        title=notifications.FundsLockedSellerNotification(
+            escrow_amount, escrow_txn.currency
+        ).TITLE,
+        content=notifications.FundsLockedSellerNotification(
+            escrow_amount, escrow_txn.currency
+        ).CONTENT,
         action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn.reference}",
     )
 
@@ -351,6 +352,7 @@ def create_merchant_escrow_transaction(
     item: dict,
     source: Transaction,
     payout_config: PayoutConfig,
+    currency: str,
 ):
     title = item.get("title")
     description = item.get("description")
@@ -368,6 +370,7 @@ def create_merchant_escrow_transaction(
         "provider": "MYBALANCE",
         "mode": "MERCHANT_API",
         "merchant": merchant,
+        "currency": currency,
         "amount": int(amount),
         "charge": int(charge),
         "meta": {
@@ -406,8 +409,14 @@ def create_merchant_escrow_transaction(
         status="ESCROW",
     )
 
-    seller.customer.user.userprofile.locked_amount += int(escrow_txn.amount)
-    seller.customer.user.userprofile.save()
+    # seller.customer.user.userprofile.locked_amount += int(escrow_txn.amount)
+    # seller.customer.user.userprofile.save()
+    seller.customer.user.update_locked_amount(
+        amount=escrow_txn.amount,
+        currency=escrow_txn.currency,
+        mode="INWARD",
+        type="CREDIT",
+    )
 
     notify_seller_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
     notify_merchant_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
@@ -421,6 +430,7 @@ def create_bulk_merchant_escrow_transactions(
     entities: dict,
     source: Transaction,
     payout_config: PayoutConfig,
+    currency: str,
 ):
     escrows = []
     for entity in entities:
@@ -428,14 +438,24 @@ def create_bulk_merchant_escrow_transactions(
         items = entity["items"]
         for item in items:
             txn = create_merchant_escrow_transaction(
-                merchant, buyer.email, seller_email, item, source, payout_config
+                merchant,
+                buyer.email,
+                seller_email,
+                item,
+                source,
+                payout_config,
+                currency,
             )
             escrows.append(txn)
     return escrows
 
 
 def generate_deposit_transaction_for_escrow(
-    user: User, amount: Decimal, tx_ref: str, meta: dict
+    user: User,
+    amount: Decimal,
+    tx_ref: str,
+    meta: dict,
+    currency: str,
 ):
     meta.update({"title": "Escrow transaction fund"})
     deposit_txn = Transaction.objects.create(
@@ -445,7 +465,7 @@ def generate_deposit_transaction_for_escrow(
         amount=amount,
         status="PENDING",
         reference=tx_ref,
-        currency="NGN",
+        currency=currency,
         provider="FLUTTERWAVE",
         meta=meta,
     )
@@ -551,6 +571,7 @@ def settle_merchant_escrow_charges(
     seller_charge = merchant_user_charges.get("seller_charge")
     merchant_settlement = buyer_charge + seller_charge
     tx_ref = generate_txn_reference()
+    currency = transaction.currency
     settlement_txn = Transaction.objects.create(
         user_id=merchant.user_id,
         type="MERCHANT_SETTLEMENT",
@@ -558,7 +579,7 @@ def settle_merchant_escrow_charges(
         amount=int(merchant_settlement),
         status="SUCCESSFUL",
         reference=tx_ref,
-        currency="NGN",
+        currency=currency,
         provider="MYBALANCE",
         meta={
             # "title": "Escrow Settlement",
@@ -566,8 +587,9 @@ def settle_merchant_escrow_charges(
             "escrow_transaction": str(transaction.id),
         },
     )
-    merchant.user_id.userprofile.wallet_balance += int(merchant_settlement)
-    merchant.user_id.userprofile.save()
+    # merchant.user_id.userprofile.wallet_balance += int(merchant_settlement)
+    # merchant.user_id.userprofile.save()
+    merchant.user_id.credit_wallet(merchant_settlement, currency)
 
     escrow_users = get_merchant_escrow_users(transaction, merchant)
     buyer = escrow_users.get("buyer")
@@ -575,10 +597,10 @@ def settle_merchant_escrow_charges(
 
     merchant_values = {
         "date": parse_datetime(transaction.updated_at),
-        "amount_settled": f"NGN {add_commas_to_transaction_amount(str(merchant_settlement))}",
-        "transaction_amount": f"NGN {add_commas_to_transaction_amount(str(transaction.amount))}",
-        "buyer_charges": f"NGN {add_commas_to_transaction_amount(str(buyer_charge))}",
-        "seller_charges": f"NGN {add_commas_to_transaction_amount(str(seller_charge))}",
+        "amount_settled": f"{currency} {add_commas_to_transaction_amount(str(merchant_settlement))}",
+        "transaction_amount": f"{currency} {add_commas_to_transaction_amount(str(transaction.amount))}",
+        "buyer_charges": f"{currency} {add_commas_to_transaction_amount(str(buyer_charge))}",
+        "seller_charges": f"{currency} {add_commas_to_transaction_amount(str(seller_charge))}",
         "transaction_id": (transaction.reference).upper(),
         "item_name": transaction.meta["title"],
         "delivery_date": parse_date(transaction.escrowmeta.delivery_date),
@@ -616,48 +638,44 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
 
             # Move amount from Buyer's Locked Balance to Unlocked Balance
             profile = user.userprofile
-            profile.locked_amount -= Decimal(str(txn.amount))
-            profile.unlocked_amount += int(txn.amount)
+            # profile.locked_amount -= Decimal(str(txn.amount))
+            # profile.unlocked_amount += int(txn.amount)
+            user.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="OUTWARD",
+                type="DEBIT",
+            )
+            user.update_unlocked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                type="CREDIT",
+            )
 
-            # Evaluating free escrow transactions
-            buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+            # Evaluating seller free escrow transactions
             seller_charges = int(txn.charge) + int(merchant_seller_charge)
             amount_to_credit_seller = int(txn.amount - seller_charges)
             seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
-            if buyer_free_escrow_credits > 0:
-                # reverse charges to buyer wallet & deplete free credits
-                profile.free_escrow_transactions -= 1
-                profile.wallet_balance += int(txn.charge)
-                tx_ref = generate_txn_reference()
-
-                rev_txn = Transaction.objects.create(
-                    user_id=user,
-                    type="DEPOSIT",
-                    amount=int(txn.charge),
-                    status="SUCCESSFUL",
-                    reference=tx_ref,
-                    currency="NGN",
-                    provider="MYBALANCE",
-                    meta={
-                        "title": "Wallet credit",
-                        "description": "Free Escrow Reversal",
-                    },
-                )
-
             if seller.userprofile.free_escrow_transactions > 0:
                 # credit full amount to seller and deplete free credits
                 amount_to_credit_seller = int(txn.amount) - int(merchant_seller_charge)
                 seller_charges = int(merchant_seller_charge)
                 seller.userprofile.free_escrow_transactions -= 1
                 seller.userprofile.save()
-
             profile.save()
             locked_amount_instance = LockedAmount.objects.get(transaction=txn)
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
-            seller.userprofile.wallet_balance += int(amount_to_credit_seller)
-            seller.userprofile.locked_amount -= Decimal(str(txn.amount))
-            seller.userprofile.save()
+            # seller.userprofile.wallet_balance += int(amount_to_credit_seller)
+            # seller.userprofile.locked_amount -= Decimal(str(txn.amount))
+            # seller.userprofile.save()
+            seller.credit_wallet(amount_to_credit_seller, txn.currency)
+            seller.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="INWARD",
+                type="DEBIT",
+            )
 
             locked_amount_instance.status = "SETTLED"
             locked_amount_instance.save()
@@ -669,9 +687,9 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
                 "customer_name": user.name,
                 "customer_email": user.email,
                 "merchant_platform": (txn.merchant.name).upper(),
-                "amount_unlocked": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
-                "amount_settled": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
-                "transaction_fee": f"NGN {add_commas_to_transaction_amount(seller_charges)}",
+                "amount_unlocked": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
+                "amount_settled": f"{txn.currency} {add_commas_to_transaction_amount(amount_to_credit_seller)}",
+                "transaction_fee": f"{txn.currency} {add_commas_to_transaction_amount(seller_charges)}",
             }
             buyer_values = {
                 "date": parse_datetime(txn.updated_at),
@@ -680,7 +698,7 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
                 "seller_name": seller.name,
                 "seller_email": seller.email,
                 "merchant_platform": (txn.merchant.name).upper(),
-                "amount_unlocked": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+                "amount_unlocked": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
             }
 
             tasks.send_unlock_funds_merchant_seller_email.delay(
@@ -693,10 +711,10 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
                 user=user,
                 category="FUNDS_UNLOCKED_BUYER",
                 title=notifications.FundsUnlockedBuyerNotification(
-                    add_commas_to_transaction_amount(txn.amount)
+                    add_commas_to_transaction_amount(txn.amount), txn.currency
                 ).TITLE,
                 content=notifications.FundsUnlockedBuyerNotification(
-                    add_commas_to_transaction_amount(txn.amount)
+                    add_commas_to_transaction_amount(txn.amount), txn.currency
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
             )
@@ -706,10 +724,10 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
                 user=seller,
                 category="FUNDS_UNLOCKED_SELLER",
                 title=notifications.FundsUnlockedSellerNotification(
-                    add_commas_to_transaction_amount(txn.amount)
+                    add_commas_to_transaction_amount(txn.amount), txn.currency
                 ).TITLE,
                 content=notifications.FundsUnlockedSellerNotification(
-                    add_commas_to_transaction_amount(txn.amount)
+                    add_commas_to_transaction_amount(txn.amount), txn.currency
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
             )

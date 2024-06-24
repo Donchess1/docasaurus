@@ -29,19 +29,23 @@ class Transaction(models.Model):
         ("BLUSALT", "BLUSALT"),
         ("MYBALANCE", "MYBALANCE"),
     )
+    CURRENCY = (
+        ("NGN", "NGN"),
+        ("USD", "USD"),
+    )
     id = models.UUIDField(
         unique=True, primary_key=True, default=uuid.uuid4, editable=False
     )
     user_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    status = models.CharField(max_length=255, choices=STATUS)
-    type = models.CharField(max_length=255, choices=TYPES)
+    status = models.CharField(max_length=255, choices=STATUS, db_index=True)
+    type = models.CharField(max_length=255, choices=TYPES, db_index=True)
     mode = models.CharField(max_length=255)
     reference = models.CharField(max_length=255, unique=True)
     narration = models.CharField(max_length=255, null=True, blank=True)
     amount = models.IntegerField(default=0, null=True, blank=True)
     charge = models.IntegerField(default=0, null=True, blank=True)
     remitted_amount = models.IntegerField(default=0, null=True, blank=True)
-    currency = models.CharField(max_length=255, default="NGN")
+    currency = models.CharField(max_length=255, default="NGN", choices=CURRENCY)
     provider = models.CharField(max_length=255, choices=PROVIDER)
     provider_tx_reference = models.CharField(max_length=255, null=True, blank=True)
     meta = models.JSONField(null=True, blank=True)

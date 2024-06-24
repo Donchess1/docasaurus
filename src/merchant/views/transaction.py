@@ -250,12 +250,21 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
-            profile = user.userprofile
-            profile.wallet_balance += int(amount_charged)
-            profile.locked_amount += int(txn.amount)
-            profile.save()
-            profile.wallet_balance -= Decimal(str(total_payable_amount_to_charge))
-            profile.save()
+            # profile = user.userprofile
+            # profile.wallet_balance += int(amount_charged)
+            # profile.locked_amount += int(txn.amount)
+            # profile.save()
+            # profile.wallet_balance -= Decimal(str(total_payable_amount_to_charge))
+            # profile.save()
+
+            user.credit_wallet(amount_charged, txn.currency)
+            user.debit_wallet(total_payable_amount_to_charge, txn.currency)
+            user.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="OUTWARD",
+                type="CREDIT",
+            )
 
             escrow_entities = txn.meta.get("seller_escrow_breakdown")
             payout_config_id = txn.meta.get("payout_config")
@@ -265,7 +274,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
 
             # create bulk escrow transactions from entities data
             escrows = create_bulk_merchant_escrow_transactions(
-                merchant, user, escrow_entities, txn, payout_config
+                merchant, user, escrow_entities, txn, payout_config, txn.currency
             )
             products = []
             for transaction in escrows:
@@ -275,13 +284,13 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                     {
                         "name": transaction.escrowmeta.item_type,
                         "quantity": transaction.escrowmeta.item_quantity,
-                        "amount": f"NGN {add_commas_to_transaction_amount(str(transaction.amount))}",
+                        "amount": f"{txn.currency} {add_commas_to_transaction_amount(str(transaction.amount))}",
                         "store_owner": seller.alternate_name,
                     }
                 )
             buyer_values = {
                 "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"NGN {add_commas_to_transaction_amount(str(amount_charged))}",
+                "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(str(amount_charged))}",
                 "merchant_platform": merchant.name,
                 "products": products,
             }
@@ -292,9 +301,13 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             UserNotification.objects.create(
                 user=user,
                 category="FUNDS_LOCKED_BUYER",
-                title=notifications.FundsLockedBuyerNotification(amt).TITLE,
-                content=notifications.FundsLockedBuyerNotification(amt).CONTENT,
-                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{transaction.reference}",
+                title=notifications.FundsLockedBuyerNotification(
+                    amt, txn.currency
+                ).TITLE,
+                content=notifications.FundsLockedBuyerNotification(
+                    amt, txn.currency
+                ).CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
             )
 
         buyer_redirect_url = None

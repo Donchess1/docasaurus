@@ -54,6 +54,20 @@ makemigrations-staging:
 makemigrations-prod:
 	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py makemigrations
 
+createwallets:
+	docker compose -f docker-compose.yml run --rm api python3 manage.py create_wallets
+createwallets-staging:
+	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py create_wallets
+createwallets-prod:
+	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py create_wallets
+
+migratewallets:
+	docker compose -f docker-compose.yml run --rm api python3 manage.py migrate_wallets
+migratewallets-staging:
+	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py migrate_wallets
+migratewallets-prod:
+	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py migrate_wallets
+
 black-check:
 	docker compose -f docker-compose.yml exec api black --check --exclude=migrations --exclude=/app/venv --exclude=/app/env --exclude=venv --exclude=env .
 black-diff:
