@@ -15,19 +15,15 @@ from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.flutterwave import FlwAPI
 from merchant import tasks
-from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, PayoutConfig
+from merchant.models import (ApiKey, Customer, CustomerMerchant, Merchant,
+                             PayoutConfig)
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
 from utils.text import notifications
-from utils.utils import (
-    add_commas_to_transaction_amount,
-    generate_random_text,
-    generate_txn_reference,
-    get_escrow_fees,
-    parse_date,
-    parse_datetime,
-)
+from utils.utils import (add_commas_to_transaction_amount,
+                         generate_random_text, generate_txn_reference,
+                         get_escrow_fees, parse_date, parse_datetime)
 
 User = get_user_model()
 cache = Cache()
@@ -656,42 +652,16 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
                 type="CREDIT",
             )
 
-            # Evaluating free escrow transactions
-            buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+            # Evaluating seller free escrow transactions
             seller_charges = int(txn.charge) + int(merchant_seller_charge)
             amount_to_credit_seller = int(txn.amount - seller_charges)
             seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
-            # MOVE THIS LOGIC TO INITITATION
-            # if buyer_free_escrow_credits > 0:
-            #     # reverse charges to buyer wallet & deplete free credits
-            #     profile.free_escrow_transactions -= 1
-            #     profile.wallet_balance += int(txn.charge)
-            #     tx_ref = generate_txn_reference()
-
-            #     rev_txn = Transaction.objects.create(
-            #         user_id=user,
-            #         type="DEPOSIT",
-            #         amount=int(txn.charge),
-            #         status="SUCCESSFUL",
-            #         reference=tx_ref,
-            #         currency="NGN",
-            #         provider="MYBALANCE",
-            #         meta={
-            #             "title": "Wallet credit",
-            #             "description": "Free Escrow Reversal",
-            #         },
-            #     )
-            # MOVE THIS LOGIC TO INITITATION
-            # MOVE THIS LOGIC TO INITITATION
-            # MOVE THIS LOGIC TO INITITATION
-
             if seller.userprofile.free_escrow_transactions > 0:
                 # credit full amount to seller and deplete free credits
                 amount_to_credit_seller = int(txn.amount) - int(merchant_seller_charge)
                 seller_charges = int(merchant_seller_charge)
                 seller.userprofile.free_escrow_transactions -= 1
                 seller.userprofile.save()
-
             profile.save()
             locked_amount_instance = LockedAmount.objects.get(transaction=txn)
 
