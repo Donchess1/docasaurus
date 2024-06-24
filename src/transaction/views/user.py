@@ -490,11 +490,10 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status="ESCROW",
             )
 
-            amount_to_debit = int(txn.amount + txn.charge)
             # profile.wallet_balance -= Decimal(str(amount_to_debit))
             # profile.locked_amount += int(txn.amount)
             # profile.save()
-            user.debit_wallet(amount_to_debit, txn.currency)
+            user.debit_wallet(amount_payable, txn.currency)
             user.update_locked_amount(
                 amount=txn.amount,
                 currency=txn.currency,

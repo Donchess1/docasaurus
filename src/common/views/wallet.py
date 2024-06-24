@@ -381,6 +381,13 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
 
             try:
                 user = User.objects.filter(email=customer_email).first()
+                profile = user.userprofile
+                buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+                if buyer_free_escrow_credits > 0:
+                    # deplete free credits and make transaction free
+                    profile.free_escrow_transactions -= 1
+                    profile.save()
+                    escrow_amount_to_charge = escrow_txn.amount
                 # profile = user.userprofile
                 # profile.wallet_balance += int(amount_charged)
                 # profile.locked_amount += int(escrow_txn.amount)
