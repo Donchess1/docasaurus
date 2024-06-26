@@ -48,10 +48,8 @@ class EscrowTransactionSerializer(serializers.Serializer):
 
     def validate_bank_code(self, value):
         banks = cache.get("banks")
-        print("BANKs fetched from Cache", banks)
         if banks is None:
             banks = ThirdPartyAPI.list_banks()
-            print("BANKs fetched from Fresh Call", banks)
             if not banks:
                 raise serializers.ValidationError(
                     "Error occurred while retrieving list of banks"
