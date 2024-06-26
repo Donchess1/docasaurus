@@ -39,8 +39,8 @@ class Migration(migrations.Migration):
                 unique=True,
             ),
         ),
-        migrations.RemoveField(
-            model_name="wallet",
-            name="uuid_id",
-        ),
+        # migrations.RemoveField(
+        #     model_name="wallet",
+        #     name="uuid_id",
+        # ),
     ]
