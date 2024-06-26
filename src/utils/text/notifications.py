@@ -5,44 +5,44 @@ class BaseNotification:
 
 
 class WalletDepositNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Deposit Confirmation"
-        CONTENT = f"You deposited NGN {amount} into your Wallet. Your funds are now securely stored with us. Kindly check your email for more information."
+        CONTENT = f"You deposited {currency} {amount} into your Wallet. Your funds are now securely stored with us. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class WalletWithdrawalNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Withdrawal Confirmation"
-        CONTENT = f"You withdrew NGN {amount} from your Wallet. Your requested amount has been processed into your bank account. Kindly check your email for more information."
+        CONTENT = f"You withdrew {currency} {amount} from your Wallet. Your requested amount has been processed into your bank account. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class FundsLockedBuyerNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Funds Lock Notification"
-        CONTENT = f"You have locked NGN {amount}. This ensures an extra layer of security for your account. Kindly check your email for more information."
+        CONTENT = f"You have locked {currency} {amount}. This ensures an extra layer of security for your account. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class FundsLockedSellerNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Funds Locked Confirmation"
-        CONTENT = f"NGN {amount} has been locked for you. Your account is now more secure with the additional locking feature. Kindly check your email for more information."
+        CONTENT = f"{currency} {amount} has been locked for you. Your account is now more secure with the additional locking feature. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class FundsUnlockedBuyerNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Funds Unlock Notification"
-        CONTENT = f"You have unlocked NGN {amount}. Your account is now flexible for further transactions. Kindly check your email for more information."
+        CONTENT = f"You have unlocked {currency} {amount}. Your account is now flexible for further transactions. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class FundsUnlockedSellerNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Funds Unlocked Confirmation"
-        CONTENT = f"NGN {amount} has been unlocked for you. You now have full access to your account for transactions. Kindly check your email for more information."
+        CONTENT = f"{currency} {amount} has been unlocked for you. You now have full access to your account for transactions. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 

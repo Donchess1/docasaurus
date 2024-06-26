@@ -26,7 +26,6 @@ from transaction.serializers.user import (
     UserTransactionSerializer,
 )
 from users.models import UserProfile
-from utils.html import generate_flw_payment_webhook_html
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
@@ -235,10 +234,17 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 and LockedAmount.objects.filter(transaction=instance).exists()
             ):
                 buyer = instance.user_id
-                profile = UserProfile.objects.get(user_id=buyer)
-                profile.wallet_balance += int(amount_to_return)
-                profile.locked_amount -= int(instance.amount)
-                profile.save()
+                # profile = UserProfile.objects.get(user_id=buyer)
+                # profile.wallet_balance += int(amount_to_return)
+                # profile.locked_amount -= int(instance.amount)
+                # profile.save()
+                buyer.credit_wallet(amount_to_return, instance.currency)
+                buyer.update_locked_amount(
+                    amount=instance.amount,
+                    currency=instance.currency,
+                    mode="OUTWARD",
+                    type="DEBIT",
+                )
 
             # Send rejection notification to the author of the transaction
             response = format_rejected_reasons(list(rejected_reason))
@@ -250,7 +256,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_id": instance.reference,
                 "item_name": instance.meta["title"],
                 "partner_name": partner.name,
-                "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
+                "amount": f"{instance.currency} {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
                 "reasons": response,
             }
@@ -276,15 +282,21 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "transaction_id": instance.reference,
                 "item_name": instance.meta["title"],
                 "partner_name": partner.name,
-                "amount": f"NGN {add_commas_to_transaction_amount(instance.amount)}",
+                "amount": f"{instance.currency} {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
             }
             if not transaction_author_is_seller:  # INITIATED BY BUYER
                 tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
-                partner.userprofile.locked_amount += int(instance.amount)
-                partner.userprofile.save()
+                # partner.userprofile.locked_amount += int(instance.amount)
+                # partner.userprofile.save()
+                partner.update_locked_amount(
+                    amount=instance.amount,
+                    currency=instance.currency,
+                    mode="INWARD",
+                    type="CREDIT",
+                )
 
                 # Create Notification
                 UserNotification.objects.create(
@@ -300,8 +312,10 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 seller_values = {
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
-                    "date": parse_datetime(instance.updated_at),
-                    "amount_funded": f"NGN {escrow_amount}",
+                    "date": parse_datetime(
+                        instance.lockedamount.created_at
+                    ),  # Here we use the timestamp for when the amount was initially paid and locked by the buyer. Seller may not have approved immediately.
+                    "amount_funded": f"{instance.currency} {escrow_amount}",
                     "transaction_id": instance.reference,
                     "item_name": instance.meta["title"],
                     "buyer_name": transaction_author.name,
@@ -313,10 +327,10 @@ class UserTransactionDetailView(generics.GenericAPIView):
                     user=seller,
                     category="FUNDS_LOCKED_SELLER",
                     title=notifications.FundsLockedSellerNotification(
-                        escrow_amount
+                        escrow_amount, instance.currency
                     ).TITLE,
                     content=notifications.FundsLockedSellerNotification(
-                        escrow_amount
+                        escrow_amount, instance.currency
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
                 )
@@ -439,8 +453,28 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 message="You do not have permission to perform this action",
             )
 
-        txn = Transaction.objects.get(reference=reference)
-        deficit = (txn.amount + txn.charge) - profile.wallet_balance
+        txn = Transaction.objects.filter(reference=reference).first()
+
+        # Evaluating free escrow transactions
+        buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+        amount_payable = txn.amount + txn.charge
+        escrow_credits_used = False
+        if buyer_free_escrow_credits > 0:
+            # deplete free credits and make transaction free
+            profile.free_escrow_transactions -= 1
+            profile.save()
+            amount_payable = txn.amount
+            escrow_credits_used = True
+
+        wallet_exists, resource = user.get_currency_wallet(txn.currency)
+        if not wallet_exists:
+            return Response(
+                success=False,
+                message=resource,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        wallet = resource
+        deficit = amount_payable - wallet.balance
         if deficit <= 0:
             txn.status = "SUCCESSFUL"
             txn.verified = True
@@ -455,20 +489,24 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 amount=txn.amount,
                 status="ESCROW",
             )
-            instance.save()
 
-            amount_to_debit = int(txn.amount + txn.charge)
-            profile.wallet_balance -= Decimal(str(amount_to_debit))
-            profile.locked_amount += int(txn.amount)
-            profile.save()
+            # profile.wallet_balance -= Decimal(str(amount_to_debit))
+            # profile.locked_amount += int(txn.amount)
+            # profile.save()
+            user.debit_wallet(amount_payable, txn.currency)
+            user.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="OUTWARD",
+                type="CREDIT",
+            )
 
             escrow_amount = add_commas_to_transaction_amount(txn.amount)
-
             buyer_values = {
                 "first_name": user.name.split(" ")[0],
                 "recipient": user.email,
                 "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"NGN {escrow_amount}",
+                "amount_funded": f"{txn.currency} {escrow_amount}",
                 "transaction_id": reference,
                 "item_name": txn.meta["title"],
                 # "seller_name": seller.name,
@@ -476,15 +514,20 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             if txn.escrowmeta.author == "SELLER":
                 seller = txn.user_id
-
-                seller.userprofile.locked_amount += int(txn.amount)
-                seller.userprofile.save()
+                # seller.userprofile.locked_amount += int(txn.amount)
+                # seller.userprofile.save()
+                seller.update_locked_amount(
+                    amount=escrow_txn.amount,
+                    currency=txn.currency,
+                    mode="INWARD",
+                    type="CREDIT",
+                )
 
                 seller_values = {
                     "first_name": seller.name.split(" ")[0],
                     "recipient": seller.email,
                     "date": parse_datetime(txn.updated_at),
-                    "amount_funded": f"NGN {escrow_amount}",
+                    "amount_funded": f"{txn.currency} {escrow_amount}",
                     "transaction_id": reference,
                     "item_name": txn.meta["title"],
                     "buyer_name": user.name,
@@ -496,10 +539,10 @@ class LockEscrowFundsView(generics.CreateAPIView):
                     user=seller,
                     category="FUNDS_LOCKED_SELLER",
                     title=notifications.FundsLockedSellerNotification(
-                        escrow_amount
+                        escrow_amount, txn.currency
                     ).TITLE,
                     content=notifications.FundsLockedSellerNotification(
-                        escrow_amount
+                        escrow_amount, txn.currency
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
                 )
@@ -509,9 +552,11 @@ class LockEscrowFundsView(generics.CreateAPIView):
             UserNotification.objects.create(
                 user=user,
                 category="FUNDS_LOCKED_BUYER",
-                title=notifications.FundsLockedBuyerNotification(escrow_amount).TITLE,
+                title=notifications.FundsLockedBuyerNotification(
+                    escrow_amount, txn.currency
+                ).TITLE,
                 content=notifications.FundsLockedBuyerNotification(
-                    escrow_amount
+                    escrow_amount, txn.currency
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )
@@ -522,16 +567,21 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status_code=status.HTTP_200_OK,
                 data={"transaction_reference": reference, "amount": amount_to_debit},
             )
-        return Response(
-            success=False,
-            message="Insufficient funds in wallet.",
-            status_code=status.HTTP_400_BAD_REQUEST,
-            errors={
-                # "deficit": abs(deficit),
-                "deficit": math.ceil(deficit),
-                "message": "Insufficient funds in wallet.",
-            },
-        )
+        else:
+            # revert escrow credits if it was already used
+            if escrow_credits_used:
+                profile.free_escrow_transactions += 1
+                profile.save()
+            return Response(
+                success=False,
+                message="Insufficient funds in wallet.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors={
+                    # "deficit": abs(deficit),
+                    "deficit": f"{txn.currency} {math.ceil(deficit)}",
+                    "message": "Insufficient funds in wallet.",
+                },
+            )
 
 
 class FundEscrowTransactionView(generics.GenericAPIView):
@@ -593,7 +643,7 @@ class FundEscrowTransactionView(generics.GenericAPIView):
             amount=amount,
             status="PENDING",
             reference=tx_ref,
-            currency="NGN",
+            currency=instance.currency,
             provider="FLUTTERWAVE",
             meta={"title": "Wallet credit"},
         )
@@ -602,7 +652,7 @@ class FundEscrowTransactionView(generics.GenericAPIView):
         tx_data = {
             "tx_ref": tx_ref,
             "amount": amount,
-            "currency": "NGN",
+            "currency": instance.currency,
             # "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/escrow-payment-redirect",
             "redirect_url": f"{FRONTEND_BASE_URL}/escrow-payment",
             "customer": {
@@ -708,35 +758,24 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             txn.save()
 
             # Move amount from Buyer's Locked Balance to Unlocked Balance
-            profile.locked_amount -= Decimal(str(txn.amount))
-            profile.unlocked_amount += int(txn.amount)
+            # profile.locked_amount -= Decimal(str(txn.amount))
+            # profile.unlocked_amount += int(txn.amount)
+            user.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="OUTWARD",
+                type="DEBIT",
+            )
+            user.update_unlocked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                type="CREDIT",
+            )
 
             # Evaluating free escrow transactions
-            buyer_free_escrow_credits = int(profile.free_escrow_transactions)
             amount_to_credit_seller = int(txn.amount - txn.charge)
             seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
             seller_charges = int(txn.charge)
-            if buyer_free_escrow_credits > 0:
-                # reverse charges to buyer wallet & deplete free credits
-                profile.free_escrow_transactions -= 1
-                profile.wallet_balance += int(txn.charge)
-                tx_ref = generate_txn_reference()
-
-                rev_txn = Transaction.objects.create(
-                    user_id=request.user,
-                    type="DEPOSIT",
-                    amount=int(txn.charge),
-                    status="SUCCESSFUL",
-                    reference=tx_ref,
-                    currency="NGN",
-                    provider="MYBALANCE",
-                    meta={
-                        "title": "Wallet credit",
-                        "description": "Free Escrow Reversal",
-                    },
-                )
-                rev_txn.save()
-
             if seller.userprofile.free_escrow_transactions > 0:
                 # credit full amount to seller and deplete free credits
                 amount_to_credit_seller = int(txn.amount)
@@ -749,10 +788,17 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
 
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller = User.objects.get(email=instance.seller_email)
-            seller_profile = seller.userprofile
-            seller_profile.wallet_balance += int(amount_to_credit_seller)
-            seller_profile.locked_amount -= Decimal(str(txn.amount))
-            seller_profile.save()
+            # seller_profile = seller.userprofile
+            # seller_profile.wallet_balance += int(amount_to_credit_seller)
+            # seller_profile.locked_amount -= Decimal(str(txn.amount))
+            # seller_profile.save()
+            seller.credit_wallet(amount_to_credit_seller, txn.currency)
+            seller.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="INWARD",
+                type="DEBIT",
+            )
 
             instance.status = "SETTLED"
             instance.save()
@@ -769,7 +815,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "bank_name": escrow_meta.get("bank_name"),
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
-                "amount": f"NGN {add_commas_to_transaction_amount(txn.amount)}",
+                "amount": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
             }
             seller_values = {
                 "first_name": seller.name.split(" ")[0],
@@ -782,7 +828,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 "account_name": escrow_meta.get("account_name"),
                 "account_number": escrow_meta.get("account_number"),
                 "amount": f"NGN {add_commas_to_transaction_amount(amount_to_credit_seller)}",
-                "transaction_fee": f"NGN {add_commas_to_transaction_amount(seller_charges)}",
+                "transaction_fee": f"{txn.currency} {add_commas_to_transaction_amount(seller_charges)}",
             }
             tasks.send_unlock_funds_buyer_email.delay(user.email, buyer_values)
             tasks.send_unlock_funds_seller_email.delay(seller.email, seller_values)
@@ -792,10 +838,10 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 user=user,
                 category="FUNDS_UNLOCKED_BUYER",
                 title=notifications.FundsUnlockedBuyerNotification(
-                    add_commas_to_transaction_amount(txn.amount)
+                    add_commas_to_transaction_amount(txn.amount), txn.currency
                 ).TITLE,
                 content=notifications.FundsUnlockedBuyerNotification(
-                    add_commas_to_transaction_amount(txn.amount)
+                    add_commas_to_transaction_amount(txn.amount), txn.currency
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )
@@ -805,10 +851,12 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 user=seller,
                 category="FUNDS_UNLOCKED_SELLER",
                 title=notifications.FundsUnlockedSellerNotification(
-                    add_commas_to_transaction_amount(amount_to_credit_seller)
+                    add_commas_to_transaction_amount(amount_to_credit_seller),
+                    txn.currency,
                 ).TITLE,
                 content=notifications.FundsUnlockedSellerNotification(
-                    add_commas_to_transaction_amount(amount_to_credit_seller)
+                    add_commas_to_transaction_amount(amount_to_credit_seller),
+                    txn.currency,
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{reference}",
             )

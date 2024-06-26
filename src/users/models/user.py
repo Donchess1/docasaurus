@@ -1,8 +1,13 @@
 import uuid
+from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+
+from users.models.wallet import Wallet
+from utils.utils import CURRENCIES
 
 
 class Manager(BaseUserManager):
@@ -52,3 +57,131 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    def validate_amount_and_currency(self, amount, currency):
+        if currency not in CURRENCIES:
+            raise ValidationError("Invalid currency.")
+        try:
+            amount = Decimal(str(amount))  # Ensure amount is Decimal-compatible
+        except InvalidOperation:
+            raise ValidationError("Invalid amount value.")
+
+        if amount <= 0:
+            raise ValidationError("Amount must be greater than 0")
+
+    def get_currency_wallet(self, currency):
+        if currency not in CURRENCIES:
+            return False, "Invalid currency."
+
+        wallet = Wallet.objects.filter(user=self, currency=currency).first()
+        if not wallet:
+            return False, f"{currency.upper()} wallet for user does not exist."
+
+        return True, wallet
+
+    def validate_wallet_withdrawal_amount(self, amount, currency):
+        if currency not in CURRENCIES:
+            return False, "Invalid currency."
+        try:
+            amount = Decimal(str(amount))  # Ensure amount is Decimal-compatible
+        except InvalidOperation:
+            return False, "Invalid amount value."
+
+        if amount <= 0:
+            return False, "Amount must be greater than 0"
+
+        wallet = Wallet.objects.filter(user=self, currency=currency).first()
+        if not wallet:
+            return False, f"{currency.upper()} wallet for user does not exist."
+
+        if wallet.balance < amount:
+            return False, "Insufficient funds."
+
+        return True, None
+
+    def credit_wallet(self, amount, currency="NGN"):
+        self.validate_amount_and_currency(amount, currency)
+
+        with transaction.atomic():
+            wallet = Wallet.objects.filter(user=self, currency=currency).first()
+            if not wallet:
+                raise ValidationError(
+                    f"{currency.upper()} wallet for user does not exist."
+                )
+            wallet.balance += Decimal(str(amount))
+            wallet.save()
+
+    def debit_wallet(self, amount, currency="NGN"):
+        self.validate_amount_and_currency(amount, currency)
+
+        with transaction.atomic():
+            wallet = Wallet.objects.filter(user=self, currency=currency).first()
+            if not wallet:
+                raise ValidationError(
+                    f"{currency.upper()} wallet for user does not exist."
+                )
+            if wallet.balance < amount:
+                raise ValidationError("Insufficient funds.")
+            wallet.balance -= Decimal(str(amount))
+            wallet.save()
+
+    def update_locked_amount(self, amount, currency="NGN", mode=None, type=None):
+        self.validate_amount_and_currency(amount, currency)
+
+        if mode not in ["INWARD", "OUTWARD"]:
+            raise ValidationError("Invalid mode. Must be 'INWARD' or 'OUTWARD'.")
+
+        if type not in ["CREDIT", "DEBIT"]:
+            raise ValidationError("Invalid type. Must be 'CREDIT' or 'DEBIT'.")
+
+        with transaction.atomic():
+            wallet = Wallet.objects.filter(user=self, currency=currency).first()
+            if not wallet:
+                raise ValidationError(
+                    f"{currency.upper()} wallet for user does not exist."
+                )
+
+            if mode == "INWARD":
+                if type == "CREDIT":
+                    wallet.locked_amount_inward += Decimal(str(amount))
+                elif type == "DEBIT":
+                    wallet.locked_amount_inward -= Decimal(str(amount))
+            elif mode == "OUTWARD":
+                if type == "CREDIT":
+                    wallet.locked_amount_outward += Decimal(str(amount))
+                elif type == "DEBIT":
+                    wallet.locked_amount_outward -= Decimal(str(amount))
+            wallet.save()
+
+    def update_unlocked_amount(self, amount, currency="NGN", type=None):
+        self.validate_amount_and_currency(amount, currency)
+
+        if type not in ["CREDIT", "DEBIT"]:
+            raise ValidationError("Invalid type. Must be 'CREDIT' or 'DEBIT'.")
+
+        with transaction.atomic():
+            wallet = Wallet.objects.filter(user=self, currency=currency).first()
+            if not wallet:
+                raise ValidationError(
+                    f"{currency.upper()} wallet for user does not exist."
+                )
+
+            if type == "CREDIT":
+                wallet.unlocked_amount += Decimal(str(amount))
+            elif type == "DEBIT":
+                wallet.unlocked_amount -= Decimal(str(amount))
+
+            wallet.save()
+
+    def update_withdrawn_amount(self, amount, currency="NGN"):
+        self.validate_amount_and_currency(amount, currency)
+
+        with transaction.atomic():
+            wallet = Wallet.objects.filter(user=self, currency=currency).first()
+            if not wallet:
+                raise ValidationError(
+                    f"{currency.upper()} wallet for user does not exist."
+                )
+
+            wallet.withdrawn_amount += Decimal(str(amount))
+            wallet.save()
