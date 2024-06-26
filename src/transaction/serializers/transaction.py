@@ -54,11 +54,11 @@ class EscrowTransactionSerializer(serializers.Serializer):
             print("BANKs fetched from Fresh Call", banks)
             if not banks:
                 raise serializers.ValidationError(
-                    "Error occurred while retrieving list of banks from third party"
+                    "Error occurred while retrieving list of banks"
                 )
         bank_codes = [item["code"] for item in banks.get("sorted_banks")]
         if value not in bank_codes:
-            raise serializers.ValidationError("Provide a valid bank code")
+            raise serializers.ValidationError("Invalid bank!")
         return value
 
     def validate(self, data):
