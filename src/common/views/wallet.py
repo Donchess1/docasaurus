@@ -727,7 +727,12 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             self.pusher.trigger(
                 f"WALLET_WITHDRAWAL_{tx_ref}",
                 "WALLET_WITHDRAWAL_FAILURE",
-                {"status": "FAILED", "message": msg, "amount": txn.amount},
+                {
+                    "status": "FAILED",
+                    "message": msg,
+                    "amount": txn.amount,
+                    "currency": txn.currency,
+                },
             )
 
             return Response(
@@ -754,7 +759,8 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 {
                     "status": "SUCCESSFUL",
                     "message": msg,
-                    "amount": f"{txn.currency} {txn.amount}",
+                    "amount": txn.amount,
+                    "currency": txn.currency,
                 },
             )
 
