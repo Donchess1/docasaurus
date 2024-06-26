@@ -565,7 +565,11 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status=True,
                 message="Funds locked successfully",
                 status_code=status.HTTP_200_OK,
-                data={"transaction_reference": reference, "amount": f"{txn.currency} {escrow_amount}"},
+                data={
+                    "transaction_reference": reference,
+                    "amount": escrow_amount,
+                    "currency": txn.currency,
+                },
             )
         else:
             # revert escrow credits if it was already used
