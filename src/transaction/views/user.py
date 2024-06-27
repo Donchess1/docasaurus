@@ -582,7 +582,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors={
                     # "deficit": abs(deficit),
-                    "deficit": f"{txn.currency} {math.ceil(deficit)}",
+                    "deficit": math.ceil(deficit),
+                    "currency": txn.currency,
                     "message": "Insufficient funds in wallet.",
                 },
             )
