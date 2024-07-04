@@ -127,7 +127,9 @@ class CheckUserWalletInfoByEmailView(generics.GenericAPIView):
         email = serializer.validated_data.get("email")
         try:
             user = User.objects.get(email=email)
-            wallets = Wallet.objects.filter(user=user)
+            wallets = Wallet.objects.filter(user=user).order_by(
+                "-currency"
+            )  # ["USD", "NGN"]
             serializer = ConsoleUserWalletSerializer(wallets, many=True)
             return Response(
                 success=True,
