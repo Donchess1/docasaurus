@@ -17,12 +17,6 @@ class UserWalletListView(generics.CreateAPIView):
 
     def get(self, request, *args, **kwargs):
         data = self.get_queryset()
-        print(
-            "data",
-            data,
-        )
-        print("data 1", data[0])
-        print("data 2", data[1])
         serializer = UserWalletSerializer(data, many=True)
         return Response(
             success=True,
