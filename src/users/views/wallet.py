@@ -10,10 +10,19 @@ class UserWalletListView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Wallet.objects.filter(user_id=self.request.user)
+        wallets = Wallet.objects.filter(user=self.request.user).order_by(
+            "-currency"
+        )  # ["USD", "NGN"]
+        return wallets
 
     def get(self, request, *args, **kwargs):
         data = self.get_queryset()
+        print(
+            "data",
+            data,
+        )
+        print("data 1", data[0])
+        print("data 2", data[1])
         serializer = UserWalletSerializer(data, many=True)
         return Response(
             success=True,
