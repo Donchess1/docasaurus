@@ -131,7 +131,7 @@ class CheckUserWalletInfoByEmailView(generics.GenericAPIView):
             serializer = ConsoleUserWalletSerializer(wallets, many=True)
             return Response(
                 success=True,
-                message="Wallet Info retrieved successfully",
+                message=f"Wallet Info retrieved successfully for '{email}'",
                 data=serializer.data,
                 status_code=status.HTTP_200_OK,
             )
