@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status, viewsets
 
+from console.serializers.base import ConsoleUserWalletSerializer
+from users.models.wallet import Wallet
 from users.serializers.user import (
     CheckUserByEmailViewSerializer,
     CheckUserByPhoneNumberViewSerializer,
@@ -101,6 +103,44 @@ class UserViewSet(
             message="User deleted successfully",
             status_code=status.HTTP_200_OK,
         )
+
+
+class CheckUserWalletInfoByEmailView(generics.GenericAPIView):
+    serializer_class = CheckUserByEmailViewSerializer
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Console: Check User Wallet Info",
+        responses={
+            200: ConsoleUserWalletSerializer,
+        },
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+
+        email = serializer.validated_data.get("email")
+        try:
+            user = User.objects.get(email=email)
+            wallets = Wallet.objects.filter(user=user)
+            serializer = ConsoleUserWalletSerializer(wallets, many=True)
+            return Response(
+                success=True,
+                message="Wallet Info retrieved successfully",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
+            )
+        except User.DoesNotExist:
+            return Response(
+                success=False,
+                message="User does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
 
 
 class CheckUserByEmailView(generics.GenericAPIView):
