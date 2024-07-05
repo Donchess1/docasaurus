@@ -16,6 +16,7 @@ from common.views.wallet import (
     WalletWithdrawalFeeView,
     WalletWithdrawalView,
 )
+from common.views.webhook import FlwWebhookView
 
 urlpatterns = [
     path("banks", ListBanksView.as_view(), name="list-banks"),
@@ -51,5 +52,10 @@ urlpatterns = [
         "withdraw-callback",
         WalletWithdrawalCallbackView.as_view(),
         name="withdraw-funds-callback",
+    ),
+    path(
+        "flw-webhook",
+        FlwWebhookView.as_view(),
+        name="flw-webhook",
     ),
 ]
