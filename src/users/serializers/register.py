@@ -20,7 +20,7 @@ User = get_user_model()
 
 class RegisterUserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
-    referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER)
+    referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER, default="OTHERS")
 
     class Meta:
         model = User
@@ -93,7 +93,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
     account_number = serializers.CharField()
     account_name = serializers.CharField()
     bank_code = serializers.CharField()
-    referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER)
+    referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER, default="OTHERS")
 
     class Meta:
         model = User
