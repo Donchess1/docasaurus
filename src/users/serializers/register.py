@@ -9,13 +9,18 @@ from users.models.bank_account import BankAccount
 from users.models.kyc import UserKYC
 from users.models.profile import UserProfile
 from users.models.wallet import Wallet
-from utils.utils import CURRENCIES, PHONE_NUMBER_SERIALIZER_REGEX_NGN
+from utils.utils import (
+    CURRENCIES,
+    PHONE_NUMBER_SERIALIZER_REGEX_NGN,
+    REGISTRATION_REFERRER,
+)
 
 User = get_user_model()
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
+    referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER)
 
     class Meta:
         model = User
@@ -63,6 +68,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             # bank_account_id=bank_account,
             user_type="BUYER",
             free_escrow_transactions=5,
+            referrer=validated_data.get("referrer"),
         )
         for currency in CURRENCIES:  # Consider creating wallets after KYC
             Wallet.objects.create(
@@ -86,6 +92,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
     account_number = serializers.CharField()
     account_name = serializers.CharField()
     bank_code = serializers.CharField()
+    referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER)
 
     class Meta:
         model = User
@@ -157,6 +164,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             bank_account_id=bank_account,
             user_type="SELLER",
             free_escrow_transactions=10,
+            referrer=validated_data.get("referrer"),
         )
         for currency in CURRENCIES:
             Wallet.objects.create(

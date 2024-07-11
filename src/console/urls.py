@@ -5,6 +5,7 @@ from console.views.base import (
     CheckUserByEmailView,
     CheckUserByPhoneView,
     CheckUserWalletInfoByEmailView,
+    UserRegistrationMetricsView,
     UserViewSet,
 )
 from console.views.dispute import DisputeDetailView, DisputeListView
@@ -16,6 +17,11 @@ router.register(r"users", UserViewSet, basename="users")
 
 urlpatterns = [
     path("transactions", TransactionListView.as_view(), name="transactions"),
+    path(
+        "registration-metrics",
+        UserRegistrationMetricsView.as_view(),
+        name="console-metrics",
+    ),
     path(
         "transactions/<str:id>",
         TransactionDetailView.as_view(),

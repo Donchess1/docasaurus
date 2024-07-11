@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status, viewsets
 
 from console.serializers.base import ConsoleUserWalletSerializer
+from users.models.profile import UserProfile
 from users.models.wallet import Wallet
 from users.serializers.user import (
     CheckUserByEmailViewSerializer,
@@ -11,6 +13,7 @@ from users.serializers.user import (
 )
 from utils.pagination import CustomPagination
 from utils.response import Response
+from utils.utils import REGISTRATION_REFERRER
 
 User = get_user_model()
 
@@ -101,6 +104,34 @@ class UserViewSet(
         return Response(
             success=True,
             message="User deleted successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class UserRegistrationMetricsView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(
+        operation_description="Metrics: Get referrer counts",
+        responses={
+            200: None,
+        },
+    )
+    def get(self, request):
+        referrer_counts = UserProfile.objects.values("referrer").annotate(
+            count=Count("referrer")
+        )
+
+        # Initialize dictionary with zero counts for each referrer type
+        referrer_metrics = {key: 0 for key in REGISTRATION_REFERRER}
+
+        for item in referrer_counts:
+            referrer_metrics[item["referrer"]] = item["count"]
+
+        return Response(
+            success=True,
+            message="Referrer counts retrieved successfully",
+            data=referrer_metrics,
             status_code=status.HTTP_200_OK,
         )
 
