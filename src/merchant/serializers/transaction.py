@@ -417,10 +417,10 @@ class InitiateCustomerWalletWithdrawalByMerchantSerializer(serializers.Serialize
         if not merchant_customer:
             raise serializers.ValidationError({"error": "Customer not found"})
         charge, total_amount = get_withdrawal_fee(int(amount))
+        user = merchant_customer.customer.user
         status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not status:
             raise serializers.ValidationError({"error": message})
-
         obj = ThirdPartyAPI.validate_bank_account(bank_code, account_number, currency)
         if obj["status"] in ["error", False]:
             raise serializers.ValidationError({"error": obj["message"]})

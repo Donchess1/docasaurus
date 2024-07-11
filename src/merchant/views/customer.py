@@ -359,6 +359,7 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
         currency = data.get("currency")
+        email = data.get("email")
 
         dynamic_values = {
             "otp": otp,
@@ -367,7 +368,7 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
             "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet",
         }
         tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
-            user.email, dynamic_values
+            email, dynamic_values
         )
 
         return Response(

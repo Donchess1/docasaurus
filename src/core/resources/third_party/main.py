@@ -156,18 +156,12 @@ class ThirdPartyAPI(BaseThirdPartyService):
     @classmethod
     def validate_usd_bank_account(cls, bank_code, account_number):
         if ENVIRONMENT in ("staging", "development"):
-            if account_number == TEST_NUBAN_1 and bank_code == TEST_BANK_CODE_1:
+            if account_number == TEST_NUBAN_2 and bank_code == TEST_BANK_CODE_2:
                 return {
                     "message": "Account details fetched",
                     "status": True,
-                    "data": BANK_ACCOUNT_DATA_1,
+                    "data": BANK_ACCOUNT_DATA_2,
                 }
-            # elif account_number == TEST_NUBAN_2 and bank_code == TEST_BANK_CODE_2:
-            #     return {
-            #         "message": "Account details fetched",
-            #         "status": True,
-            #         "data": BANK_ACCOUNT_DATA_2,
-            #     }
             return RECORD_NOT_FOUND_PAYLOAD
         else:
             return FlwAPI.validate_bank_account(bank_code, account_number)
