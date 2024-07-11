@@ -135,7 +135,7 @@ class ThirdPartyAPI(BaseThirdPartyService):
         return cls.make_post_request(url, json_data)
 
     @classmethod
-    def validate_bank_account(cls, bank_code, account_number):
+    def validate_ngn_bank_account(cls, bank_code, account_number):
         if ENVIRONMENT in ("staging", "development"):
             if account_number == TEST_NUBAN_1 and bank_code == TEST_BANK_CODE_1:
                 return {
@@ -150,7 +150,30 @@ class ThirdPartyAPI(BaseThirdPartyService):
                     "data": BANK_ACCOUNT_DATA_2,
                 }
             return RECORD_NOT_FOUND_PAYLOAD
-        return FlwAPI.validate_bank_account(bank_code, account_number)
+        else:
+            return FlwAPI.validate_bank_account(bank_code, account_number)
+
+    @classmethod
+    def validate_usd_bank_account(cls, bank_code, account_number):
+        if ENVIRONMENT in ("staging", "development"):
+            if account_number == TEST_NUBAN_2 and bank_code == TEST_BANK_CODE_2:
+                return {
+                    "message": "Account details fetched",
+                    "status": True,
+                    "data": BANK_ACCOUNT_DATA_2,
+                }
+            return RECORD_NOT_FOUND_PAYLOAD
+        else:
+            return FlwAPI.validate_bank_account(bank_code, account_number)
+
+    @classmethod
+    def validate_bank_account(cls, bank_code, account_number, currency="NGN"):
+        if currency == "NGN":
+            return cls.validate_ngn_bank_account(bank_code, account_number)
+        elif currency == "USD":
+            return cls.validate_usd_bank_account(bank_code, account_number)
+        else:
+            return RECORD_NOT_FOUND_PAYLOAD
 
     @classmethod
     def list_banks(cls, read_from_file=False):

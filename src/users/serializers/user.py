@@ -24,6 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_buyer",
             "is_seller",
             "is_merchant",
+            "is_admin",
             "created_at",
             "updated_at",
         )

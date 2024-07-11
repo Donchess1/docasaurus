@@ -89,6 +89,10 @@ class FundWalletView(GenericAPIView):
                 "title": "MyBalance",
                 "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
             },
+            "configurations": {
+                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
+                "max_retry_attempt": 3,  # Max retry (int)
+            },
         }
 
         obj = self.flw_api.initiate_payment_link(tx_data)
@@ -156,6 +160,7 @@ class FundWalletRedirectView(GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Payment failed",
             )
+
         if flw_status not in ["completed", "successful"]:
             return Response(
                 success=False,
@@ -169,20 +174,22 @@ class FundWalletRedirectView(GenericAPIView):
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Transaction {msg}"})
             txn.save()
+            # TODO: Log this error in observability service: Tag [FLW Err:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"FLW Err: {msg}",
+                message=f"FlwErr001: {msg}",
             )
 
         if obj["data"]["status"] == "failed":
             msg = obj["data"]["processor_response"]
             txn.meta.update({"description": f"FLW Transaction {msg}"})
             txn.save()
+            # TODO: Log this error in observability service: Tag ["FLW Failed:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"FLW Failed: {msg}",
+                message=f"FlwErr002: {msg}",
             )
 
         if (
@@ -490,8 +497,6 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     message="Profile not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
-            retry_validation = self.flw_api.verify_transaction(flw_transaction_id)
-            print("FLW TRANSACTION VALIDATION VIA API ----->", retry_validation)
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,

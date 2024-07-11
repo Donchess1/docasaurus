@@ -1,7 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from console.models.transaction import Transaction
-from merchant.utils import get_merchant_escrow_users
+from merchant.utils import (
+    get_merchant_escrow_users,
+    unlock_customer_escrow_transaction_by_id,
+)
 
 User = get_user_model()
 
@@ -67,22 +71,28 @@ def get_escrow_transaction_users(transaction: Transaction) -> dict:
 
 
 def get_merchant_escrow_transaction_stakeholders(id):
-    buyer, seller, merchant = None, None, None
+    buyer_email, seller_email, merchant_email = None, None, None
     try:
         transaction = Transaction.objects.get(id=id)
-        if transaction.escrowmeta:
-            if transaction.escrowmeta.meta:
-                meta = transaction.escrowmeta.meta
-                parties = meta.get("parties")
-                buyer_email = parties.get("buyer")
-                seller_email = parties.get("seller")
-                merchant = transaction.merchant
+        if transaction.escrowmeta.meta:
+            meta = transaction.escrowmeta.meta
+            parties = meta.get("parties")
+            buyer_email = parties.get("buyer")
+            seller_email = parties.get("seller")
+            merchant_email = (transaction.merchant.user_id.email,)
     except Exception as e:
-        print(str(e))
-        {"BUYER": buyer, "SELLER": seller, "MERCHANT": merchant}
+        print("Error Fetching Merchant Escrow Transactio  Stakeholders: ", str(e))
 
-    return {
-        "BUYER": buyer_email,
-        "SELLER": seller_email,
-        "MERCHANT": merchant.user_id.email,
-    }
+    return {"BUYER": buyer_email, "SELLER": seller_email, "MERCHANT": merchant_email}
+
+
+@transaction.atomic
+def release_escrow_funds_by_merchant(transaction):
+    stakeholders = get_merchant_escrow_transaction_stakeholders(str(transaction))
+    user = User.objects.filter(email=stakeholders["BUYER"]).first()
+    completed = unlock_customer_escrow_transaction_by_id(transaction.id, user)
+    if not completed:
+        raise serializers.ValidationError(
+            {"error": "Transaction could not be unlocked"}
+        )
+    return completed

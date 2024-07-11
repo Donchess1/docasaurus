@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -13,9 +14,11 @@ from merchant.decorators import authorized_api_call
 from merchant.models import CustomerMerchant, Merchant, PayoutConfig
 from merchant.serializers.transaction import (
     CreateMerchantEscrowTransactionSerializer,
+    MandateFundsReleaseSerializer,
     MerchantEscrowRedirectPayloadSerializer,
     MerchantTransactionSerializer,
-    UnlockMerchantEscrowTransactionSerializer,
+    ReleaseEscrowTransactionByMerchantSerializer,
+    UnlockCustomerEscrowTransactionByBuyerSerializer,
 )
 from merchant.utils import (
     create_bulk_merchant_escrow_transactions,
@@ -31,6 +34,10 @@ from users.serializers.user import UserSerializer
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
+from utils.transaction import (
+    get_merchant_escrow_transaction_stakeholders,
+    release_escrow_funds_by_merchant,
+)
 from utils.utils import add_commas_to_transaction_amount, parse_date, parse_datetime
 
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
@@ -137,7 +144,7 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
             success=True,
             status_code=status.HTTP_201_CREATED,
             data=payload,
-            message="Escrow Transaction initiated",
+            message="Escrow transaction initiated",
         )
 
 
@@ -250,13 +257,6 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
-            # profile = user.userprofile
-            # profile.wallet_balance += int(amount_charged)
-            # profile.locked_amount += int(txn.amount)
-            # profile.save()
-            # profile.wallet_balance -= Decimal(str(total_payable_amount_to_charge))
-            # profile.save()
-
             user.credit_wallet(amount_charged, txn.currency)
             user.debit_wallet(total_payable_amount_to_charge, txn.currency)
             user.update_locked_amount(
@@ -329,21 +329,151 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
         )
 
 
-class UnlockEscrowFundsView(generics.CreateAPIView):
-    serializer_class = UnlockMerchantEscrowTransactionSerializer
+class MandateFundsReleaseView(generics.CreateAPIView):
+    serializer_class = MandateFundsReleaseSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    @swagger_auto_schema(
+        operation_description="Mandate release of escrow funds",
+        responses={
+            200: None,
+        },
+    )
+    @authorized_api_call
+    def post(self, request, id, *args, **kwargs):
+        merchant = request.merchant
+        instance = (
+            self.get_queryset().filter(id=id, merchant=merchant, type="ESCROW").first()
+        )
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist or is invalid",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.escrowmeta.buyer_consent_to_unlock:
+            return Response(
+                success=False,
+                message="Mandate for release has already been granted.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if instance.status == "FUFILLED":
+            return Response(
+                success=False,
+                message="Transaction has already been fulfilled.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        today = timezone.now().date()
+        if instance.escrowmeta.delivery_date > today:
+            return Response(
+                success=False,
+                message="Delivery date has not elapsed.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "merchant": merchant,
+            },
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        buyer_email = serializer.validated_data.get("buyer_email")
+        stakeholders = get_merchant_escrow_transaction_stakeholders(id)
+        if buyer_email != stakeholders["BUYER"]:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="Only buyer can mandate release of funds",
+            )
+
+        instance.escrowmeta.buyer_consent_to_unlock = True
+        instance.escrowmeta.save()
+
+        # TODO: Send out email notification to buyer, seller and merchant
+
+        return Response(
+            status=True,
+            message="Funds release mandated successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
+    serializer_class = ReleaseEscrowTransactionByMerchantSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    @swagger_auto_schema(
+        operation_description="Unlock Escrow Transaction Funds",
+        responses={
+            200: None,
+        },
+    )
+    @authorized_api_call
+    def get(self, request, id, *args, **kwargs):
+        merchant = request.merchant
+        instance = (
+            self.get_queryset().filter(id=id, merchant=merchant, type="ESCROW").first()
+        )
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist or is invalid",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if not instance.escrowmeta.buyer_consent_to_unlock:
+            return Response(
+                success=False,
+                message="Mandate for release has not been granted.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if instance.status == "FUFILLED":
+            return Response(
+                success=False,
+                message="Transaction has already been fulfilled.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = timezone.now().date()
+        if instance.escrowmeta.delivery_date > today:
+            return Response(
+                success=False,
+                message="Delivery date has not elapsed.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        successful, message = release_escrow_funds_by_merchant(instance)
+        return Response(
+            status=True,
+            message="Funds unlocked successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class UnlockEscrowFundsByBuyerView(generics.CreateAPIView):
+    serializer_class = UnlockCustomerEscrowTransactionByBuyerSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         return Transaction.objects.all()
 
     def perform_create(self, serializer):
-        instance_txn_data = serializer.save()
-        return instance_txn_data
+        return serializer.save()
 
     @swagger_auto_schema(
         operation_description="Unlock Escrow Transaction Funds",
         responses={
-            200: UnlockMerchantEscrowTransactionSerializer,
+            200: None,
         },
     )
     def post(self, request, *args, **kwargs):
@@ -388,9 +518,17 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
-        instance_txn_data = self.perform_create(serializer)
-        return Response(
-            status=True,
-            message="Funds unlocked successfully",
-            status_code=status.HTTP_200_OK,
+        completed, message = self.perform_create(serializer)
+        return (
+            Response(
+                status=True,
+                message=message,
+                status_code=status.HTTP_200_OK,
+            )
+            if completed
+            else Response(
+                status=False,
+                message=message,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         )

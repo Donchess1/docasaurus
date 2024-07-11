@@ -672,6 +672,10 @@ class FundEscrowTransactionView(generics.GenericAPIView):
             "meta": {
                 "escrow_transaction_reference": escrow_transaction_reference,
             },
+            "configurations": {
+                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
+                "max_retry_attempt": 3,  # Max retry (int)
+            },
         }
 
         obj = self.flw_api.initiate_payment_link(tx_data)
