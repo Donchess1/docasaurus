@@ -91,6 +91,7 @@ class EscrowMeta(models.Model):
         blank=True,
         related_name="parent_payment_transaction",
     )
+    buyer_consent_to_unlock = models.BooleanField(default=False)
     meta = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

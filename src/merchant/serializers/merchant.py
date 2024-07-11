@@ -12,6 +12,7 @@ from merchant.utils import (
 )
 from users.models import CustomUser, UserProfile
 from users.models.bank_account import BankAccount
+from users.models.wallet import Wallet
 from users.serializers.profile import UserProfileSerializer
 from utils.email import validate_email_body
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
@@ -93,8 +94,6 @@ class MerchantSerializer(serializers.ModelSerializer):
 
 
 class MerchantDetailSerializer(serializers.ModelSerializer):
-    wallet_balance = serializers.SerializerMethodField()
-
     class Meta:
         model = Merchant
         fields = (
@@ -102,15 +101,34 @@ class MerchantDetailSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "address",
-            "wallet_balance",
             "created_at",
             "updated_at",
         )
 
-    def get_wallet_balance(self, obj):
-        user_profile = UserProfile.objects.get(user_id=obj.user_id)
-        # data = UserProfileSerializer(user_profile).data
-        return str(user_profile.wallet_balance)
+
+class MerchantWalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = (
+            "balance",
+            "currency",
+        )
+
+
+class MerchantCustomerWalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = (
+            # "id",
+            "currency",
+            "balance",
+            "locked_amount_outward",
+            "locked_amount_inward",
+            "unlocked_amount",
+            "withdrawn_amount",
+            # "created_at",
+            # "updated_at",
+        )
 
 
 class CustomerUserProfileSerializer(serializers.ModelSerializer):
@@ -119,11 +137,12 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     email = serializers.SerializerMethodField()
     user_type = serializers.SerializerMethodField()
     # merchant_name = serializers.SerializerMethodField()
+    wallets = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
         fields = (
-            # "id",
+            "id",
             "user_type",
             "created_at",
             "updated_at",
@@ -131,6 +150,7 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
             "phone_number",
             # "merchant_name",
             "email",
+            "wallets",
         )
 
     def get_merchant(self, *args, **kwargs):
@@ -167,6 +187,15 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
         if customer_merchant_instance:
             return customer_merchant_instance.merchant.name
         return None
+
+    def get_wallets(self, obj):
+        customer_merchant_instance = self.get_merchant_customer_instance(obj)
+        if customer_merchant_instance:
+            wallets = Wallet.objects.filter(
+                user=customer_merchant_instance.customer.user
+            )
+            return MerchantCustomerWalletSerializer(wallets, many=True).data
+        return []
 
 
 class RegisterCustomerSerializer(serializers.Serializer):

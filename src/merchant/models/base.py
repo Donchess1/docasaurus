@@ -39,6 +39,7 @@ class CustomerMerchant(models.Model):
     USER_TYPE_CHOICES = (
         ("BUYER", "BUYER"),
         ("SELLER", "SELLER"),
+        ("CUSTOM", "CUSTOM"),
     )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE)

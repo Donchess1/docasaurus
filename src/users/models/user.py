@@ -58,6 +58,13 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
+    def create_wallet(self):
+        for currency in CURRENCIES:  # Consider creating wallets after KYC
+            wallet, created = Wallet.objects.get_or_create(
+                user=self,
+                currency=currency,
+            )
+
     def validate_amount_and_currency(self, amount, currency):
         if currency not in CURRENCIES:
             raise ValidationError("Invalid currency.")
@@ -66,8 +73,14 @@ class CustomUser(AbstractUser):
         except InvalidOperation:
             raise ValidationError("Invalid amount value.")
 
-        if amount <= 0:
+        if amount < 0:
             raise ValidationError("Amount must be greater than 0")
+
+    def get_wallets(self):
+        wallets = Wallet.objects.filter(user=self)
+        if not wallets:
+            return False, f"User has no wallets."
+        return True, wallets
 
     def get_currency_wallet(self, currency):
         if currency not in CURRENCIES:

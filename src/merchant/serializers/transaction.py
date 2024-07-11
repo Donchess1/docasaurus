@@ -10,22 +10,26 @@ from rest_framework import serializers
 from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.third_party.main import ThirdPartyAPI
-from merchant.models import PayoutConfig
+from merchant.models import CustomerMerchant, Merchant, PayoutConfig
 from merchant.utils import (
     escrow_user_is_valid,
     generate_deposit_transaction_for_escrow,
+    get_customer_merchant_instance,
     get_merchant_active_payout_configuration,
     get_merchant_by_id,
     get_merchant_customer_transactions_by_customer_email,
     get_merchant_customers_by_user_type,
+    get_merchant_customers_email_addresses,
     get_merchant_transaction_charges,
     transactions_are_already_unlocked,
     transactions_are_invalid_escrows,
     transactions_delivery_date_has_not_elapsed,
+    unlock_customer_escrow_transaction_by_id,
     unlock_customer_escrow_transactions,
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
 from transaction.services import get_escrow_transaction_parties_info
+from utils.transaction import get_merchant_escrow_transaction_stakeholders
 from utils.utils import (
     CURRENCIES,
     generate_random_text,
@@ -58,6 +62,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             # "meta",
             "parties",
             "payment_breakdown",
+            "buyer_consent_to_unlock",
             # "partner_email",
             # "delivery_tolerance",
             # "charge",
@@ -175,21 +180,23 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
 
     def validate_buyer(self, value):
         merchant = self.context.get("merchant")
-        user_list = get_merchant_customers_by_user_type(merchant, "BUYER")
-        if not escrow_user_is_valid(value, user_list):
-            raise serializers.ValidationError("Buyer does not exist.")
+        customer_list = get_merchant_customers_email_addresses(merchant)
+        if not escrow_user_is_valid(value, customer_list):
+            raise serializers.ValidationError(f"Buyer {value} does not exist.")
         return value
 
     def validate_seller(self, value, merchant):
-        user_list = get_merchant_customers_by_user_type(merchant, "SELLER")
-        return True if escrow_user_is_valid(value, user_list) else False
+        customer_list = get_merchant_customers_email_addresses(
+            merchant,
+        )
+        return True if escrow_user_is_valid(value, customer_list) else False
 
     def validate_delivery_date(self, value):
         today = timezone.now().date()
         return False if value < today else True
 
     def validate_amount(self, value):
-        return False if env == "test" and value > 20000 else True
+        return False if env == "test" and value > 5000 else True
 
     def validate_entities(self, entities):
         merchant = self.context.get("merchant")
@@ -210,7 +217,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                     )
                 if not self.validate_amount(amount):
                     raise serializers.ValidationError(
-                        f"Amount for {title} should be {currency} 20,000 or less."
+                        f"Amount for {title} should be {currency} 5,000 or less."
                     )
         return entities
 
@@ -295,6 +302,10 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "meta": {
                 "total_payable_amount": str(amount_to_charge),
             },
+            "configurations": {
+                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
+                "max_retry_attempt": 3,  # Max retry (int)
+            },
         }
         return flw_txn_data, payment_breakdown
 
@@ -305,7 +316,7 @@ class MerchantEscrowRedirectPayloadSerializer(serializers.Serializer):
     redirect_url = serializers.URLField()
 
 
-class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
+class UnlockCustomerEscrowTransactionByBuyerSerializer(serializers.Serializer):
     transactions = serializers.ListField(child=serializers.UUIDField())
 
     def validate(self, data):
@@ -348,15 +359,13 @@ class UnlockMerchantEscrowTransactionSerializer(serializers.Serializer):
     def create(self, validated_data):
         transactions = validated_data.get("transactions")
         user = self.context.get("user")
-        completed = unlock_customer_escrow_transactions(transactions, user)
+        completed, message = unlock_customer_escrow_transactions(transactions, user)
         if not completed:
-            raise serializers.ValidationError(
-                {"error": "One or more transaction(s) could not be unlocked"}
-            )
-        return transactions
+            raise serializers.ValidationError({"error": message})
+        return completed, message
 
 
-class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
+class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
     currency = serializers.ChoiceField(choices=CURRENCIES)
     bank_code = serializers.CharField()
@@ -375,7 +384,6 @@ class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
         if not merchant:
             raise serializers.ValidationError({"error": "Merchant does not exist"})
         charge, total_amount = get_withdrawal_fee(int(amount))
-        # if total_amount > user.userprofile.wallet_balance:
         status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not status:
             raise serializers.ValidationError({"error": message})
@@ -389,6 +397,54 @@ class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
         return data
 
 
+class InitiateCustomerWalletWithdrawalByMerchantSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    amount = serializers.IntegerField()
+    currency = serializers.ChoiceField(choices=CURRENCIES)
+    bank_code = serializers.CharField()
+    account_number = serializers.CharField(max_length=10, min_length=10)
+
+    def validate(self, data):
+        amount = data.get("amount")
+        email = data.get("email")
+        bank_code = data.get("bank_code")
+        account_number = data.get("account_number")
+        currency = data.get("currency")
+        merchant = self.context.get("merchant")
+        merchant_customer: CustomerMerchant = get_customer_merchant_instance(
+            email, merchant
+        )
+        if not merchant_customer:
+            raise serializers.ValidationError({"error": "Customer not found"})
+        charge, total_amount = get_withdrawal_fee(int(amount))
+        status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
+        if not status:
+            raise serializers.ValidationError({"error": message})
+
+        obj = ThirdPartyAPI.validate_bank_account(bank_code, account_number, currency)
+        if obj["status"] in ["error", False]:
+            raise serializers.ValidationError({"error": obj["message"]})
+        data["merchant_platform"] = merchant.name
+        data["merchant_id"] = str(merchant.id)
+        data["amount"] = int(total_amount)
+        return data
+
+
 class ConfirmMerchantWalletWithdrawalSerializer(serializers.Serializer):
     otp = serializers.CharField(min_length=6, max_length=6, required=True)
     temp_id = serializers.CharField()
+
+
+class MandateFundsReleaseSerializer(serializers.Serializer):
+    buyer_email = serializers.EmailField()
+
+    def validate_buyer_email(self, value):
+        merchant = self.context.get("merchant")
+        customer_list = get_merchant_customers_email_addresses(merchant)
+        if not escrow_user_is_valid(value, customer_list):
+            raise serializers.ValidationError(f"Buyer {value} does not exist.")
+        return value
+
+
+class ReleaseEscrowTransactionByMerchantSerializer(serializers.Serializer):
+    pass
