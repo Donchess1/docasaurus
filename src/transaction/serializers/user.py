@@ -22,6 +22,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             "delivery_date",
             "parties",
             "delivery_tolerance",
+            "buyer_consent_to_unlock",
             "charge",
             "meta",
             "created_at",
