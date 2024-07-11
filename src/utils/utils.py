@@ -116,6 +116,7 @@ def get_priv_key():
 
 
 MODES = ["LIVE", "TEST"]
+REGISTRATION_REFERRER = ("NYSC", "RCCG", "LASU", "OTHERS")
 
 
 def generate_otp():
@@ -188,8 +189,8 @@ def get_escrow_fees(amount):
         charge_percentage = 0.01  # 1%
     else:
         charge_percentage = 0.008  # 0.8%
-    
-    charge_percentage = 0 # temporarily disable escrow fee
+
+    charge_percentage = 0  # temporarily disable escrow fee
 
     charge = amount * charge_percentage
     amount_payable = amount + charge
