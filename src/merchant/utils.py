@@ -152,7 +152,7 @@ def get_merchant_users_redirect_url(merchant: Merchant) -> dict:
 
 def get_merchant_by_email(email):
     """
-    Retrieve Merchant Instance by ID
+    Retrieve Merchant Instance by email
     """
     try:
         user = User.objects.filter(email=email).first()
