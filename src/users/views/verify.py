@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from core.resources.cache import Cache
 from core.resources.email_service import EmailClient
 from core.resources.jwt_client import JWTClient
+from merchant.utils import get_merchant_by_email
 from users import tasks
 from users.serializers.register import RegisteredUserPayloadSerializer
 from users.serializers.user import UserSerializer
@@ -229,6 +230,8 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
             profile.phone_number_flagged = True
         profile.save()
         token = self.jwt_client.sign(user.id)
+        merchant = get_merchant_by_email(user.email)
+
         return Response(
             success=True,
             message="Login successful",
@@ -236,6 +239,9 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
                 "token": token["access_token"],
                 "phone_number_flagged": user.userprofile.phone_number_flagged,
                 "user": UserSerializer(user).data,
+                "merchant": str(merchant.id) if merchant else None,
+                "role": None,
+                "permissions": [],
             },
             status_code=status.HTTP_200_OK,
         )
