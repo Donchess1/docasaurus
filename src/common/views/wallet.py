@@ -631,7 +631,7 @@ class WalletWithdrawalView(GenericAPIView):
                 message=message,
             )
 
-        tx_ref = f"{generate_txn_reference()}_PMCKDU"
+        tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
         email = user.email
 
         txn = Transaction.objects.create(
