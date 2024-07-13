@@ -52,6 +52,9 @@ def handle_withdrawal(data, request_meta, pusher):
         txn.verified = True
         txn.save()
 
+        description = f"Withdrawal failed. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+
         pusher.trigger(
             f"WALLET_WITHDRAWAL_{tx_ref}",
             "WALLET_WITHDRAWAL_FAILURE",
@@ -69,9 +72,20 @@ def handle_withdrawal(data, request_meta, pusher):
             "status_code": status.HTTP_200_OK,
         }
 
+    description = f"Withdrawal of {txn.currency} {amount_to_debit} was completed successfuly and verified via WEBHOOK."
+    log_transaction_activity(txn, description, request_meta)
+
     user = User.objects.filter(email=customer_email).first()
+    _, wallet = user.get_currency_wallet(txn.currency)
+    description = f"Previous Balance: {txn.currency} {wallet.balance}"
+    log_transaction_activity(txn, description, request_meta)
+
     user.debit_wallet(amount_to_debit, txn.currency)
     user.update_withdrawn_amount(amount=txn.amount, currency=txn.currency)
+
+    _, wallet = user.get_currency_wallet(txn.currency)
+    description = f"New Balance: {txn.currency} {wallet.balance}"
+    log_transaction_activity(txn, description, request_meta)
 
     pusher.trigger(
         f"WALLET_WITHDRAWAL_{tx_ref}",

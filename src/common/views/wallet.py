@@ -98,6 +98,9 @@ class FundWalletView(GenericAPIView):
         }
 
         obj = self.flw_api.initiate_payment_link(tx_data)
+        print("============================================================")
+        print("FLUTTERWAVE PAYMENT LINK RESPONSE ========>", obj)
+        print("============================================================")
         if obj["status"] == "error":
             return Response(
                 success=False,
@@ -602,8 +605,8 @@ class WalletWithdrawalView(GenericAPIView):
     )
     def post(self, request):
         user = request.user
+        request_meta = extract_api_request_metadata(request)
         profile = user.userprofile
-
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -620,7 +623,6 @@ class WalletWithdrawalView(GenericAPIView):
 
         charge, total_amount = get_withdrawal_fee(int(amount))
 
-        # if total_amount > profile.wallet_balance:
         valid, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not valid:
             return Response(
@@ -629,7 +631,7 @@ class WalletWithdrawalView(GenericAPIView):
                 message=message,
             )
 
-        tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
+        tx_ref = f"{generate_txn_reference()}_PMCKDU"
         email = user.email
 
         txn = Transaction.objects.create(
@@ -643,7 +645,10 @@ class WalletWithdrawalView(GenericAPIView):
             provider="FLUTTERWAVE",
             meta={"title": "Wallet debit"},
         )
-        txn.save()
+
+        description = f"{(user.name).upper()} initiated withdrawal of {currency} {amount} from wallet."
+        log_transaction_activity(txn, description, request_meta)
+
         # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
         tx_data = {
             "account_bank": bank_code,
@@ -661,11 +666,20 @@ class WalletWithdrawalView(GenericAPIView):
         }
 
         obj = self.flw_api.initiate_payout(tx_data)
-        print("PAYOUT INIT OBJ:", obj)
+        print("================================================================")
+        print("================================================================")
+        print("FLUTTTERWAVE TRANSFER API CALLED")
+        print("Response DATA---->", obj)
+        print("================================================================")
+        print("================================================================")
         if obj["status"] == "error":
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Transaction: {tx_ref}", "note": msg})
             txn.save()
+
+            description = f"Withdrawal initiation failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -675,13 +689,13 @@ class WalletWithdrawalView(GenericAPIView):
         txn.meta.update({"description": f"FLW Transaction {tx_ref}", "note": msg})
         txn.save()
 
-        print("DATA FOR WALLET DEBIT:", obj["data"])
+        description = f"Withdrawal successfully queued on {PAYMENT_GATEWAY_PROVIDER}."
+        log_transaction_activity(txn, description, request_meta)
 
         return Response(
             success=True,
             message="Withdrawal is currently being processed",
             status_code=status.HTTP_200_OK,
-            # data=obj["data"],
             data={"transaction_reference": tx_ref},
         )
 
@@ -704,8 +718,10 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 message="Invalid authorization token.",
                 status_code=status.HTTP_403_FORBIDDEN,
             )
-        print("WITHDRAW CALLBACK FUNCTION CALLED")
-        print("REQUEST DATA---->", request.data)
+        print("================================================================")
+        print("FLUTTERWAVE WEBHOOK/CALLBACK V1 FUNCTION CALLED")
+        print("REQUEST DATA=========>", request.data)
+        print("================================================================")
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -742,15 +758,10 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             )
         if txn.verified:
             return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Withdrawal transaction already verified",
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Transfer already verified",
             )
-
-        # TODO: LOG EVENT
-        print("================================================")
-        print("FLW WITHDRAWAL CALLBACK DATA", data)
-        print("================================================")
 
         if data["status"] == "FAILED":
             txn.status = "FAILED"
