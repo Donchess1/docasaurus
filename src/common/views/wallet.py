@@ -36,6 +36,8 @@ from utils.utils import (
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+env = "live" if ENVIRONMENT == "production" else "test"
 
 
 class FundWalletView(GenericAPIView):
@@ -631,7 +633,11 @@ class WalletWithdrawalView(GenericAPIView):
                 message=message,
             )
 
-        tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
+        tx_ref = (
+            f"{generate_txn_reference()}_PMCKDU_1"
+            if env == "test"
+            else f"{generate_txn_reference()}_TRF"
+        )
         email = user.email
 
         txn = Transaction.objects.create(
