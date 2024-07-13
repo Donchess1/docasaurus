@@ -9,6 +9,7 @@ from users.models.bank_account import BankAccount
 from users.models.kyc import UserKYC
 from users.models.profile import UserProfile
 from users.models.wallet import Wallet
+from utils.email import validate_email_address
 from utils.utils import (
     CURRENCIES,
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
@@ -20,6 +21,7 @@ User = get_user_model()
 
 class RegisterUserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
+    email = serializers.EmailField()
     referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER, default="OTHERS")
 
     class Meta:
@@ -41,6 +43,14 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             "is_seller": {"read_only": True},
             "is_verified": {"read_only": True},
         }
+
+    def validate_email(self, value):
+        is_valid, message, validated_response = validate_email_address(
+            value, check_deliverability=True
+        )
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        return validated_response["normalized_email"].lower()
 
     def validate_phone(self, phone):
         if User.objects.filter(phone=phone).exists():
@@ -86,6 +96,7 @@ class RegisteredUserPayloadSerializer(serializers.Serializer):
 
 class RegisterSellerSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
+    email = serializers.EmailField()
     business_name = serializers.CharField()
     business_description = serializers.CharField()
     address = serializers.CharField()
@@ -122,14 +133,18 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             "is_verified": {"read_only": True},
         }
 
+    def validate_email(self, value):
+        is_valid, message, validated_response = validate_email_address(
+            value, check_deliverability=True
+        )
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        return validated_response["normalized_email"].lower()
+
     def validate_phone(self, phone):
         if User.objects.filter(phone=phone).exists():
             raise serializers.ValidationError("This phone number is already in use.")
         return phone
-
-    def to_internal_value(self, data):
-        data["email"] = data.get("email", "").lower()
-        return super().to_internal_value(data)
 
     @transaction.atomic
     def create(self, validated_data):
