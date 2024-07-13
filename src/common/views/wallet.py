@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
+from utils.activity_log import extract_api_request_metadata
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from common.serializers.wallet import (
@@ -47,6 +48,7 @@ class FundWalletView(GenericAPIView):
         operation_description="Fund user wallet",
     )
     def post(self, request):
+        request_meta = extract_api_request_metadata(request)
         user = request.user
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
@@ -73,7 +75,7 @@ class FundWalletView(GenericAPIView):
         )
 
         description = f"{(user.name).upper()} initiated deposit of {currency} {amount} to fund wallet."
-        log_transaction_activity.delay(str(txn), description, request)
+        log_transaction_activity.delay(str(txn), description, request_meta)
 
         tx_data = {
             "tx_ref": tx_ref,
@@ -108,7 +110,7 @@ class FundWalletView(GenericAPIView):
         payload = {"link": link}
 
         description = f"Payment link: {link} successfully generated on {PAYMENT_GATEWAY_PROVIDER}."
-        log_transaction_activity.delay(str(txn), description, request)
+        log_transaction_activity.delay(str(txn), description, request_meta)
 
         return Response(
             success=True,
@@ -124,6 +126,7 @@ class FundWalletRedirectView(GenericAPIView):
     flw_api = FlwAPI
 
     def get(self, request):
+        request_meta = extract_api_request_metadata(request)
         flw_status = request.query_params.get("status", None)
         tx_ref = request.query_params.get("tx_ref", None)
         flw_transaction_id = request.query_params.get("transaction_id", None)
@@ -151,7 +154,7 @@ class FundWalletRedirectView(GenericAPIView):
             txn.save()
 
             description = f"Payment was cancelled."
-            log_transaction_activity.delay(str(txn), description, request)
+            log_transaction_activity.delay(str(txn), description, request_meta)
 
             return Response(
                 success=False,
@@ -166,7 +169,7 @@ class FundWalletRedirectView(GenericAPIView):
             txn.save()
 
             description = f"Payment was cancelled."
-            log_transaction_activity.delay(str(txn), description, request)
+            log_transaction_activity.delay(str(txn), description, request_meta)
 
             return Response(
                 success=False,
@@ -234,20 +237,20 @@ class FundWalletRedirectView(GenericAPIView):
             amount_charged = obj["data"]["charged_amount"]
 
             description = f"Payment received via {payment_type} channel. Transaction verified via redirect URL."
-            log_transaction_activity.delay(str(txn), description, request)
+            log_transaction_activity.delay(str(txn), description, request_meta)
 
             try:
                 user = User.objects.filter(email=customer_email).first()
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
                 description = f"Previous Balance: {txn.currency} {wallet.balance}"
-                log_transaction_activity.delay(str(txn), description, request)
+                log_transaction_activity.delay(str(txn), description, request_meta)
 
                 user.credit_wallet(txn.amount, txn.currency)
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
                 description = f"New Balance: {txn.currency} {wallet.balance}"
-                log_transaction_activity.delay(str(txn), description, request)
+                log_transaction_activity.delay(str(txn), description, request_meta)
 
                 email = user.email
                 values = {
