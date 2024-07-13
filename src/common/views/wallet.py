@@ -73,7 +73,7 @@ class FundWalletView(GenericAPIView):
         )
 
         description = f"{(user.name).upper()} initiated deposit of {currency} {amount} to fund wallet."
-        log_transaction_activity.delay(txn, description, request)
+        log_transaction_activity.delay(str(txn), description, request)
 
         tx_data = {
             "tx_ref": tx_ref,
@@ -108,7 +108,7 @@ class FundWalletView(GenericAPIView):
         payload = {"link": link}
 
         description = f"Payment link: {link} successfully generated on {PAYMENT_GATEWAY_PROVIDER}."
-        log_transaction_activity.delay(txn, description, request)
+        log_transaction_activity.delay(str(txn), description, request)
 
         return Response(
             success=True,
@@ -151,7 +151,7 @@ class FundWalletRedirectView(GenericAPIView):
             txn.save()
 
             description = f"Payment was cancelled."
-            log_transaction_activity.delay(txn, description, request)
+            log_transaction_activity.delay(str(txn), description, request)
 
             return Response(
                 success=False,
@@ -166,7 +166,7 @@ class FundWalletRedirectView(GenericAPIView):
             txn.save()
 
             description = f"Payment was cancelled."
-            log_transaction_activity.delay(txn, description, request)
+            log_transaction_activity.delay(str(txn), description, request)
 
             return Response(
                 success=False,
@@ -234,20 +234,20 @@ class FundWalletRedirectView(GenericAPIView):
             amount_charged = obj["data"]["charged_amount"]
 
             description = f"Payment received via {payment_type} channel. Transaction verified via redirect URL."
-            log_transaction_activity.delay(txn, description, request)
+            log_transaction_activity.delay(str(txn), description, request)
 
             try:
                 user = User.objects.filter(email=customer_email).first()
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
                 description = f"Previous Balance: {txn.currency} {wallet.balance}"
-                log_transaction_activity.delay(txn, description, request)
+                log_transaction_activity.delay(str(txn), description, request)
 
                 user.credit_wallet(txn.amount, txn.currency)
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
                 description = f"New Balance: {txn.currency} {wallet.balance}"
-                log_transaction_activity.delay(txn, description, request)
+                log_transaction_activity.delay(str(txn), description, request)
 
                 email = user.email
                 values = {

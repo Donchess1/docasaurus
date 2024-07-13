@@ -1,4 +1,5 @@
 from typing import Any, Dict
+from uuid import UUID
 
 import geocoder
 from django.http import HttpRequest
@@ -35,7 +36,7 @@ def get_geo_location(ip: str) -> Dict[str, str]:
 
 
 def log_transaction_activity(
-    transaction: Transaction, description: str, request: HttpRequest, **kwargs: Any
+    transaction_id: UUID, description: str, request: HttpRequest, **kwargs: Any
 ) -> TransactionActivityLog:
     """
     Logs a transaction activity with the given description and metadata.
@@ -46,6 +47,10 @@ def log_transaction_activity(
         request (HttpRequest): The HTTP request object.
         **kwargs: Additional metadata to be included in the description.
     """
+    transaction = Transaction.objects.filter(id=transaction_id).first()
+    if not transaction:
+        return None
+
     ip_address = get_client_ip(request)
     user_agent = get_user_agent(request)
     geo_location = get_geo_location(ip_address)
