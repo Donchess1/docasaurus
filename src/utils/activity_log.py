@@ -47,9 +47,7 @@ def extract_api_request_metadata(request: HttpRequest) -> Dict[str, str]:
     }
     return meta
 
-def log_transaction_activity(
-    transaction_id: UUID, description: str, request_meta: dict, **kwargs: Any
-) -> TransactionActivityLog:
+def log_transaction_activity(transaction_id: UUID, description: str, request_meta: dict) -> TransactionActivityLog:
     """
     Logs a transaction activity with the given description and metadata.
 
