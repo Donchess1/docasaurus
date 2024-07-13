@@ -5,6 +5,7 @@ from rest_framework import generics, permissions, status
 from common.serializers.webhook import FlwWebhookSerializer
 from common.services import handle_deposit, handle_withdrawal
 from core.resources.sockets.pusher import PusherSocket
+from utils.activity_log import extract_api_request_metadata
 from utils.response import Response
 
 
@@ -14,6 +15,7 @@ class FlwWebhookView(generics.GenericAPIView):
     pusher = PusherSocket()
 
     def post(self, request):
+        request_meta = extract_api_request_metadata(request)
         secret_hash = os.environ.get("FLW_SECRET_HASH")
         verif_hash = request.headers.get("verif-hash", None)
 
@@ -55,8 +57,8 @@ class FlwWebhookView(generics.GenericAPIView):
 
         event_type = request.data.get("event.type")
         result = (
-            handle_withdrawal(request.data.get("transfer"), self.pusher)
+            handle_withdrawal(request.data.get("transfer"), request_meta, self.pusher)
             if event_type.upper() == "TRANSFER"
-            else handle_deposit(request.data, self.pusher)
+            else handle_deposit(request.data, request_meta, self.pusher)
         )
         return Response(**result)

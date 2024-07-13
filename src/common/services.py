@@ -9,6 +9,7 @@ from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
+from utils.activity_log import log_transaction_activity
 from utils.text import notifications
 from utils.utils import add_commas_to_transaction_amount, parse_datetime
 
@@ -17,7 +18,7 @@ BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
-def handle_withdrawal(data, pusher):
+def handle_withdrawal(data, request_meta, pusher):
     amount_charged = data.get("amount")
     msg = data.get("complete_message")
     amount_to_debit = data["meta"].get("amount_to_debit")
@@ -119,7 +120,7 @@ def handle_withdrawal(data, pusher):
     }
 
 
-def handle_deposit(data, pusher):
+def handle_deposit(data, request_meta, pusher):
     tx_ref = data.get("tx_ref")
     flw_transaction_id = data.get("id")
 
@@ -150,6 +151,9 @@ def handle_deposit(data, pusher):
         txn.verified = True
         txn.save()
 
+        description = f"Payment failed."
+        log_transaction_activity(txn, description, request_meta)
+
         return {
             "success": True,
             "message": "Deposit webhook processed successfully.",
@@ -167,10 +171,14 @@ def handle_deposit(data, pusher):
         msg = obj["message"]
         txn.meta.update({"description": f"FLW Transaction {msg}"})
         txn.save()
+
+        description = f"Error occurred while verifying transaction. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+
         # TODO: Log this error in observability service: Tag [FLW Err:]
         return {
             "success": False,
-            "message": f"FlwErr001: {msg}",
+            "message": f"{msg}",
             "status_code": status.HTTP_400_BAD_REQUEST,
         }
 
@@ -178,10 +186,14 @@ def handle_deposit(data, pusher):
         msg = obj["data"]["processor_response"]
         txn.meta.update({"description": f"FLW Transaction {msg}"})
         txn.save()
+
+        description = f"Transaction failed. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+
         # TODO: Log this error in observability service: Tag ["FLW Failed:]
         return {
             "success": False,
-            "message": f"FlwErr002: {msg}",
+            "message": f"{msg}",
             "status_code": status.HTTP_200_OK,
         }
 
@@ -201,9 +213,10 @@ def handle_deposit(data, pusher):
         txn.remitted_amount = data.get("amount_settled")
         txn.provider_tx_reference = flw_ref
         txn.narration = narration
+        payment_type = obj["data"]["payment_type"]
         txn.meta.update(
             {
-                "payment_method": obj["data"]["payment_type"],
+                "payment_method": payment_type,
                 "provider_txn_id": obj["data"]["id"],
                 "description": f"FLW Transaction {narration}_{flw_ref}",
             }
@@ -216,6 +229,9 @@ def handle_deposit(data, pusher):
         customer_email = data["customer"].get("email")
         meta = data.get("meta")
 
+        description = f"Payment received via {payment_type} channel. Transaction verified via WEBHOOK."
+        log_transaction_activity(txn, description, request_meta)
+
         try:
             user = User.objects.filter(email=customer_email).first()
         except User.DoesNotExist:
@@ -224,6 +240,10 @@ def handle_deposit(data, pusher):
                 "message": "Deposit webhook processed successfully.",
                 "status_code": status.HTTP_200_OK,
             }
+
+        wallet_exists, wallet = user.get_currency_wallet(txn.currency)
+        description = f"Previous Balance: {txn.currency} {wallet.balance}"
+        log_transaction_activity(txn, description, request_meta)
 
         user.credit_wallet(txn.amount, txn.currency)
         # Now we need to know if the purpose of this deposit is to fund wallet or fund escrow
@@ -327,6 +347,8 @@ def handle_deposit(data, pusher):
             )
         else:
             _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"New Balance: {txn.currency} {wallet.balance}"
+            log_transaction_activity(txn, description, request_meta)
             email = user.email
             values = {
                 "first_name": user.name.split(" ")[0],

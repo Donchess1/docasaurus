@@ -189,22 +189,32 @@ class FundWalletRedirectView(GenericAPIView):
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Transaction {msg}"})
             txn.save()
+
+            description = (
+                f"Error occurred while verifying transaction. Description: {msg}"
+            )
+            log_transaction_activity(txn, description, request_meta)
+
             # TODO: Log this error in observability service: Tag [FLW Err:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"FlwErr001: {msg}",
+                message=f"{msg}",
             )
 
         if obj["data"]["status"] == "failed":
             msg = obj["data"]["processor_response"]
             txn.meta.update({"description": f"FLW Transaction {msg}"})
             txn.save()
+
+            description = f"Transaction failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             # TODO: Log this error in observability service: Tag ["FLW Failed:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"FlwErr002: {msg}",
+                message=f"{msg}",
             )
 
         if (
@@ -235,7 +245,7 @@ class FundWalletRedirectView(GenericAPIView):
             customer_email = obj["data"]["customer"]["email"]
             amount_charged = obj["data"]["charged_amount"]
 
-            description = f"Payment received via {payment_type} channel. Transaction verified via redirect URL."
+            description = f"Payment received via {payment_type} channel. Transaction verified via REDIRECT URL."
             log_transaction_activity(txn, description, request_meta)
 
             try:
