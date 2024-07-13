@@ -141,9 +141,9 @@ class FundWalletRedirectView(GenericAPIView):
 
         if txn.verified:
             return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Transaction already verified",
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Payment already verified.",
             )
 
         if flw_status == "cancelled":
