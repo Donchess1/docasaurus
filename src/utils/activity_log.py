@@ -50,7 +50,7 @@ def extract_api_request_metadata(request: HttpRequest) -> Dict[str, str]:
 
 
 def log_transaction_activity(
-    transaction_id: Transaction, description: str, request_meta: dict
+    transaction: Transaction, description: str, request_meta: dict
 ) -> TransactionActivityLog:
     """
     Logs a transaction activity with the given description and metadata.
