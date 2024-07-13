@@ -741,15 +741,6 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 status_code=status.HTTP_403_FORBIDDEN,
                 message="You do not have permission to perform this action",
             )
-        try:
-            profile = UserProfile.objects.get(user_id=user)
-        except UserProfile.DoesNotExist:
-            return Response(
-                success=False,
-                message="User Profile does not exist",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
         # Check if delivery date has elapsed
         delivery_date = instance.escrowmeta.delivery_date
         if datetime.now().date() < delivery_date:
@@ -773,8 +764,6 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             txn.save()
 
             # Move amount from Buyer's Locked Balance to Unlocked Balance
-            # profile.locked_amount -= Decimal(str(txn.amount))
-            # profile.unlocked_amount += int(txn.amount)
             user.update_locked_amount(
                 amount=txn.amount,
                 currency=txn.currency,
@@ -798,15 +787,10 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 seller.userprofile.free_escrow_transactions -= 1
                 seller.userprofile.save()
 
-            profile.save()
             instance = LockedAmount.objects.get(transaction=txn)
-
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller = User.objects.get(email=instance.seller_email)
-            # seller_profile = seller.userprofile
-            # seller_profile.wallet_balance += int(amount_to_credit_seller)
-            # seller_profile.locked_amount -= Decimal(str(txn.amount))
-            # seller_profile.save()
+            amount_to_credit_seller = int(txn.amount) #  TEMPORARY FREE ESCROWS FOR SELLERS IN JULY 2024
             seller.credit_wallet(amount_to_credit_seller, txn.currency)
             seller.update_locked_amount(
                 amount=txn.amount,
