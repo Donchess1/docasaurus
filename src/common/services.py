@@ -349,8 +349,8 @@ def handle_deposit(data, pusher):
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
             )
-        return Response(
-            success=True,
-            status_code=status.HTTP_200_OK,
-            message="Transaction verified.",
-        )
+        return {
+            "success": False,
+            "status_code": status.HTTP_200_OK,
+            "message": "Transaction verified.",
+        }
