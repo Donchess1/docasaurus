@@ -158,7 +158,10 @@ def handle_deposit(data, pusher):
 
     obj = FlwAPI.verify_transaction(flw_transaction_id)
     print("============================================================")
+    print("============================================================")
+    print("VERIFYING FLW DEPOSIT TRANSACTION")
     print(obj)
+    print("============================================================")
     print("============================================================")
     if obj["status"] == "error":
         msg = obj["message"]

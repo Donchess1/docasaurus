@@ -43,19 +43,20 @@ class FlwWebhookView(generics.GenericAPIView):
         event = serializer.validated_data.get("event")
         data = serializer.validated_data.get("data")
 
-        if event not in [
-            "transfer.completed",
-            "charge.completed",
-        ]:  # Valid events from Flutterwave for inflows and outflows
-            return Response(
-                success=False,
-                message="Invalid webhook event does not exist",
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+        # if event not in [
+        #     "transfer.completed",
+        #     "charge.completed",
+        # ]:  # Valid events from Flutterwave for inflows and outflows
+        #     return Response(
+        #         success=False,
+        #         message="Invalid webhook event does not exist",
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #     )
 
+        event_type = request.data.get("event.type")
         result = (
-            handle_withdrawal(data, self.pusher)
-            if event == "transfer.completed"
-            else handle_deposit(data, self.pusher)
+            handle_withdrawal(request.data.get("transfer"), self.pusher)
+            if event_type.upper() == "TRANSFER"
+            else handle_deposit(request.data, self.pusher)
         )
         return Response(**result)

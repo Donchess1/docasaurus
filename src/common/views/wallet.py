@@ -767,10 +767,6 @@ class WalletWithdrawalCallbackView(GenericAPIView):
 
         try:
             user = User.objects.get(email=customer_email)
-            # profile = UserProfile.objects.get(user_id=user)
-            # profile.wallet_balance -= Decimal(str(amount_to_debit))
-            # profile.withdrawn_amount += int(txn.amount)
-            # profile.save()
             user.debit_wallet(amount_to_debit, txn.currency)
             user.update_withdrawn_amount(
                 amount=txn.amount,
@@ -825,13 +821,6 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 message="User not found",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        except UserProfile.DoesNotExist:
-            return Response(
-                success=False,
-                message="Profile not found",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
         return Response(
             success=True,
             message="Withdrawal callback processed successfully.",
