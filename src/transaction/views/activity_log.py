@@ -20,8 +20,6 @@ class TransactionActivityLogListView(generics.ListAPIView):
 
     def list(self, request, transaction_id, *args, **kwargs):
         transaction = self.get_transaction_instance(transaction_id)
-        print("trxn", transaction)
-        print("trxn", str(transaction))
         if not transaction:
             return Response(
                 success=False,

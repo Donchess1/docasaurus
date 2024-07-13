@@ -34,6 +34,7 @@ def get_geo_location(ip: str) -> Dict[str, str]:
         }
     return {}
 
+
 def extract_api_request_metadata(request: HttpRequest) -> Dict[str, str]:
     ip_address = get_client_ip(request)
     user_agent = get_user_agent(request)
@@ -47,7 +48,10 @@ def extract_api_request_metadata(request: HttpRequest) -> Dict[str, str]:
     }
     return meta
 
-def log_transaction_activity(transaction_id: UUID, description: str, request_meta: dict) -> TransactionActivityLog:
+
+def log_transaction_activity(
+    transaction_id: Transaction, description: str, request_meta: dict
+) -> TransactionActivityLog:
     """
     Logs a transaction activity with the given description and metadata.
 
@@ -57,10 +61,6 @@ def log_transaction_activity(transaction_id: UUID, description: str, request_met
         request (HttpRequest): The HTTP request object.
         **kwargs: Additional metadata to be included in the description.
     """
-    transaction = Transaction.objects.filter(id=transaction_id).first()
-    if not transaction:
-        return None
-
     return TransactionActivityLog.objects.create(
         transaction=transaction,
         description=description,
