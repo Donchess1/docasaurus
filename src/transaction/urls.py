@@ -1,5 +1,6 @@
 from django.urls import path
 
+from transaction.views.activity_log import TransactionActivityLogListView
 from transaction.views.user import (
     FundEscrowTransactionView,
     InitiateEscrowTransactionView,
@@ -41,5 +42,10 @@ urlpatterns = [
         "link/<str:id>",
         UserTransactionDetailView.as_view(),
         name="user-transaction-detail-view",
+    ),
+    path(
+        "<str:transaction_id>/activity-logs",
+        TransactionActivityLogListView.as_view(),
+        name="transaction-activity-logs",
     ),
 ]
