@@ -832,7 +832,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             description = (
                 f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)} was released successfully by buyer: {(user.name).upper()} <{user.email}>. Escrow credit was"
                 + escrow_credits_message
-                + f"used by seller."
+                + f"used to settle seller."
             )
             log_transaction_activity(txn, description, request_meta)
 
