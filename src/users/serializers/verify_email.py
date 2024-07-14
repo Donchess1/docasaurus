@@ -23,7 +23,7 @@ class ResendOTPSerializer(serializers.Serializer):
         is_valid, message, validated_response = validate_email_address(
             value, check_deliverability=True
         )
-        if is_valid:
+        if not is_valid:
             raise serializers.ValidationError(message)
         try:
             User.objects.get(email=value)
