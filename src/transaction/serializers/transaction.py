@@ -140,18 +140,16 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
     def validate_transaction_reference(self, value):
         instance = Transaction.objects.filter(reference=value).first()
         if not instance:
-            raise serializers.ValidationError("Transaction reference is not valid")
+            raise serializers.ValidationError("Invalid transaction reference")
         if instance.type != "ESCROW":
-            raise serializers.ValidationError(
-                "Invalid transaction type. Must be ESCROW"
-            )
+            raise serializers.ValidationError("Invalid escrow transaction")
         if instance.verified:
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
         if instance.status == "REJECTED":
             raise serializers.ValidationError(
-                "Unable to process payments for rejected escrow transaction"
+                "You cannot lock funds for a rejected escrow transaction"
             )
         # if instance.status != "APPROVED":
         #     raise serializers.ValidationError(
@@ -211,18 +209,16 @@ class EscrowTransactionPaymentSerializer(serializers.Serializer):
     def validate_transaction_reference(self, value):
         instance = Transaction.objects.filter(reference=value).first()
         if not instance:
-            raise serializers.ValidationError("Transaction reference is not valid")
+            raise serializers.ValidationError("Invalid transaction reference")
         if instance.type != "ESCROW":
-            raise serializers.ValidationError(
-                "Invalid transaction type. Must be ESCROW"
-            )
+            raise serializers.ValidationError("Invalid escrow transaction")
         if instance.verified:
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
         if instance.status == "REJECTED":
             raise serializers.ValidationError(
-                "Unable to process payments for rejected escrow transaction"
+                "You cannot lock funds for a rejected escrow transaction"
             )
         # if instance.status != "APPROVED":
         #     raise serializers.ValidationError(

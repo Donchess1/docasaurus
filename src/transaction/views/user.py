@@ -26,11 +26,13 @@ from transaction.serializers.user import (
     UserTransactionSerializer,
 )
 from users.models import UserProfile
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.transaction import get_escrow_transaction_stakeholders
 from utils.utils import (
+    PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
     format_rejected_reasons,
     generate_txn_reference,
@@ -170,9 +172,11 @@ class UserTransactionDetailView(generics.GenericAPIView):
         )
 
     @swagger_auto_schema(
-        operation_description="Update ESCROW transaction status to 'APPROVED' or 'REJECTED'",
+        operation_description="Approve or Reject an escrow transaction",
     )
     def patch(self, request, id, *args, **kwargs):
+        user = request.user
+        request_meta = extract_api_request_metadata(request)
         instance = self.get_transaction_instance(id)
         if not instance:
             return Response(
@@ -192,17 +196,17 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 message=f"Funds have not been locked yet for this transaction",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        if request.user.email != instance.escrowmeta.partner_email:
+        if user.email != instance.escrowmeta.partner_email:
             return Response(
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
-                message="You do not have permission to update this escrow transaction",
+                message="You cannot approve/reject this escrow transaction",
             )
         escrow_action = instance.meta.get("escrow_action", None)
         if escrow_action:
             return Response(
                 success=False,
-                message=f"You cannot update this transaction again",
+                message=f"Transaction already {escrow_action.lower()}!",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -234,16 +238,17 @@ class UserTransactionDetailView(generics.GenericAPIView):
         partner = User.objects.get(email=instance.escrowmeta.partner_email)
         if new_status == "REJECTED":
             amount_to_return = instance.amount + instance.charge
-            # Only return locked funds if the amount was deducted initially
+            rejection_note = format_rejected_reasons(list(rejected_reason))
+
+            description = f"Escrow was successfully rejected by {(user.name).upper()} <{user.email}>. Reason(s): {rejection_note}"
+            log_transaction_activity(instance, description, request_meta)
+
+            # Return locked funds if the amount was deducted initially
             if (
                 instance.escrowmeta.author == "BUYER"
                 and LockedAmount.objects.filter(transaction=instance).exists()
             ):
                 buyer = instance.user_id
-                # profile = UserProfile.objects.get(user_id=buyer)
-                # profile.wallet_balance += int(amount_to_return)
-                # profile.locked_amount -= int(instance.amount)
-                # profile.save()
                 buyer.credit_wallet(amount_to_return, instance.currency)
                 buyer.update_locked_amount(
                     amount=instance.amount,
@@ -252,8 +257,9 @@ class UserTransactionDetailView(generics.GenericAPIView):
                     type="DEBIT",
                 )
 
-            # Send rejection notification to the author of the transaction
-            response = format_rejected_reasons(list(rejected_reason))
+                description = f"{instance.currency} {add_commas_to_transaction_amount(amount_to_return)} was successfully reversed to buyer wallet."
+                log_transaction_activity(instance, description, request_meta)
+
             values = {
                 "first_name": transaction_author.name.split(" ")[0],
                 "recipient": transaction_author.email,
@@ -264,7 +270,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 "partner_name": partner.name,
                 "amount": f"{instance.currency} {add_commas_to_transaction_amount(instance.amount)}",
                 "transaction_author_is_seller": transaction_author_is_seller,
-                "reasons": response,
+                "reasons": rejection_note,
             }
             tasks.send_rejected_escrow_transaction_email.delay(
                 transaction_author.email, values
@@ -280,6 +286,10 @@ class UserTransactionDetailView(generics.GenericAPIView):
             )
             # TODO: Send real-time Notification
         else:  # APPROVED
+
+            description = f"Escrow was successfully approved by {(user.name).upper()} <{user.email}>."
+            log_transaction_activity(instance, description, request_meta)
+
             values = {
                 "first_name": transaction_author.name.split(" ")[0],
                 "recipient": transaction_author.email,
@@ -295,8 +305,6 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 tasks.send_approved_escrow_transaction_email.delay(
                     transaction_author.email, values
                 )
-                # partner.userprofile.locked_amount += int(instance.amount)
-                # partner.userprofile.save()
                 partner.update_locked_amount(
                     amount=instance.amount,
                     currency=instance.currency,
@@ -403,6 +411,8 @@ class InitiateEscrowTransactionView(generics.CreateAPIView):
         return serializer.save()
 
     def post(self, request):
+        user = request.user
+        request_meta = extract_api_request_metadata(request)
         serializer = self.serializer_class(
             data=request.data, context={"request": request}
         )
@@ -414,6 +424,15 @@ class InitiateEscrowTransactionView(generics.CreateAPIView):
             )
 
         instance = self.perform_create(serializer)
+        partner_email = instance.escrowmeta.partner_email
+        partner = User.objects.filter(email=partner_email).first()
+        partner_name = partner.name if partner else "Unregistered User"
+
+        description = f"{(user.name).upper()} <{user.email}> [{(instance.escrowmeta.author).upper()}] \
+             initiated escrow worth {instance.currency} {instance.amount} for \
+                {partner_name.upper()} <{partner_email}>"
+        log_transaction_activity(instance, description, request_meta)
+
         obj = UserTransactionSerializer(instance)
         return Response(
             success=True,
@@ -432,15 +451,8 @@ class LockEscrowFundsView(generics.CreateAPIView):
     )
     def post(self, request):
         user = request.user
-        try:
-            profile = UserProfile.objects.get(user_id=user)
-        except UserProfile.DoesNotExist:
-            return Response(
-                success=False,
-                message="User Profile does not exist",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
+        profile = user.userprofile
+        request_meta = extract_api_request_metadata(request)
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -449,8 +461,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 errors=serializer.errors,
             )
         reference = serializer.validated_data.get("transaction_reference")
-
-        # Validate permissions: Only the associated buyer can lock funds
+        # Only the associated buyer can lock funds
         stakeholders = get_escrow_transaction_stakeholders(reference)
         if request.user.email != stakeholders["BUYER"]:
             return Response(
@@ -460,7 +471,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
             )
 
         txn = Transaction.objects.filter(reference=reference).first()
-
         # Evaluating free escrow transactions
         buyer_free_escrow_credits = int(profile.free_escrow_transactions)
         amount_payable = txn.amount + txn.charge
@@ -472,7 +482,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
             amount_payable = txn.amount
             escrow_credits_used = True
 
-        wallet_exists, resource = user.get_currency_wallet(txn.currency)
+        _, resource = user.get_currency_wallet(txn.currency)
         if not wallet_exists:
             return Response(
                 success=False,
@@ -496,9 +506,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 status="ESCROW",
             )
 
-            # profile.wallet_balance -= Decimal(str(amount_to_debit))
-            # profile.locked_amount += int(txn.amount)
-            # profile.save()
             user.debit_wallet(amount_payable, txn.currency)
             user.update_locked_amount(
                 amount=txn.amount,
@@ -506,8 +513,17 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 mode="OUTWARD",
                 type="CREDIT",
             )
-
             escrow_amount = add_commas_to_transaction_amount(txn.amount)
+
+            escrow_credits_message = " " if escrow_credits_used else " not "
+            description = (
+                f"{txn.currency} {escrow_amount} was locked successfully by buyer: {(user.name).upper()} <{user.email}> \
+                 via direct wallet debit. Escrow credit was"
+                + escrow_credits_message
+                + f"used by buyer."
+            )
+            log_transaction_activity(txn, description, request_meta)
+
             buyer_values = {
                 "first_name": user.name.split(" ")[0],
                 "recipient": user.email,
@@ -520,8 +536,6 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             if txn.escrowmeta.author == "SELLER":
                 seller = txn.user_id
-                # seller.userprofile.locked_amount += int(txn.amount)
-                # seller.userprofile.save()
                 seller.update_locked_amount(
                     amount=escrow_txn.amount,
                     currency=txn.currency,
@@ -617,6 +631,7 @@ class FundEscrowTransactionView(generics.GenericAPIView):
     )
     def post(self, request):
         user = request.user
+        request_meta = extract_api_request_metadata(request)
         ref = request.data.get("transaction_reference", None)
         instance = self.get_transaction_instance(ref)
         if not instance:
@@ -658,7 +673,15 @@ class FundEscrowTransactionView(generics.GenericAPIView):
             provider="FLUTTERWAVE",
             meta={"title": "Wallet credit"},
         )
-        txn.save()
+        # ESCROW REFERENCE
+        description = f"Insufficient funds to debit from the buyer’s wallet. \
+                Payment reference: {tx_ref} generated for {txn.currency} {add_commas_to_transaction_amount(txn.amount)} created successfully by buyer."
+        log_transaction_activity(instance, description, request_meta)
+
+        # DEPOSIT REFERENCE
+
+        description = f"{(user.name).upper()} initiated deposit of {txn.currency} {add_commas_to_transaction_amount(txn.amount)} to fund escrow transaction: {instance.reference}."
+        log_transaction_activity(txn, description, request_meta)
 
         tx_data = {
             "tx_ref": tx_ref,
@@ -692,7 +715,12 @@ class FundEscrowTransactionView(generics.GenericAPIView):
                 message=obj["message"],
             )
 
-        payload = {"link": obj["data"]["link"]}
+        link = obj["data"]["link"]
+        payload = {"link": link}
+
+        description = f"Payment link: {link} successfully generated on {PAYMENT_GATEWAY_PROVIDER}."
+        log_transaction_activity(txn, description, request_meta)
+
         return Response(
             success=True,
             message="Escrow payment successfully initialized",
@@ -725,6 +753,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
     )
     def post(self, request):
         user = request.user
+        request_meta = extract_api_request_metadata(request)
         ref = request.data.get("transaction_reference", None)
         instance = self.get_transaction_instance(ref)
         if not instance:
@@ -739,7 +768,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             return Response(
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
-                message="You do not have permission to perform this action",
+                message="You don't have permission to unlock funds for this transaction",
             )
         # Check if delivery date has elapsed
         delivery_date = instance.escrowmeta.delivery_date
@@ -780,17 +809,18 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
             amount_to_credit_seller = int(txn.amount - txn.charge)
             seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
             seller_charges = int(txn.charge)
+            escrow_credits_used = False
             if seller.userprofile.free_escrow_transactions > 0:
                 # credit full amount to seller and deplete free credits
                 amount_to_credit_seller = int(txn.amount)
                 seller_charges = 0
                 seller.userprofile.free_escrow_transactions -= 1
                 seller.userprofile.save()
+                escrow_credits_used = True
 
             instance = LockedAmount.objects.get(transaction=txn)
             # Credit amount to Seller's wallet balance after deducting applicable escrow fees
             seller = User.objects.get(email=instance.seller_email)
-            amount_to_credit_seller = int(txn.amount) #  TEMPORARY FREE ESCROWS FOR SELLERS IN JULY 2024
             seller.credit_wallet(amount_to_credit_seller, txn.currency)
             seller.update_locked_amount(
                 amount=txn.amount,
@@ -801,6 +831,15 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
 
             instance.status = "SETTLED"
             instance.save()
+
+            escrow_credits_message = " " if escrow_credits_used else " not "
+            description = (
+                f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)} was released successfully by buyer: {(user.name).upper()} <{user.email}>. \
+                    Escrow credit was"
+                + escrow_credits_message
+                + f"used by seller."
+            )
+            log_transaction_activity(txn, description, request_meta)
 
             # Notify Buyer & Seller that funds has been unlocked from escrow via email.
             escrow_meta = txn.escrowmeta.meta

@@ -15,7 +15,9 @@ class ForgotPasswordSerializer(serializers.Serializer):
         )
         if not is_valid:
             raise serializers.ValidationError(message)
-        user = User.objects.filter(email=validated_response["normalized_email"].lower()).first()
+        user = User.objects.filter(
+            email=validated_response["normalized_email"].lower()
+        ).first()
         if not user:
             raise serializers.ValidationError("User with this email does not exist.")
         return validated_response["normalized_email"].lower()
