@@ -8,6 +8,9 @@ from core.resources.sockets.pusher import PusherSocket
 from utils.activity_log import extract_api_request_metadata
 from utils.response import Response
 
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+env = "live" if ENVIRONMENT == "production" else "test"
+
 
 class FlwWebhookView(generics.GenericAPIView):
     serializer_class = FlwWebhookSerializer
@@ -56,8 +59,9 @@ class FlwWebhookView(generics.GenericAPIView):
         #     )
 
         event_type = request.data.get("event.type")
+        withdrawal_data = request.data.get("transfer") if env == "test" else data
         result = (
-            handle_withdrawal(request.data.get("transfer"), request_meta, self.pusher)
+            handle_withdrawal(withdrawal_data, request_meta, self.pusher)
             if event_type.upper() == "TRANSFER"
             else handle_deposit(request.data, request_meta, self.pusher)
         )
