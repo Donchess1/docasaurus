@@ -366,7 +366,7 @@ def handle_deposit(data, request_meta, pusher):
                     content=notifications.FundsLockedSellerNotification(
                         escrow_amount, escrow_txn.currency
                     ).CONTENT,
-                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn.reference}",
                 )
 
             txn_tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
