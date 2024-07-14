@@ -251,8 +251,8 @@ def handle_deposit(data, request_meta, pusher):
         except User.DoesNotExist:
             return {
                 "success": True,
-                "message": "Deposit webhook processed successfully.",
-                "status_code": status.HTTP_200_OK,
+                "message": "User does not exist.",
+                "status_code": status.HTTP_404_NOT_FOUND,
             }
 
         wallet_exists, wallet = user.get_currency_wallet(txn.currency)
@@ -271,21 +271,47 @@ def handle_deposit(data, request_meta, pusher):
             escrow_txn.save()
             escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
 
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"Balance after topup: {txn.currency} {wallet.balance}"
+            log_transaction_activity(txn, description, request_meta)
+
             profile = user.userprofile
             buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+            escrow_credits_used = False
             if buyer_free_escrow_credits > 0:
                 # deplete free credits and make transaction free
                 profile.free_escrow_transactions -= 1
                 profile.save()
                 escrow_amount_to_charge = escrow_txn.amount
+                escrow_credits_used = True
 
             user.debit_wallet(escrow_amount_to_charge, txn.currency)
+
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = (
+                f"New Balance after final debit: {txn.currency} {wallet.balance}"
+            )
+            log_transaction_activity(txn, description, request_meta)
+
             user.update_locked_amount(
                 amount=escrow_txn.amount,
                 currency=escrow_txn.currency,
                 mode="OUTWARD",
                 type="CREDIT",
             )
+
+            # =================================================================
+            # ESCROW TRANSACTION ACTIVITY
+            escrow_credits_message = " " if escrow_credits_used else " not "
+            description = (
+                f"{escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> \
+                via direct wallet debit. Escrow credit was"
+                + escrow_credits_message
+                + f"used by buyer."
+            )
+            log_transaction_activity(escrow_txn, description, request_meta)
+            # ESCROW TRANSACTION ACTIVITY
+            # =================================================================
 
             instance = LockedAmount.objects.create(
                 transaction=escrow_txn,

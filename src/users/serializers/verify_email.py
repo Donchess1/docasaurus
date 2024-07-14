@@ -20,7 +20,9 @@ class ResendOTPSerializer(serializers.Serializer):
     old_temp_id = serializers.CharField(required=False)
 
     def validate_email(self, value):
-        is_valid, message, validated_response = validate_email_address(value, check_deliverability=True)
+        is_valid, message, validated_response = validate_email_address(
+            value, check_deliverability=True
+        )
         if is_valid:
             raise serializers.ValidationError(message)
         try:

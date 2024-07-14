@@ -225,7 +225,9 @@ class RegisterCustomerSerializer(serializers.Serializer):
                 {"phone_number": "Customer with phone number already exists."}
             )
 
-        user = User.objects.filter(email=validated_response["normalized_email"].lower()).first()
+        user = User.objects.filter(
+            email=validated_response["normalized_email"].lower()
+        ).first()
         if user:
             if customer_with_email_exists_for_merchant(merchant, user):
                 raise serializers.ValidationError(
