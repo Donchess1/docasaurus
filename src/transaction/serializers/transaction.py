@@ -90,11 +90,6 @@ class EscrowTransactionSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        for key in validated_data.keys():
-            print("================================")
-            print("Key: {}".format(key))
-            print(validated_data.get(key))
-            print("================================")
         user = self.context["request"].user
         author = "BUYER" if user.is_buyer else "SELLER"
         amount = validated_data.get("amount")

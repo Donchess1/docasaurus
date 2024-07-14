@@ -428,9 +428,7 @@ class InitiateEscrowTransactionView(generics.CreateAPIView):
         partner = User.objects.filter(email=partner_email).first()
         partner_name = partner.name if partner else "Unregistered User"
 
-        description = f"{(user.name).upper()} <{user.email}> [{(instance.escrowmeta.author).upper()}] \
-             initiated escrow worth {instance.currency} {instance.amount} for \
-                {partner_name.upper()} <{partner_email}>"
+        description = f"{(user.name).upper()} <{user.email}> [{(instance.escrowmeta.author).upper()}] initiated escrow worth {instance.currency} {instance.amount} for {partner_name.upper()} <{partner_email}>"
         log_transaction_activity(instance, description, request_meta)
 
         obj = UserTransactionSerializer(instance)
@@ -517,8 +515,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             escrow_credits_message = " " if escrow_credits_used else " not "
             description = (
-                f"{txn.currency} {escrow_amount} was locked successfully by buyer: {(user.name).upper()} <{user.email}> \
-                 via direct wallet debit. Escrow credit was"
+                f"{txn.currency} {escrow_amount} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
                 + escrow_credits_message
                 + f"used by buyer."
             )
@@ -674,8 +671,7 @@ class FundEscrowTransactionView(generics.GenericAPIView):
             meta={"title": "Wallet credit"},
         )
         # ESCROW REFERENCE
-        description = f"Insufficient funds to debit from the buyer’s wallet. \
-                Payment reference: {tx_ref} generated for {txn.currency} {add_commas_to_transaction_amount(txn.amount)} created successfully by buyer."
+        description = f"Insufficient funds to debit from the buyer’s wallet. Payment reference: {tx_ref} generated for {txn.currency} {add_commas_to_transaction_amount(txn.amount)} created successfully by buyer."
         log_transaction_activity(instance, description, request_meta)
 
         # DEPOSIT REFERENCE
@@ -834,8 +830,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
 
             escrow_credits_message = " " if escrow_credits_used else " not "
             description = (
-                f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)} was released successfully by buyer: {(user.name).upper()} <{user.email}>. \
-                    Escrow credit was"
+                f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)} was released successfully by buyer: {(user.name).upper()} <{user.email}>. Escrow credit was"
                 + escrow_credits_message
                 + f"used by seller."
             )

@@ -304,8 +304,7 @@ def handle_deposit(data, request_meta, pusher):
             # ESCROW TRANSACTION ACTIVITY
             escrow_credits_message = " " if escrow_credits_used else " not "
             description = (
-                f"{escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> \
-                via direct wallet debit. Escrow credit was"
+                f"{escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
                 + escrow_credits_message
                 + f"used by buyer."
             )
