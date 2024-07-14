@@ -482,7 +482,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
             amount_payable = txn.amount
             escrow_credits_used = True
 
-        _, resource = user.get_currency_wallet(txn.currency)
+        wallet_exists, resource = user.get_currency_wallet(txn.currency)
         if not wallet_exists:
             return Response(
                 success=False,
