@@ -212,7 +212,13 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         new_status = serializer.validated_data.get("status")
-        if new_status == "APPROVED" and instance.status == "PENDING":
+        # The seller should not be able to approve a transaction that has not been paid for
+        stakeholders = get_escrow_transaction_stakeholders(instance.reference)
+        if (
+            user.email == stakeholders["SELLER"]
+            and new_status == "APPROVED"
+            and instance.status == "PENDING"
+        ):
             return Response(
                 success=False,
                 message=f"Funds have not been locked yet for this transaction",
