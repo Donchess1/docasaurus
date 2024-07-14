@@ -38,11 +38,11 @@ class EscrowTransactionSerializer(serializers.Serializer):
         request = self.context.get("request")
         email = request.user.email
         is_valid, message, validated_response = validate_email_address(
-            email, check_deliverability=True
+            value, check_deliverability=True
         )
         if not is_valid:
             raise serializers.ValidationError(message)
-        if value == email:
+        if value.lower() == email.lower():
             raise serializers.ValidationError(
                 "You cannot lock an escrow using your own email"
             )
@@ -90,6 +90,11 @@ class EscrowTransactionSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        for key in validated_data.keys():
+            print("================================")
+            print("Key: {}".format(key))
+            print(validated_data.get(key))
+            print("================================")
         user = self.context["request"].user
         author = "BUYER" if user.is_buyer else "SELLER"
         amount = validated_data.get("amount")
