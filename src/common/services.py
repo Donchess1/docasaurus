@@ -72,19 +72,19 @@ def handle_withdrawal(data, request_meta, pusher):
             "status_code": status.HTTP_200_OK,
         }
 
-    description = f"Withdrawal of {txn.currency} {amount_to_debit} was completed successfuly and verified via WEBHOOK."
+    description = f"Withdrawal of {txn.currency} {add_commas_to_transaction_amount(amount_to_debit)} was completed successfuly and verified via WEBHOOK."
     log_transaction_activity(txn, description, request_meta)
 
     user = User.objects.filter(email=customer_email).first()
     _, wallet = user.get_currency_wallet(txn.currency)
-    description = f"Previous Balance: {txn.currency} {wallet.balance}"
+    description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(txn, description, request_meta)
 
     user.debit_wallet(amount_to_debit, txn.currency)
     user.update_withdrawn_amount(amount=txn.amount, currency=txn.currency)
 
     _, wallet = user.get_currency_wallet(txn.currency)
-    description = f"New Balance: {txn.currency} {wallet.balance}"
+    description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(txn, description, request_meta)
 
     pusher.trigger(
@@ -256,7 +256,7 @@ def handle_deposit(data, request_meta, pusher):
             }
 
         wallet_exists, wallet = user.get_currency_wallet(txn.currency)
-        description = f"Previous Balance: {txn.currency} {wallet.balance}"
+        description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
         user.credit_wallet(txn.amount, txn.currency)
@@ -272,7 +272,7 @@ def handle_deposit(data, request_meta, pusher):
             escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
 
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"Balance after topup: {txn.currency} {wallet.balance}"
+            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             profile = user.userprofile
@@ -288,9 +288,7 @@ def handle_deposit(data, request_meta, pusher):
             user.debit_wallet(escrow_amount_to_charge, txn.currency)
 
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = (
-                f"New Balance after final debit: {txn.currency} {wallet.balance}"
-            )
+            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             user.update_locked_amount(
@@ -386,7 +384,7 @@ def handle_deposit(data, request_meta, pusher):
             )
         else:
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"New Balance: {txn.currency} {wallet.balance}"
+            description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
             email = user.email
             values = {

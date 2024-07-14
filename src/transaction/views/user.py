@@ -235,7 +235,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
         instance.save()
 
         transaction_author = instance.user_id
-        partner = User.objects.get(email=instance.escrowmeta.partner_email)
+        partner = User.objects.filter(email=instance.escrowmeta.partner_email).first()
         if new_status == "REJECTED":
             amount_to_return = instance.amount + instance.charge
             rejection_note = format_rejected_reasons(list(rejected_reason))
@@ -428,7 +428,7 @@ class InitiateEscrowTransactionView(generics.CreateAPIView):
         partner = User.objects.filter(email=partner_email).first()
         partner_name = partner.name if partner else "Unregistered User"
 
-        description = f"{(user.name).upper()} <{user.email}> [{(instance.escrowmeta.author).upper()}] initiated escrow worth {instance.currency} {instance.amount} for {partner_name.upper()} <{partner_email}>"
+        description = f"{(user.name).upper()} <{user.email}> [{(instance.escrowmeta.author).upper()}] initiated escrow worth {instance.currency} {add_commas_to_transaction_amount(instance.amount)} for {partner_name.upper()} <{partner_email}>"
         log_transaction_activity(instance, description, request_meta)
 
         obj = UserTransactionSerializer(instance)
@@ -515,7 +515,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             escrow_credits_message = " " if escrow_credits_used else " not "
             description = (
-                f"{txn.currency} {escrow_amount} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
+                f"{txn.currency} {add_commas_to_transaction_amount(escrow_amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
                 + escrow_credits_message
                 + f"used by buyer."
             )
@@ -830,7 +830,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
 
             escrow_credits_message = " " if escrow_credits_used else " not "
             description = (
-                f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)} was released successfully by buyer: {(user.name).upper()} <{user.email}>. Escrow credit was"
+                f"{txn.currency} {add_commas_to_transaction_amount(amount_to_credit_seller)} was released successfully by buyer: {(user.name).upper()} <{user.email}>. Escrow credit was"
                 + escrow_credits_message
                 + f"used to settle seller."
             )

@@ -254,13 +254,13 @@ class FundWalletRedirectView(GenericAPIView):
                 user = User.objects.filter(email=customer_email).first()
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
-                description = f"Previous Balance: {txn.currency} {wallet.balance}"
+                description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
                 user.credit_wallet(txn.amount, txn.currency)
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
-                description = f"New Balance: {txn.currency} {wallet.balance}"
+                description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
                 email = user.email
@@ -441,7 +441,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 user = User.objects.filter(email=customer_email).first()
                 _, wallet = user.get_currency_wallet(txn.currency)
 
-                description = f"Previous Balance: {txn.currency} {wallet.balance}"
+                description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
                 profile = user.userprofile
@@ -457,15 +457,13 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 user.credit_wallet(amount_charged, txn.currency)
 
                 _, wallet = user.get_currency_wallet(txn.currency)
-                description = f"Balance after topup: {txn.currency} {wallet.balance}"
+                description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
                 user.debit_wallet(escrow_amount_to_charge, txn.currency)
 
                 _, wallet = user.get_currency_wallet(txn.currency)
-                description = (
-                    f"New Balance after final debit: {txn.currency} {wallet.balance}"
-                )
+                description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
                 # =================================================================
@@ -689,7 +687,7 @@ class WalletWithdrawalView(GenericAPIView):
             meta={"title": "Wallet debit"},
         )
 
-        description = f"{(user.name).upper()} initiated withdrawal of {currency} {amount} from wallet."
+        description = f"{(user.name).upper()} initiated withdrawal of {currency} {add_commas_to_transaction_amount(amount)} from wallet."
         log_transaction_activity(txn, description, request_meta)
 
         # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
