@@ -66,7 +66,7 @@ class FlwWebhookView(generics.GenericAPIView):
         #  =================================================================
         event_type = request.data.get("event.type")
         withdrawal_data = request.data.get("transfer") if env == "test" else data
-        deposit_data = equest.data if env == "test" else data
+        deposit_data = request.data if env == "test" else data
         result = (
             handle_withdrawal(withdrawal_data, request_meta, self.pusher)
             if event_type.upper() == "TRANSFER"
