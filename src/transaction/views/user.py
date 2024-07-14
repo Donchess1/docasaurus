@@ -190,12 +190,6 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 message=f"{instance.type} transactions cannot be updated",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        if instance.status == "PENDING":
-            return Response(
-                success=False,
-                message=f"Funds have not been locked yet for this transaction",
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
         if user.email != instance.escrowmeta.partner_email:
             return Response(
                 success=False,
@@ -218,6 +212,12 @@ class UserTransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         new_status = serializer.validated_data.get("status")
+        if new_status == "APPROVED" and instance.status == "PENDING":
+            return Response(
+                success=False,
+                message=f"Funds have not been locked yet for this transaction",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         rejected_reason = serializer.validated_data.get("rejected_reason")
         transaction_author_is_seller = (
             True if instance.escrowmeta.author == "SELLER" else False
