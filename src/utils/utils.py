@@ -115,10 +115,6 @@ def get_priv_key():
     return "{}_{}".format(f"{api_key_prefix}_priv", generate_short_uuid())
 
 
-MODES = ["LIVE", "TEST"]
-REGISTRATION_REFERRER = ("NYSC", "RCCG", "LASU", "OTHERS")
-
-
 def generate_otp():
     return str(random.randint(100000, 999999))
 
@@ -191,7 +187,6 @@ def get_escrow_fees(amount):
         charge_percentage = 0.008  # 0.8%
 
     charge_percentage = 0  # temporarily disable escrow fee
-
     charge = amount * charge_percentage
     amount_payable = amount + charge
 
@@ -252,3 +247,7 @@ TEST_DOB = "1993-11-03"
 CURRENCIES = ["NGN", "USD"]
 MINIMUM_WALLET_DEPOSIT_AMOUNT = 500
 MINIMUM_ESCROW_TOPUP_AMOUNT = 100
+
+MODES = ["LIVE", "TEST"]
+REGISTRATION_REFERRER = ("NYSC", "RCCG", "LASU", "OTHERS")
+PAYMENT_GATEWAY_PROVIDER = "FLUTTERWAVE"

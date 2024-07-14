@@ -21,9 +21,11 @@ from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
 from users.models.wallet import Wallet
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
+    PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
     calculate_payment_amount_to_charge,
     generate_txn_reference,
@@ -34,6 +36,8 @@ from utils.utils import (
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+env = "live" if ENVIRONMENT == "production" else "test"
 
 
 class FundWalletView(GenericAPIView):
@@ -45,9 +49,8 @@ class FundWalletView(GenericAPIView):
         operation_description="Fund user wallet",
     )
     def post(self, request):
-        user_id = request.user.id
-        user = User.objects.get(id=user_id)
-
+        request_meta = extract_api_request_metadata(request)
+        user = request.user
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -61,18 +64,19 @@ class FundWalletView(GenericAPIView):
 
         tx_ref = generate_txn_reference()
         email = user.email
-
         txn = Transaction.objects.create(
-            user_id=request.user,
+            user_id=user,
             type="DEPOSIT",
             amount=amount,
             status="PENDING",
             reference=tx_ref,
             currency=currency,
-            provider="FLUTTERWAVE",
+            provider=PAYMENT_GATEWAY_PROVIDER,
             meta={"title": "Wallet credit"},
         )
-        txn.save()
+
+        description = f"{(user.name).upper()} initiated deposit of {currency} {add_commas_to_transaction_amount(amount)} to fund wallet."
+        log_transaction_activity(txn, description, request_meta)
 
         tx_data = {
             "tx_ref": tx_ref,
@@ -103,7 +107,11 @@ class FundWalletView(GenericAPIView):
                 message=obj["message"],
             )
 
-        payload = {"link": obj["data"]["link"]}
+        link = obj["data"]["link"]
+        payload = {"link": link}
+
+        description = f"Payment link: {link} successfully generated on {PAYMENT_GATEWAY_PROVIDER}."
+        log_transaction_activity(txn, description, request_meta)
 
         return Response(
             success=True,
@@ -119,6 +127,7 @@ class FundWalletRedirectView(GenericAPIView):
     flw_api = FlwAPI
 
     def get(self, request):
+        request_meta = extract_api_request_metadata(request)
         flw_status = request.query_params.get("status", None)
         tx_ref = request.query_params.get("tx_ref", None)
         flw_transaction_id = request.query_params.get("transaction_id", None)
@@ -134,9 +143,9 @@ class FundWalletRedirectView(GenericAPIView):
 
         if txn.verified:
             return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Transaction already verified",
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Payment already verified.",
             )
 
         if flw_status == "cancelled":
@@ -144,6 +153,10 @@ class FundWalletRedirectView(GenericAPIView):
             txn.status = "CANCELLED"
             txn.meta.update({"description": f"FLW Transaction cancelled"})
             txn.save()
+
+            description = f"Payment was cancelled."
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -155,6 +168,10 @@ class FundWalletRedirectView(GenericAPIView):
             txn.status = "FAILED"
             txn.meta.update({"description": f"FLW Transaction failed"})
             txn.save()
+
+            description = f"Payment failed."
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -174,22 +191,32 @@ class FundWalletRedirectView(GenericAPIView):
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Transaction {msg}"})
             txn.save()
+
+            description = (
+                f"Error occurred while verifying transaction. Description: {msg}"
+            )
+            log_transaction_activity(txn, description, request_meta)
+
             # TODO: Log this error in observability service: Tag [FLW Err:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"FlwErr001: {msg}",
+                message=f"{msg}",
             )
 
         if obj["data"]["status"] == "failed":
             msg = obj["data"]["processor_response"]
             txn.meta.update({"description": f"FLW Transaction {msg}"})
             txn.save()
+
+            description = f"Transaction failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             # TODO: Log this error in observability service: Tag ["FLW Failed:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"FlwErr002: {msg}",
+                message=f"{msg}",
             )
 
         if (
@@ -207,9 +234,10 @@ class FundWalletRedirectView(GenericAPIView):
             txn.remitted_amount = obj["data"]["amount_settled"]
             txn.provider_tx_reference = flw_ref
             txn.narration = narration
+            payment_type = obj["data"]["payment_type"]
             txn.meta.update(
                 {
-                    "payment_method": obj["data"]["payment_type"],
+                    "payment_method": payment_type,
                     "provider_txn_id": obj["data"]["id"],
                     "description": f"FLW Transaction {narration}_{flw_ref}",
                 }
@@ -219,13 +247,22 @@ class FundWalletRedirectView(GenericAPIView):
             customer_email = obj["data"]["customer"]["email"]
             amount_charged = obj["data"]["charged_amount"]
 
+            description = f"Payment received via {payment_type} channel. Transaction verified via REDIRECT URL."
+            log_transaction_activity(txn, description, request_meta)
+
             try:
                 user = User.objects.filter(email=customer_email).first()
-                profile = user.userprofile
-                # profile.wallet_balance += int(txn.amount)
-                # profile.save()
+                wallet_exists, wallet = user.get_currency_wallet(txn.currency)
+
+                description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
                 user.credit_wallet(txn.amount, txn.currency)
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
+
+                description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
                 email = user.email
                 values = {
                     "first_name": user.name.split(" ")[0],
@@ -256,12 +293,6 @@ class FundWalletRedirectView(GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
-            except UserProfile.DoesNotExist:
-                return Response(
-                    success=False,
-                    message="Profile not found",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                )
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
@@ -281,6 +312,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
     flw_api = FlwAPI
 
     def get(self, request):
+        request_meta = extract_api_request_metadata(request)
         flw_status = request.query_params.get("status", None)
         tx_ref = request.query_params.get("tx_ref", None)
         flw_transaction_id = request.query_params.get("transaction_id", None)
@@ -296,9 +328,9 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
 
         if txn.verified:
             return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Transaction already verified",
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Payment already verified.",
             )
 
         if flw_status == "cancelled":
@@ -306,6 +338,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             txn.status = "CANCELLED"
             txn.meta.update({"description": f"FLW Escrow Transaction cancelled"})
             txn.save()
+
+            description = f"Payment was cancelled."
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -317,6 +353,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             txn.status = "FAILED"
             txn.meta.update({"description": f"FLW Escrow Transaction failed"})
             txn.save()
+
+            description = f"Payment failed."
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -330,22 +370,29 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             )
 
         obj = self.flw_api.verify_transaction(flw_transaction_id)
-        print("FLW TRANSACTION VALIDATION VIA API ----->", obj)
 
         if obj["status"] == "error":
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Escrow Transaction {msg}"})
             txn.save()
+
+            description = f"Error occurred while verifying escrow deposit transaction. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}[]",
+                message=msg,
             )
 
         if obj["data"]["status"] == "failed":
             msg = obj["data"]["processor_response"]
             txn.meta.update({"description": f"FLW Escrow Transaction {msg}"})
             txn.save()
+
+            description = f"Transaction failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -374,9 +421,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             txn.remitted_amount = obj["data"]["amount_settled"]
             txn.provider_tx_reference = flw_ref
             txn.narration = narration
+            payment_type = obj["data"]["payment_type"]
             txn.meta.update(
                 {
-                    "payment_method": obj["data"]["payment_type"],
+                    "payment_method": payment_type,
                     "provider_txn_id": obj["data"]["id"],
                     "description": f"FLW Escrow Transaction {narration}_{flw_ref}",
                 }
@@ -386,23 +434,50 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             customer_email = obj["data"]["customer"]["email"]
             amount_charged = obj["data"]["charged_amount"]
 
+            description = f"Payment received via {payment_type} channel. Escrow deposit transaction verified via REDIRECT URL."
+            log_transaction_activity(txn, description, request_meta)
+
             try:
                 user = User.objects.filter(email=customer_email).first()
+                _, wallet = user.get_currency_wallet(txn.currency)
+
+                description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
                 profile = user.userprofile
                 buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+                escrow_credits_used = False
                 if buyer_free_escrow_credits > 0:
                     # deplete free credits and make transaction free
                     profile.free_escrow_transactions -= 1
                     profile.save()
                     escrow_amount_to_charge = escrow_txn.amount
-                # profile = user.userprofile
-                # profile.wallet_balance += int(amount_charged)
-                # profile.locked_amount += int(escrow_txn.amount)
-                # profile.save()
-                # profile.wallet_balance -= Decimal(str(escrow_amount_to_charge))
-                # profile.save()
+                    escrow_credits_used = True
+
                 user.credit_wallet(amount_charged, txn.currency)
+
+                _, wallet = user.get_currency_wallet(txn.currency)
+                description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
                 user.debit_wallet(escrow_amount_to_charge, txn.currency)
+
+                _, wallet = user.get_currency_wallet(txn.currency)
+                description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
+                # =================================================================
+                # ESCROW TRANSACTION ACTIVITY
+                escrow_credits_message = " " if escrow_credits_used else " not "
+                description = (
+                    f"{escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
+                    + escrow_credits_message
+                    + f"used by buyer."
+                )
+                log_transaction_activity(escrow_txn, description, request_meta)
+                # ESCROW TRANSACTION ACTIVITY
+                # =================================================================
+
                 user.update_locked_amount(
                     amount=escrow_txn.amount,
                     currency=txn.currency,
@@ -491,12 +566,6 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
-            except UserProfile.DoesNotExist:
-                return Response(
-                    success=False,
-                    message="Profile not found",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                )
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
@@ -573,8 +642,8 @@ class WalletWithdrawalView(GenericAPIView):
     )
     def post(self, request):
         user = request.user
+        request_meta = extract_api_request_metadata(request)
         profile = user.userprofile
-
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -591,7 +660,6 @@ class WalletWithdrawalView(GenericAPIView):
 
         charge, total_amount = get_withdrawal_fee(int(amount))
 
-        # if total_amount > profile.wallet_balance:
         valid, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not valid:
             return Response(
@@ -600,7 +668,11 @@ class WalletWithdrawalView(GenericAPIView):
                 message=message,
             )
 
-        tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
+        tx_ref = (
+            f"{generate_txn_reference()}_PMCKDU_1"
+            if env == "test"
+            else f"{generate_txn_reference()}_TRF"
+        )
         email = user.email
 
         txn = Transaction.objects.create(
@@ -614,7 +686,10 @@ class WalletWithdrawalView(GenericAPIView):
             provider="FLUTTERWAVE",
             meta={"title": "Wallet debit"},
         )
-        txn.save()
+
+        description = f"{(user.name).upper()} initiated withdrawal of {currency} {add_commas_to_transaction_amount(amount)} from wallet."
+        log_transaction_activity(txn, description, request_meta)
+
         # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
         tx_data = {
             "account_bank": bank_code,
@@ -632,11 +707,20 @@ class WalletWithdrawalView(GenericAPIView):
         }
 
         obj = self.flw_api.initiate_payout(tx_data)
-        print("PAYOUT INIT OBJ:", obj)
+        print("================================================================")
+        print("================================================================")
+        print("FLUTTTERWAVE TRANSFER API CALLED")
+        print("Response DATA---->", obj)
+        print("================================================================")
+        print("================================================================")
         if obj["status"] == "error":
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Transaction: {tx_ref}", "note": msg})
             txn.save()
+
+            description = f"Withdrawal initiation failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -646,13 +730,13 @@ class WalletWithdrawalView(GenericAPIView):
         txn.meta.update({"description": f"FLW Transaction {tx_ref}", "note": msg})
         txn.save()
 
-        print("DATA FOR WALLET DEBIT:", obj["data"])
+        description = f"Withdrawal successfully queued on {PAYMENT_GATEWAY_PROVIDER}."
+        log_transaction_activity(txn, description, request_meta)
 
         return Response(
             success=True,
             message="Withdrawal is currently being processed",
             status_code=status.HTTP_200_OK,
-            # data=obj["data"],
             data={"transaction_reference": tx_ref},
         )
 
@@ -675,8 +759,10 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 message="Invalid authorization token.",
                 status_code=status.HTTP_403_FORBIDDEN,
             )
-        print("WITHDRAW CALLBACK FUNCTION CALLED")
-        print("REQUEST DATA---->", request.data)
+        print("================================================================")
+        print("FLUTTERWAVE WEBHOOK/CALLBACK V1 FUNCTION CALLED")
+        print("REQUEST DATA=========>", request.data)
+        print("================================================================")
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -713,15 +799,10 @@ class WalletWithdrawalCallbackView(GenericAPIView):
             )
         if txn.verified:
             return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Withdrawal transaction already verified",
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Transfer already verified",
             )
-
-        # TODO: LOG EVENT
-        print("================================================")
-        print("FLW WITHDRAWAL CALLBACK DATA", data)
-        print("================================================")
 
         if data["status"] == "FAILED":
             txn.status = "FAILED"
@@ -748,10 +829,6 @@ class WalletWithdrawalCallbackView(GenericAPIView):
 
         try:
             user = User.objects.get(email=customer_email)
-            # profile = UserProfile.objects.get(user_id=user)
-            # profile.wallet_balance -= Decimal(str(amount_to_debit))
-            # profile.withdrawn_amount += int(txn.amount)
-            # profile.save()
             user.debit_wallet(amount_to_debit, txn.currency)
             user.update_withdrawn_amount(
                 amount=txn.amount,
@@ -806,13 +883,6 @@ class WalletWithdrawalCallbackView(GenericAPIView):
                 message="User not found",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        except UserProfile.DoesNotExist:
-            return Response(
-                success=False,
-                message="Profile not found",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
         return Response(
             success=True,
             message="Withdrawal callback processed successfully.",

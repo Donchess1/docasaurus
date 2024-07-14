@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
-from utils.email import validate_email_body
+from utils.email import validate_email_address
 
 from .user import UserSerializer
 
@@ -14,10 +14,10 @@ class LoginSerializer(serializers.Serializer):
     )
 
     def validate_email(self, value):
-        obj = validate_email_body(value)
-        if obj[0]:
-            raise serializers.ValidationError(obj[1])
-        return value.lower()
+        is_valid, message, validated_response = validate_email_address(value)
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        return validated_response["normalized_email"].lower()
 
 
 class LoginPayloadSerializer(serializers.Serializer):

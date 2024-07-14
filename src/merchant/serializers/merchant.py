@@ -14,7 +14,7 @@ from users.models import CustomUser, UserProfile
 from users.models.bank_account import BankAccount
 from users.models.wallet import Wallet
 from users.serializers.profile import UserProfileSerializer
-from utils.email import validate_email_body
+from utils.email import validate_email_address
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
 
 User = get_user_model()
@@ -214,26 +214,27 @@ class RegisterCustomerSerializer(serializers.Serializer):
         phone_number = data.get("phone_number")
         merchant = self.context.get("merchant")
 
-        obj = validate_email_body(email)
-        if obj[0]:
-            raise serializers.ValidationError({"email": obj[1]})
+        is_valid, message, validated_response = validate_email_address(
+            email, check_deliverability=True
+        )
+        if not is_valid:
+            raise serializers.ValidationError({"email": message})
 
         if customer_phone_numer_exists_for_merchant(merchant, phone_number):
             raise serializers.ValidationError(
                 {"phone_number": "Customer with phone number already exists."}
             )
 
-        user = User.objects.filter(email=email).first()
+        user = User.objects.filter(
+            email=validated_response["normalized_email"].lower()
+        ).first()
         if user:
             if customer_with_email_exists_for_merchant(merchant, user):
                 raise serializers.ValidationError(
                     {"email": "Customer with email already exists."}
                 )
+        data["email"] = validated_response["normalized_email"].lower()
         return data
-
-    def to_internal_value(self, data):
-        data["email"] = data.get("email", "").lower()
-        return super().to_internal_value(data)
 
     @transaction.atomic
     def create(self, validated_data):

@@ -9,6 +9,7 @@ from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
+from utils.activity_log import log_transaction_activity
 from utils.text import notifications
 from utils.utils import add_commas_to_transaction_amount, parse_datetime
 
@@ -17,7 +18,7 @@ BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
-def handle_withdrawal(data, pusher):
+def handle_withdrawal(data, request_meta, pusher):
     amount_charged = data.get("amount")
     msg = data.get("complete_message")
     amount_to_debit = data["meta"].get("amount_to_debit")
@@ -51,6 +52,9 @@ def handle_withdrawal(data, pusher):
         txn.verified = True
         txn.save()
 
+        description = f"Withdrawal failed. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+
         pusher.trigger(
             f"WALLET_WITHDRAWAL_{tx_ref}",
             "WALLET_WITHDRAWAL_FAILURE",
@@ -68,9 +72,20 @@ def handle_withdrawal(data, pusher):
             "status_code": status.HTTP_200_OK,
         }
 
+    description = f"Withdrawal of {txn.currency} {add_commas_to_transaction_amount(amount_to_debit)} was completed successfuly and verified via WEBHOOK."
+    log_transaction_activity(txn, description, request_meta)
+
     user = User.objects.filter(email=customer_email).first()
+    _, wallet = user.get_currency_wallet(txn.currency)
+    description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    log_transaction_activity(txn, description, request_meta)
+
     user.debit_wallet(amount_to_debit, txn.currency)
     user.update_withdrawn_amount(amount=txn.amount, currency=txn.currency)
+
+    _, wallet = user.get_currency_wallet(txn.currency)
+    description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    log_transaction_activity(txn, description, request_meta)
 
     pusher.trigger(
         f"WALLET_WITHDRAWAL_{tx_ref}",
@@ -119,7 +134,7 @@ def handle_withdrawal(data, pusher):
     }
 
 
-def handle_deposit(data, pusher):
+def handle_deposit(data, request_meta, pusher):
     tx_ref = data.get("tx_ref")
     flw_transaction_id = data.get("id")
 
@@ -150,6 +165,9 @@ def handle_deposit(data, pusher):
         txn.verified = True
         txn.save()
 
+        description = f"Payment failed."
+        log_transaction_activity(txn, description, request_meta)
+
         return {
             "success": True,
             "message": "Deposit webhook processed successfully.",
@@ -158,16 +176,23 @@ def handle_deposit(data, pusher):
 
     obj = FlwAPI.verify_transaction(flw_transaction_id)
     print("============================================================")
+    print("============================================================")
+    print("VERIFYING FLW DEPOSIT TRANSACTION")
     print(obj)
+    print("============================================================")
     print("============================================================")
     if obj["status"] == "error":
         msg = obj["message"]
         txn.meta.update({"description": f"FLW Transaction {msg}"})
         txn.save()
+
+        description = f"Error occurred while verifying transaction. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+
         # TODO: Log this error in observability service: Tag [FLW Err:]
         return {
             "success": False,
-            "message": f"FlwErr001: {msg}",
+            "message": f"{msg}",
             "status_code": status.HTTP_400_BAD_REQUEST,
         }
 
@@ -175,10 +200,14 @@ def handle_deposit(data, pusher):
         msg = obj["data"]["processor_response"]
         txn.meta.update({"description": f"FLW Transaction {msg}"})
         txn.save()
+
+        description = f"Transaction failed. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+
         # TODO: Log this error in observability service: Tag ["FLW Failed:]
         return {
             "success": False,
-            "message": f"FlwErr002: {msg}",
+            "message": f"{msg}",
             "status_code": status.HTTP_200_OK,
         }
 
@@ -198,9 +227,10 @@ def handle_deposit(data, pusher):
         txn.remitted_amount = data.get("amount_settled")
         txn.provider_tx_reference = flw_ref
         txn.narration = narration
+        payment_type = obj["data"]["payment_type"]
         txn.meta.update(
             {
-                "payment_method": obj["data"]["payment_type"],
+                "payment_method": payment_type,
                 "provider_txn_id": obj["data"]["id"],
                 "description": f"FLW Transaction {narration}_{flw_ref}",
             }
@@ -213,14 +243,21 @@ def handle_deposit(data, pusher):
         customer_email = data["customer"].get("email")
         meta = data.get("meta")
 
+        description = f"Payment received via {payment_type} channel. Transaction verified via WEBHOOK."
+        log_transaction_activity(txn, description, request_meta)
+
         try:
             user = User.objects.filter(email=customer_email).first()
         except User.DoesNotExist:
             return {
                 "success": True,
-                "message": "Deposit webhook processed successfully.",
-                "status_code": status.HTTP_200_OK,
+                "message": "User does not exist.",
+                "status_code": status.HTTP_404_NOT_FOUND,
             }
+
+        wallet_exists, wallet = user.get_currency_wallet(txn.currency)
+        description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
 
         user.credit_wallet(txn.amount, txn.currency)
         # Now we need to know if the purpose of this deposit is to fund wallet or fund escrow
@@ -234,21 +271,44 @@ def handle_deposit(data, pusher):
             escrow_txn.save()
             escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
 
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
+
             profile = user.userprofile
             buyer_free_escrow_credits = int(profile.free_escrow_transactions)
+            escrow_credits_used = False
             if buyer_free_escrow_credits > 0:
                 # deplete free credits and make transaction free
                 profile.free_escrow_transactions -= 1
                 profile.save()
                 escrow_amount_to_charge = escrow_txn.amount
+                escrow_credits_used = True
 
             user.debit_wallet(escrow_amount_to_charge, txn.currency)
+
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
+
             user.update_locked_amount(
                 amount=escrow_txn.amount,
                 currency=escrow_txn.currency,
                 mode="OUTWARD",
                 type="CREDIT",
             )
+
+            # =================================================================
+            # ESCROW TRANSACTION ACTIVITY
+            escrow_credits_message = " " if escrow_credits_used else " not "
+            description = (
+                f"{escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
+                + escrow_credits_message
+                + f"used by buyer."
+            )
+            log_transaction_activity(escrow_txn, description, request_meta)
+            # ESCROW TRANSACTION ACTIVITY
+            # =================================================================
 
             instance = LockedAmount.objects.create(
                 transaction=escrow_txn,
@@ -306,7 +366,7 @@ def handle_deposit(data, pusher):
                     content=notifications.FundsLockedSellerNotification(
                         escrow_amount, escrow_txn.currency
                     ).CONTENT,
-                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn_ref}",
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_txn.reference}",
                 )
 
             txn_tasks.send_lock_funds_buyer_email.delay(user.email, buyer_values)
@@ -324,6 +384,8 @@ def handle_deposit(data, pusher):
             )
         else:
             _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
             email = user.email
             values = {
                 "first_name": user.name.split(" ")[0],
@@ -346,8 +408,8 @@ def handle_deposit(data, pusher):
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
             )
-        return Response(
-            success=True,
-            status_code=status.HTTP_200_OK,
-            message="Transaction verified.",
-        )
+        return {
+            "success": False,
+            "status_code": status.HTTP_200_OK,
+            "message": "Transaction verified.",
+        }

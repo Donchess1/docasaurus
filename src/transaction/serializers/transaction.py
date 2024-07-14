@@ -8,7 +8,7 @@ from rest_framework import serializers
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
-from utils.email import validate_email_body
+from utils.email import validate_email_address
 from utils.utils import (
     CURRENCIES,
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
@@ -37,14 +37,16 @@ class EscrowTransactionSerializer(serializers.Serializer):
     def validate_partner_email(self, value):
         request = self.context.get("request")
         email = request.user.email
-        obj = validate_email_body(email)
-        if obj[0]:
-            raise serializers.ValidationError(obj[1])
-        if value == email:
+        is_valid, message, validated_response = validate_email_address(
+            value, check_deliverability=True
+        )
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        if value.lower() == email.lower():
             raise serializers.ValidationError(
                 "You cannot lock an escrow using your own email"
             )
-        return value.lower()
+        return validated_response["normalized_email"].lower()
 
     def validate_bank_code(self, value):
         banks = cache.get("banks")
@@ -138,18 +140,16 @@ class FundEscrowTransactionSerializer(serializers.Serializer):
     def validate_transaction_reference(self, value):
         instance = Transaction.objects.filter(reference=value).first()
         if not instance:
-            raise serializers.ValidationError("Transaction reference is not valid")
+            raise serializers.ValidationError("Invalid transaction reference")
         if instance.type != "ESCROW":
-            raise serializers.ValidationError(
-                "Invalid transaction type. Must be ESCROW"
-            )
+            raise serializers.ValidationError("Invalid escrow transaction")
         if instance.verified:
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
         if instance.status == "REJECTED":
             raise serializers.ValidationError(
-                "Unable to process payments for rejected escrow transaction"
+                "You cannot lock funds for a rejected escrow transaction"
             )
         # if instance.status != "APPROVED":
         #     raise serializers.ValidationError(
@@ -209,18 +209,16 @@ class EscrowTransactionPaymentSerializer(serializers.Serializer):
     def validate_transaction_reference(self, value):
         instance = Transaction.objects.filter(reference=value).first()
         if not instance:
-            raise serializers.ValidationError("Transaction reference is not valid")
+            raise serializers.ValidationError("Invalid transaction reference")
         if instance.type != "ESCROW":
-            raise serializers.ValidationError(
-                "Invalid transaction type. Must be ESCROW"
-            )
+            raise serializers.ValidationError("Invalid escrow transaction")
         if instance.verified:
             raise serializers.ValidationError(
                 "Transaction has been verified or paid for"
             )
         if instance.status == "REJECTED":
             raise serializers.ValidationError(
-                "Unable to process payments for rejected escrow transaction"
+                "You cannot lock funds for a rejected escrow transaction"
             )
         # if instance.status != "APPROVED":
         #     raise serializers.ValidationError(
