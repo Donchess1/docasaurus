@@ -771,7 +771,6 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
                 message="You don't have permission to unlock funds for this transaction",
-
             )
         # Check if delivery date has elapsed
         delivery_date = instance.escrowmeta.delivery_date
