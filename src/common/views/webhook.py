@@ -47,7 +47,7 @@ class FlwWebhookView(generics.GenericAPIView):
 
         event = serializer.validated_data.get("event")
         data = serializer.validated_data.get("data")
-        
+
         #  =================================================================
         #  =================================================================
         # if event not in [

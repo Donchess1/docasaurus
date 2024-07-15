@@ -1,7 +1,8 @@
 import uuid
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 
 class Wallet(models.Model):
@@ -44,3 +45,22 @@ class Wallet(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.currency}: {self.balance}"
+
+    def get_queryset(self, currency):
+        return self.__class__.objects.filter(id=self.id, currency=currency)
+
+    @transaction.atomic()
+    def credit(self, amount, currency):
+        obj = self.get_queryset(currency=currency).select_for_update().get()
+        obj.balance += Decimal(str(amount))
+        obj.save()
+
+    @transaction.atomic()
+    def debit(self, amount, currency):
+        obj = self.get_queryset(currency=currency).select_for_update().get()
+        if amount > obj.balance:
+            # raise errors.InsufficientFunds()
+            # TODO: flag wallet
+            pass
+        obj.balance -= Decimal(str(amount))
+        obj.save()
