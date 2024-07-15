@@ -161,7 +161,7 @@ def handle_deposit(data, request_meta, pusher):
 
     if data["status"] != "successful":
         txn.status = "FAILED"
-        txn.meta.update({"note": msg})
+        # txn.meta.update({"note": msg})
         txn.verified = True
         txn.save()
 
