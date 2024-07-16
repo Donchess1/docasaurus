@@ -25,6 +25,7 @@ from merchant.views.transaction import (
     MandateFundsReleaseView,
     MerchantEscrowTransactionRedirectView,
     MerchantSettlementTransactionListView,
+    MerchantTransactionActivityLogView,
     MerchantTransactionDetailView,
     MerchantTransactionListView,
     ReleaseEscrowFundsByMerchantView,
@@ -59,6 +60,11 @@ urlpatterns = [
     path(
         "transactions/<str:id>",
         MerchantTransactionDetailView.as_view(),
+        name="merchant-transaction-detail",
+    ),
+    path(
+        "transactions/<str:id>/activity-logs",
+        MerchantTransactionActivityLogView.as_view(),
         name="merchant-transaction-detail",
     ),
     path(

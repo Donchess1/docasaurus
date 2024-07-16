@@ -31,6 +31,8 @@ from merchant.utils import (
 )
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
+from transaction.models import TransactionActivityLog
+from transaction.serializers.activity_log import TransactionActivityLogSerializer
 from users.serializers.user import UserSerializer
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.pagination import CustomPagination
@@ -109,6 +111,47 @@ class MerchantTransactionDetailView(generics.GenericAPIView):
         return Response(
             success=True,
             message="Transaction retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=serializer.data,
+        )
+
+
+class MerchantTransactionActivityLogView(generics.ListAPIView):
+    serializer_class = TransactionActivityLogSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def get_transaction_instance(self, ref_or_id):
+        try:
+            instance = Transaction.objects.filter(reference=ref_or_id).first()
+            if instance is None:
+                instance = Transaction.objects.filter(id=ref_or_id).first()
+        except Exception as e:
+            instance = None
+        return instance
+
+    @authorized_api_call
+    def get(self, request, id, *args, **kwargs):
+        merchant = request.merchant
+        instance = self.get_transaction_instance(id)
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        qs = TransactionActivityLog.objects.filter(transaction=instance).order_by(
+            "created_at"
+        )
+        serializer = self.get_serializer(instance)
+        return Response(
+            success=True,
+            message="Transaction activity logs retrieved successfully.",
             status_code=status.HTTP_200_OK,
             data=serializer.data,
         )
