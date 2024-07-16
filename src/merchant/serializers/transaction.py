@@ -32,6 +32,7 @@ from transaction.services import get_escrow_transaction_parties_info
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
 from utils.utils import (
     CURRENCIES,
+    add_commas_to_transaction_amount,
     generate_random_text,
     generate_txn_reference,
     get_escrow_fees,
@@ -131,6 +132,11 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             "provider",
         )
 
+    def __init__(self, *args, **kwargs):
+        super(MerchantTransactionSerializer, self).__init__(*args, **kwargs)
+        if self.context.get("hide_escrow_details"):
+            self.fields.pop("escrow")
+
     def get_locked_amount(self, obj):
         instance = LockedAmount.objects.filter(transaction=obj).first()
         if not instance:
@@ -173,7 +179,9 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
 
     def validate_payout_configuration(self, value):
         merchant = self.context.get("merchant")
-        valid_config = PayoutConfig.objects.filter(id=value).first()
+        valid_config = PayoutConfig.objects.filter(
+            id=str(value), merchant=merchant
+        ).first()
         if not valid_config:
             raise serializers.ValidationError("Payout configuration does not exist.")
         return valid_config
@@ -195,17 +203,34 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         today = timezone.now().date()
         return False if value < today else True
 
-    def validate_amount(self, value):
-        return False if env == "test" and value > 5000 else True
+    def validate_amount(self, value, title, currency):
+        MINIMUM_AMOUNT = 500 if currency == "NGN" else 100
+        if env == "test":
+            MAXIMUM_AMOUNT = 5000 if currency == "NGN" else 1000
+        else:  # live environment
+            MAXIMUM_AMOUNT = float(
+                "inf"
+            )  # No cap on maximum amount in live environment
+
+        if value < MINIMUM_AMOUNT:
+            return (
+                False,
+                f"Minimum amount allowed in test mode is {currency} {add_commas_to_transaction_amount(MINIMUM_AMOUNT)}. Update <{title.upper()}>",
+            )
+        if value > MAXIMUM_AMOUNT:
+            message = f"Maximum transaction amount allowed in test mode is {currency} {add_commas_to_transaction_amount(MAXIMUM_AMOUNT)}. Kindly update <{title.upper()}>"
+            return (False, message)
+
+        return True, "Valid amount"
 
     def validate_entities(self, entities):
         merchant = self.context.get("merchant")
-        currency = self.validated_data.get("currency")
+        currency = self.initial_data.get("currency", "NGN")
         for entity in entities:
             seller_email = entity.get("seller")
             if not self.validate_seller(seller_email, merchant):
                 raise serializers.ValidationError(
-                    f"Seller {seller_email} does not exist."
+                    f"Seller <{seller_email}> does not exist."
                 )
             for item in entity.get("items"):
                 title = item.get("title")
@@ -213,12 +238,11 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 amount = item.get("amount")
                 if not self.validate_delivery_date(delivery_date):
                     raise serializers.ValidationError(
-                        f"Delivery date for {seller_email} to deliver {title} cannot be in the past."
+                        f"Delivery date for {seller_email} to deliver <{title}> cannot be earlier than today."
                     )
-                if not self.validate_amount(amount):
-                    raise serializers.ValidationError(
-                        f"Amount for {title} should be {currency} 5,000 or less."
-                    )
+                amount_is_valid, message = self.validate_amount(amount, title, currency)
+                if not amount_is_valid:
+                    raise serializers.ValidationError(message)
         return entities
 
     @transaction.atomic
@@ -273,6 +297,8 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             ),
             "total_payable": str(amount_to_charge),
             "currency": currency,
+            "payout_configuration_name": merchant_payout_config.name,
+            "payout_configuration_id": str(merchant_payout_config),
         }
         tx_ref = generate_txn_reference()
         meta = {

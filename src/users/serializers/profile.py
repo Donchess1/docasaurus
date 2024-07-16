@@ -14,12 +14,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "user_type",
             "avatar",
             "profile_link",
-            "wallet_balance",
-            "locked_amount",
-            "unlocked_amount",
             "free_escrow_transactions",
             "phone_number_flagged",
-            "withdrawn_amount",
+            # "wallet_balance", # DEPRECATED
+            # "locked_amount", # DEPRECATED
+            # "unlocked_amount", # DEPRECATED
+            # "withdrawn_amount", # DEPRECATED
             "created_at",
             "updated_at",
             "show_tour_guide",

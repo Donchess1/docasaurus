@@ -114,7 +114,7 @@ class CustomerTransactionListView(generics.ListAPIView):
     @swagger_auto_schema(
         operation_description="Get Customer Transactions",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     def list(self, request, *args, **kwargs):
@@ -188,7 +188,7 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
     @swagger_auto_schema(
         operation_description="Get A Customer transaction detail by ID",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     def get(self, request, id, *args, **kwargs):

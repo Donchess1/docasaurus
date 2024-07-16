@@ -56,7 +56,7 @@ class MerchantTransactionListView(generics.ListAPIView):
     @swagger_auto_schema(
         operation_description="List Merchant Transactions",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     @authorized_api_call
@@ -65,12 +65,46 @@ class MerchantTransactionListView(generics.ListAPIView):
         queryset = self.get_queryset().filter(merchant=merchant, type="ESCROW")
         filtered_queryset = self.filter_queryset(queryset)
         qs = self.paginate_queryset(filtered_queryset)
-        serializer = self.get_serializer(qs, many=True)
+        serializer = self.get_serializer(
+            qs, context={"hide_escrow_details": True}, many=True
+        )
         self.pagination_class.message = "Transactions retrieved successfully"
         response = self.get_paginated_response(
             serializer.data,
         )
         return response
+
+
+class MerchantTransactionDetailView(generics.GenericAPIView):
+    serializer_class = MerchantTransactionSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def get_transaction_instance(self, ref_or_id):
+        try:
+            instance = Transaction.objects.filter(reference=ref_or_id).first()
+            if instance is None:
+                instance = Transaction.objects.filter(id=ref_or_id).first()
+        except Exception as e:
+            instance = None
+        return instance
+
+    @authorized_api_call
+    def get(self, request, id, *args, **kwargs):
+        merchant = request.merchant
+        instance = self.get_transaction_instance(id)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(instance, context={"merchant": merchant})
+        return Response(
+            success=True,
+            message="Transaction retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=serializer.data,
+        )
 
 
 class MerchantSettlementTransactionListView(generics.ListAPIView):
@@ -84,7 +118,7 @@ class MerchantSettlementTransactionListView(generics.ListAPIView):
     @swagger_auto_schema(
         operation_description="List Merchant Settlements",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     @authorized_api_call
@@ -95,7 +129,9 @@ class MerchantSettlementTransactionListView(generics.ListAPIView):
         )
         filtered_queryset = self.filter_queryset(queryset)
         qs = self.paginate_queryset(filtered_queryset)
-        serializer = self.get_serializer(qs, many=True)
+        serializer = self.get_serializer(
+            qs, context={"hide_escrow_details": True}, many=True
+        )
         self.pagination_class.message = "Settlements retrieved successfully"
         response = self.get_paginated_response(
             serializer.data,
@@ -112,12 +148,6 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
         instance_txn_data = serializer.save()
         return instance_txn_data
 
-    @swagger_auto_schema(
-        operation_description="Initiate Merchant Escrow Transaction",
-        responses={
-            200: None,
-        },
-    )
     @authorized_api_call
     def post(self, request, *args, **kwargs):
         merchant = request.merchant
@@ -169,9 +199,9 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
 
         if txn.verified:
             return Response(
-                success=False,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="Transaction already verified",
+                success=True,
+                status_code=status.HTTP_200_OK,
+                message="Transaction successfully verified",
             )
 
         if flw_status == "cancelled":

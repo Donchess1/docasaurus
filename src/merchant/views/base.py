@@ -4,7 +4,7 @@ from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
 
 from merchant.decorators import authorized_api_call
-from merchant.models import ApiKey, Customer, Merchant
+from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
 from merchant.serializers.merchant import (
     ApiKeySerializer,
     CustomerUserProfileSerializer,
@@ -13,6 +13,7 @@ from merchant.serializers.merchant import (
     MerchantSerializer,
     MerchantWalletSerializer,
     RegisterCustomerSerializer,
+    UpdateCustomerSerializer,
 )
 from merchant.utils import generate_api_key
 from utils.response import Response
@@ -178,8 +179,10 @@ class MerchantCustomerView(generics.CreateAPIView):
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         customers = merchant.customer_set.all()
-        serialized_customers = CustomerUserProfileSerializer(
-            customers, many=True, context={"merchant": merchant}
+        serialized_customers = self.get_serializer(
+            customers,
+            many=True,
+            context={"merchant": merchant, "hide_wallet_details": True},
         )
         return Response(
             success=True,
@@ -195,9 +198,13 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def get_serializer_class(self, *args, **kwargs):
-        if self.request.method == "PUT":
-            return CustomerUserProfileSerializer  # Update customer object: name & phone number
+        if self.request.method == "PATCH":
+            return UpdateCustomerSerializer
         return self.serializer_class
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        return instance
 
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
@@ -217,7 +224,9 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
             data=serializer.data,
         )
 
-    def put(self, request, id, *args, **kwargs):
+    @authorized_api_call
+    def patch(self, request, id, *args, **kwargs):
+        merchant = request.merchant
         instance = Customer.objects.filter(id=id).first()
         if not instance:
             return Response(
@@ -225,9 +234,15 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
                 message="Customer does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
+        customer_merchant_instance = CustomerMerchant.objects.filter(
+            customer=instance, merchant=merchant
+        ).first()
         serializer = self.get_serializer(
-            instance=request.data, context={"merchant": merchant}
+            data=request.data,
+            context={
+                "merchant": merchant,
+                "customer_merchant_instance": customer_merchant_instance,
+            },
         )
         if not serializer.is_valid():
             return Response(
@@ -235,9 +250,9 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
                 errors=serializer.errors,
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        customer_merchant_instance = self.perform_update(serializer)
         return Response(
             success=True,
             message="Customer information updated successfully",
             status_code=status.HTTP_200_OK,
-            data=serializer.data,
         )
