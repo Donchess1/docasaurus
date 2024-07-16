@@ -38,7 +38,7 @@ def get_escrow_transaction_stakeholders(tx_ref):
 
 
 def get_escrow_transaction_users(transaction: Transaction) -> dict:
-    # transaction.mode == ["Web", "MERCHANT_API"]
+    # transaction.mode == ["WEB", "MERCHANT_API"]
     if (transaction.mode).upper() == "WEB":
         partner_email = transaction.escrowmeta.partner_email
         if transaction.escrowmeta.author == "BUYER":
@@ -89,7 +89,7 @@ def get_merchant_escrow_transaction_stakeholders(id):
             parties = meta.get("parties")
             buyer_email = parties.get("buyer")
             seller_email = parties.get("seller")
-            merchant_email = (transaction.merchant.user_id.email,)
+            merchant_email = transaction.merchant.user_id.email
     except Exception as e:
         print("Error Fetching Merchant Escrow Transaction  Stakeholders: ", str(e))
 
@@ -97,12 +97,12 @@ def get_merchant_escrow_transaction_stakeholders(id):
 
 
 @transaction.atomic
-def release_escrow_funds_by_merchant(transaction):
+def release_escrow_funds_by_merchant(
+    transaction: Transaction, request_meta: dict
+) -> bool:
     stakeholders = get_merchant_escrow_transaction_stakeholders(str(transaction))
     user = User.objects.filter(email=stakeholders["BUYER"]).first()
-    completed = unlock_customer_escrow_transaction_by_id(transaction.id, user)
-    if not completed:
-        raise serializers.ValidationError(
-            {"error": "Transaction could not be unlocked"}
-        )
-    return completed
+    completed, message = unlock_customer_escrow_transaction_by_id(
+        transaction.id, user, request_meta
+    )
+    return completed, message

@@ -39,6 +39,7 @@ from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.transaction import (
+    get_escrow_transaction_users,
     get_merchant_escrow_transaction_stakeholders,
     get_transaction_instance,
     release_escrow_funds_by_merchant,
@@ -453,6 +454,7 @@ class MandateFundsReleaseView(generics.CreateAPIView):
     )
     @authorized_api_call
     def post(self, request, id, *args, **kwargs):
+        request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
         instance = get_transaction_instance(id)
         if not instance:
@@ -466,6 +468,12 @@ class MandateFundsReleaseView(generics.CreateAPIView):
                 success=False,
                 message="Forbidden action",
                 status_code=status.HTTP_403_FORBIDDEN,
+            )
+        if instance.type != "ESCROW":
+            return Response(
+                success=False,
+                message="Invalid escrow transaction.",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         if instance.escrowmeta.buyer_consent_to_unlock:
             return Response(
@@ -510,6 +518,14 @@ class MandateFundsReleaseView(generics.CreateAPIView):
         instance.escrowmeta.buyer_consent_to_unlock = True
         instance.escrowmeta.save()
 
+        escrow_users = get_escrow_transaction_users(instance)
+        buyer = escrow_users["BUYER"]
+        buyer_name = buyer["name"]
+        buyer_email = buyer["email"]
+
+        description = f"{buyer_name.upper()} <{buyer_email}> [SENDER/BUYER] gave consent to release of escrow funds."
+        log_transaction_activity(instance, description, request_meta)
+
         # TODO: Send out email notification to buyer, seller and merchant
 
         return Response(
@@ -531,6 +547,7 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
     )
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
+        request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
         instance = get_transaction_instance(id)
         if not instance:
@@ -544,6 +561,12 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
                 success=False,
                 message="Forbidden action",
                 status_code=status.HTTP_403_FORBIDDEN,
+            )
+        if instance.type != "ESCROW":
+            return Response(
+                success=False,
+                message="Invalid escrow transaction.",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         if not instance.escrowmeta.buyer_consent_to_unlock:
             return Response(
@@ -566,11 +589,13 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        successful, message = release_escrow_funds_by_merchant(instance)
+        successful, message = release_escrow_funds_by_merchant(instance, request_meta)
         return Response(
-            status=True,
-            message="Funds unlocked successfully",
-            status_code=status.HTTP_200_OK,
+            status=True if successful else False,
+            message="Funds unlocked successfully" if successful else message,
+            status_code=status.HTTP_200_OK
+            if successful
+            else status.HTTP_400_BAD_REQUEST,
         )
 
 
