@@ -506,7 +506,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
 
             escrow_credits_message = " " if escrow_credits_used else " not "
             description = (
-                f"{txn.currency} {add_commas_to_transaction_amount(escrow_amount)} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
+                f"{txn.currency} {escrow_amount} was locked successfully by buyer: {(user.name).upper()} <{user.email}> via direct wallet debit. Escrow credit was"
                 + escrow_credits_message
                 + f"used by buyer."
             )
