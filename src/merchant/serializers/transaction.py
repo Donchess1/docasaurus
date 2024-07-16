@@ -49,7 +49,7 @@ env = "live" if ENVIRONMENT == "production" else "test"
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
     # author_name = serializers.SerializerMethodField()
     parties = serializers.SerializerMethodField()
-    payment_breakdown = serializers.SerializerMethodField()
+    # payment_breakdown = serializers.SerializerMethodField()
 
     class Meta:
         model = EscrowMeta
@@ -63,7 +63,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             "delivery_date",
             # "meta",
             "parties",
-            "payment_breakdown",
+            # "payment_breakdown",
             "buyer_consent_to_unlock",
             # "partner_email",
             # "delivery_tolerance",
@@ -80,8 +80,8 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
         parties = get_escrow_transaction_parties_info(obj.transaction_id)
         return parties
 
-    def get_payment_breakdown(self, obj):
-        return obj.meta.get("payment_breakdown", None)
+    # def get_payment_breakdown(self, obj):
+    #     return obj.meta.get("payment_breakdown", None)
 
 
 class MerchantTransactionSerializer(serializers.ModelSerializer):
@@ -307,7 +307,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         }
 
         meta = {
-            "payment_breakdown": "payment_breakdown",
+            "payment_breakdown": payment_breakdown,
             "seller_escrow_breakdown": entities,
             "merchant": str(merchant.id),
             "payout_config": str(merchant_payout_config.id),
