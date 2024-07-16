@@ -30,7 +30,7 @@ from utils.activity_log import extract_api_request_metadata, log_transaction_act
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
-from utils.transaction import get_escrow_transaction_stakeholders
+from utils.transaction import get_escrow_transaction_stakeholders, get_transaction_instance
 from utils.utils import (
     PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
