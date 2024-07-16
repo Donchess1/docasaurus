@@ -619,13 +619,13 @@ def settle_merchant_escrow_charges(
     log_transaction_activity(transaction, description, request_meta)
 
     _, wallet = merchant_user.get_currency_wallet(txn.currency)
-    description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    description = f"Previous Balance: {transaction.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(transaction, description, request_meta)
 
     merchant_user.credit_wallet(merchant_settlement, currency)
 
     _, wallet = merchant_user.get_currency_wallet(txn.currency)
-    description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    description = f"New Balance: {transaction.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(transaction, description, request_meta)
 
     escrow_users = get_merchant_escrow_users(transaction, merchant)
