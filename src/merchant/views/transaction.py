@@ -413,7 +413,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             buyer_values = {
                 "date": parse_datetime(txn.updated_at),
                 "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(amount_charged)}",
-                "merchant_platform": merchant.name,
+                "merchant_platform": txn.merchant.name,
                 "products": products,
             }
             txn_tasks.send_lock_funds_merchant_buyer_email.delay(
