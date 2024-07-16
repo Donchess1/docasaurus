@@ -40,6 +40,7 @@ from utils.response import Response
 from utils.text import notifications
 from utils.transaction import (
     get_merchant_escrow_transaction_stakeholders,
+    get_transaction_instance,
     release_escrow_funds_by_merchant,
 )
 from utils.utils import (
@@ -88,30 +89,21 @@ class MerchantTransactionDetailView(generics.GenericAPIView):
     serializer_class = MerchantTransactionSerializer
     permission_classes = (permissions.AllowAny,)
 
-    def get_transaction_instance(self, ref_or_id):
-        try:
-            instance = Transaction.objects.filter(reference=ref_or_id).first()
-            if instance is None:
-                instance = Transaction.objects.filter(id=ref_or_id).first()
-        except Exception as e:
-            instance = None
-        return instance
-
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
-        instance = self.get_transaction_instance(id)
-        if instance.merchant != merchant:
-            return Response(
-                success=False,
-                message="Forbidden action",
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         serializer = self.get_serializer(instance, context={"merchant": merchant})
         return Response(
@@ -126,30 +118,21 @@ class MerchantTransactionActivityLogView(generics.ListAPIView):
     serializer_class = TransactionActivityLogSerializer
     permission_classes = (permissions.AllowAny,)
 
-    def get_transaction_instance(self, ref_or_id):
-        try:
-            instance = Transaction.objects.filter(reference=ref_or_id).first()
-            if instance is None:
-                instance = Transaction.objects.filter(id=ref_or_id).first()
-        except Exception as e:
-            instance = None
-        return instance
-
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
-        instance = self.get_transaction_instance(id)
-        if instance.merchant != merchant:
-            return Response(
-                success=False,
-                message="Forbidden action",
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         qs = TransactionActivityLog.objects.filter(transaction=instance).order_by(
             "created_at"
@@ -462,9 +445,6 @@ class MandateFundsReleaseView(generics.CreateAPIView):
     serializer_class = MandateFundsReleaseSerializer
     permission_classes = (permissions.AllowAny,)
 
-    def get_queryset(self):
-        return Transaction.objects.all()
-
     @swagger_auto_schema(
         operation_description="Mandate release of escrow funds",
         responses={
@@ -474,14 +454,18 @@ class MandateFundsReleaseView(generics.CreateAPIView):
     @authorized_api_call
     def post(self, request, id, *args, **kwargs):
         merchant = request.merchant
-        instance = (
-            self.get_queryset().filter(id=id, merchant=merchant, type="ESCROW").first()
-        )
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
                 message="Transaction does not exist or is invalid",
                 status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         if instance.escrowmeta.buyer_consent_to_unlock:
             return Response(
@@ -539,9 +523,6 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
     serializer_class = ReleaseEscrowTransactionByMerchantSerializer
     permission_classes = (permissions.AllowAny,)
 
-    def get_queryset(self):
-        return Transaction.objects.all()
-
     @swagger_auto_schema(
         operation_description="Unlock Escrow Transaction Funds",
         responses={
@@ -551,14 +532,18 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
-        instance = (
-            self.get_queryset().filter(id=id, merchant=merchant, type="ESCROW").first()
-        )
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
-                message="Transaction does not exist or is invalid",
+                message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         if not instance.escrowmeta.buyer_consent_to_unlock:
             return Response(

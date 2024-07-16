@@ -10,6 +10,16 @@ from merchant.utils import (
 User = get_user_model()
 
 
+def get_transaction_instance(ref_or_id):
+    try:
+        instance = Transaction.objects.filter(reference=ref_or_id).first()
+        if instance is None:
+            instance = Transaction.objects.filter(id=ref_or_id).first()
+    except Exception as e:
+        instance = None
+    return instance
+
+
 def get_escrow_transaction_stakeholders(tx_ref):
     try:
         transaction = Transaction.objects.get(reference=tx_ref)

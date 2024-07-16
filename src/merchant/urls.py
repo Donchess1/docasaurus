@@ -73,12 +73,12 @@ urlpatterns = [
         name="merchant-settlement-transactions",
     ),
     path(
-        "customer-transactions/<uuid:id>/mandate-release",
+        "customer-transactions/<str:id>/mandate-release",
         MandateFundsReleaseView.as_view(),
         name="consent-funds-release",
     ),
     path(
-        "customer-transactions/<uuid:id>/release-funds",
+        "customer-transactions/<str:id>/release-funds",
         ReleaseEscrowFundsByMerchantView.as_view(),
         name="unlock-customer-escrow-funds-merchant",
     ),

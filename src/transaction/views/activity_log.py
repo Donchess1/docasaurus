@@ -4,22 +4,14 @@ from console.models.transaction import Transaction
 from transaction.models import TransactionActivityLog
 from transaction.serializers.activity_log import TransactionActivityLogSerializer
 from utils.response import Response
+from utils.transaction import get_transaction_instance
 
 
 class TransactionActivityLogListView(generics.ListAPIView):
     serializer_class = TransactionActivityLogSerializer
 
-    def get_transaction_instance(self, ref_or_id):
-        try:
-            instance = Transaction.objects.filter(reference=ref_or_id).first()
-            if instance is None:
-                instance = Transaction.objects.filter(id=ref_or_id).first()
-        except Exception as e:
-            instance = None
-        return instance
-
     def list(self, request, transaction_id, *args, **kwargs):
-        transaction = self.get_transaction_instance(transaction_id)
+        transaction = get_transaction_instance(transaction_id)
         if not transaction:
             return Response(
                 success=False,

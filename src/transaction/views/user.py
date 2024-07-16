@@ -130,15 +130,6 @@ class UserTransactionDetailView(generics.GenericAPIView):
     def get_queryset(self):
         return Transaction.objects.all()
 
-    def get_transaction_instance(self, ref_or_id):
-        instance = self.get_queryset().filter(reference=ref_or_id).first()
-        if instance is None:
-            try:
-                instance = self.get_queryset().filter(id=ref_or_id).first()
-            except Exception as e:
-                instance = None
-        return instance
-
     @swagger_auto_schema(
         operation_description="Get a transaction detail by ID or Reference",
         responses={
@@ -146,7 +137,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
         },
     )
     def get(self, request, id, *args, **kwargs):
-        instance = self.get_transaction_instance(id)
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
@@ -177,7 +168,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
     def patch(self, request, id, *args, **kwargs):
         user = request.user
         request_meta = extract_api_request_metadata(request)
-        instance = self.get_transaction_instance(id)
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
@@ -370,15 +361,6 @@ class TransactionDetailView(generics.GenericAPIView):
     def get_queryset(self):
         return Transaction.objects.all()
 
-    def get_transaction_instance(self, ref_or_id):
-        instance = self.get_queryset().filter(reference=ref_or_id).first()
-        if instance is None:
-            try:
-                instance = self.get_queryset().filter(id=ref_or_id).first()
-            except Exception as e:
-                instance = None
-        return instance
-
     @swagger_auto_schema(
         operation_description="Console: Get a transaction detail by ID or Reference",
         responses={
@@ -386,7 +368,7 @@ class TransactionDetailView(generics.GenericAPIView):
         },
     )
     def get(self, request, id, *args, **kwargs):
-        instance = self.get_transaction_instance(id)
+        instance = get_transaction_instance(id)
         if not instance:
             return Response(
                 success=False,
@@ -620,15 +602,6 @@ class FundEscrowTransactionView(generics.GenericAPIView):
     def get_queryset(self):
         return Transaction.objects.all()
 
-    def get_transaction_instance(self, ref_or_id):
-        instance = self.get_queryset().filter(reference=ref_or_id).first()
-        if instance is None:
-            try:
-                instance = self.get_queryset().filter(id=ref_or_id).first()
-            except Exception as e:
-                instance = None
-        return instance
-
     @swagger_auto_schema(
         operation_description="Fund escrow transaction with Payment Gateway",
     )
@@ -636,7 +609,7 @@ class FundEscrowTransactionView(generics.GenericAPIView):
         user = request.user
         request_meta = extract_api_request_metadata(request)
         ref = request.data.get("transaction_reference", None)
-        instance = self.get_transaction_instance(ref)
+        instance = get_transaction_instance(ref)
         if not instance:
             return Response(
                 success=False,
@@ -740,15 +713,6 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
     def get_queryset(self):
         return Transaction.objects.all()
 
-    def get_transaction_instance(self, ref_or_id):
-        instance = self.get_queryset().filter(reference=ref_or_id).first()
-        if instance is None:
-            try:
-                instance = self.get_queryset().filter(id=ref_or_id).first()
-            except Exception as e:
-                instance = None
-        return instance
-
     @swagger_auto_schema(
         operation_description="Unlock funds for a Escrow Transaction as a Buyer",
         responses={
@@ -759,7 +723,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
         user = request.user
         request_meta = extract_api_request_metadata(request)
         ref = request.data.get("transaction_reference", None)
-        instance = self.get_transaction_instance(ref)
+        instance = get_transaction_instance(ref)
         if not instance:
             return Response(
                 success=False,
