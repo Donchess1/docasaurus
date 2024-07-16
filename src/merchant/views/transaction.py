@@ -378,13 +378,13 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 )
             _, wallet = user.get_currency_wallet(txn.currency)
 
-            description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"Previous Sender Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             user.credit_wallet(amount_charged, txn.currency)
             _, wallet = user.get_currency_wallet(txn.currency)
 
-            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"Sender Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             user.debit_wallet(total_payable_amount_to_charge, txn.currency)
@@ -396,7 +396,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             )
 
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"New Sender Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             (

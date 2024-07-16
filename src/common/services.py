@@ -80,14 +80,14 @@ def handle_withdrawal(data, request_meta, pusher):
 
     user = User.objects.filter(email=customer_email).first()
     _, wallet = user.get_currency_wallet(txn.currency)
-    description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(txn, description, request_meta)
 
     user.debit_wallet(amount_to_debit, txn.currency)
     user.update_withdrawn_amount(amount=txn.amount, currency=txn.currency)
 
     _, wallet = user.get_currency_wallet(txn.currency)
-    description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(txn, description, request_meta)
 
     pusher.trigger(
@@ -259,7 +259,7 @@ def handle_deposit(data, request_meta, pusher):
             }
 
         wallet_exists, wallet = user.get_currency_wallet(txn.currency)
-        description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
         user.credit_wallet(txn.amount, txn.currency)
@@ -278,7 +278,7 @@ def handle_deposit(data, request_meta, pusher):
             escrow_amount_to_charge = int(escrow_txn.amount + escrow_txn.charge)
 
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"User Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             profile = user.userprofile
@@ -294,7 +294,7 @@ def handle_deposit(data, request_meta, pusher):
             user.debit_wallet(escrow_amount_to_charge, txn.currency)
 
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"New User Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             user.update_locked_amount(
@@ -391,7 +391,7 @@ def handle_deposit(data, request_meta, pusher):
         elif action == "FUND_MERCHANT_ESCROW" and platform == "MERCHANT_API":
             # Fund escrow transaction initiated via merchant API
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"User Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
@@ -409,7 +409,7 @@ def handle_deposit(data, request_meta, pusher):
             )
 
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"New User Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             (
@@ -440,10 +440,9 @@ def handle_deposit(data, request_meta, pusher):
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{ref}",
                 )
-
         elif action == "FUND_WALLET" and platform == "WEB":
             _, wallet = user.get_currency_wallet(txn.currency)
-            description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
             email = user.email
             values = {
