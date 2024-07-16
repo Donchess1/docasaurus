@@ -843,8 +843,9 @@ def create_bulk_merchant_transactions_and_products_and_log_activity(
         )
         escrow_references.append(transaction.reference)
 
+    formatted_escrow_references = f"[{', '.join(escrow_references)}]"
     description = (
-        f"Escrow transaction(s) {[', '.join(escrow_references)]} successfully created"
+        f"Escrow transaction(s) {formatted_escrow_references} successfully created"
     )
     log_transaction_activity(txn, description, request_meta)
 
