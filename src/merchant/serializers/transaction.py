@@ -315,7 +315,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         deposit_txn = generate_deposit_transaction_for_escrow(
             payer, amount_to_charge, tx_ref, meta, currency
         )
-        
+
         buyer_customer_instance = get_customer_merchant_instance(buyer, merchant)
         description = f"Merchant {(merchant.name).upper()} initiated payment of {currency} {add_commas_to_transaction_amount(amount_to_charge)} for SENDER/BUYER {buyer_customer_instance.alternate_name} <{payer.email}> to fund escrow transaction."
         log_transaction_activity(deposit_txn, description, request_meta)
