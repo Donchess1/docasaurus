@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -31,6 +32,7 @@ from merchant.utils import (
 )
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
+from transaction.filters import TransactionFilter
 from transaction.models import TransactionActivityLog
 from transaction.serializers.activity_log import TransactionActivityLogSerializer
 from users.serializers.user import UserSerializer
@@ -60,7 +62,8 @@ class MerchantTransactionListView(generics.ListAPIView):
     serializer_class = MerchantTransactionSerializer
     permission_classes = (permissions.AllowAny,)
     pagination_class = CustomPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
     search_fields = ["reference", "provider", "type"]
 
     @swagger_auto_schema(
@@ -153,7 +156,8 @@ class MerchantSettlementTransactionListView(generics.ListAPIView):
     queryset = Transaction.objects.filter().order_by("-created_at")
     permission_classes = (permissions.AllowAny,)
     pagination_class = CustomPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
     search_fields = ["reference", "provider", "type"]
 
     @swagger_auto_schema(
