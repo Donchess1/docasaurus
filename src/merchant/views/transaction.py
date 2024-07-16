@@ -101,6 +101,12 @@ class MerchantTransactionDetailView(generics.GenericAPIView):
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = self.get_transaction_instance(id)
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
         if not instance:
             return Response(
                 success=False,
@@ -148,7 +154,7 @@ class MerchantTransactionActivityLogView(generics.ListAPIView):
         qs = TransactionActivityLog.objects.filter(transaction=instance).order_by(
             "created_at"
         )
-        serializer = self.get_serializer(instance)
+        serializer = self.get_serializer(qs, many=True)
         return Response(
             success=True,
             message="Transaction activity logs retrieved successfully.",
