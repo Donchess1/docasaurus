@@ -29,6 +29,7 @@ from merchant.utils import (
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
 from transaction.services import get_escrow_transaction_parties_info
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
 from utils.utils import (
     CURRENCIES,
@@ -248,6 +249,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     @transaction.atomic
     def create(self, validated_data):
         merchant = self.context.get("merchant")
+        request_meta = self.context.get("request_meta")
         buyer = validated_data.get("buyer")
         entities = validated_data.get("entities")
         currency = validated_data.get("currency")
@@ -284,6 +286,8 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             escrow_credits_used = True
 
         amount_to_charge = total_amount + buyer_charge + int(merchant_buyer_charge)
+        tx_ref = generate_txn_reference()
+
         payment_breakdown = {
             "base_amount": str(total_amount),
             "buyer_escrow_fees": str(buyer_charge),
@@ -299,8 +303,9 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "currency": currency,
             "payout_configuration_name": merchant_payout_config.name,
             "payout_configuration_id": str(merchant_payout_config),
+            "payment_reference": tx_ref,
         }
-        tx_ref = generate_txn_reference()
+
         meta = {
             "payment_breakdown": "payment_breakdown",
             "seller_escrow_breakdown": entities,
@@ -310,6 +315,9 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         deposit_txn = generate_deposit_transaction_for_escrow(
             payer, amount_to_charge, tx_ref, meta, currency
         )
+
+        description = f"Merchant {(merchant.name).upper()} initiated payment of {currency} {add_commas_to_transaction_amount(amount_to_charge)} to fund escrow transaction."
+        log_transaction_activity(deposit_txn, description, request_meta)
 
         flw_txn_data = {
             "tx_ref": tx_ref,
@@ -326,6 +334,8 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
             },
             "meta": {
+                "action": "FUND_MERCHANT_ESCROW",
+                "platform": "MERCHANT_API",
                 "total_payable_amount": str(amount_to_charge),
             },
             "configurations": {
@@ -333,7 +343,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "max_retry_attempt": 3,  # Max retry (int)
             },
         }
-        return flw_txn_data, payment_breakdown
+        return deposit_txn, flw_txn_data, payment_breakdown
 
 
 class MerchantEscrowRedirectPayloadSerializer(serializers.Serializer):

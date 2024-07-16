@@ -97,6 +97,10 @@ class FundWalletView(GenericAPIView):
                 "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
                 "max_retry_attempt": 3,  # Max retry (int)
             },
+            "meta": {
+                "action": "FUND_WALLET",
+                "platform": "WEB",
+            },
         }
 
         obj = self.flw_api.initiate_payment_link(tx_data)
@@ -197,11 +201,10 @@ class FundWalletRedirectView(GenericAPIView):
             )
             log_transaction_activity(txn, description, request_meta)
 
-            # TODO: Log this error in observability service: Tag [FLW Err:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}",
+                message=msg,
             )
 
         if obj["data"]["status"] == "failed":
@@ -212,11 +215,10 @@ class FundWalletRedirectView(GenericAPIView):
             description = f"Transaction failed. Description: {msg}"
             log_transaction_activity(txn, description, request_meta)
 
-            # TODO: Log this error in observability service: Tag ["FLW Failed:]
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}",
+                message=msg,
             )
 
         if (

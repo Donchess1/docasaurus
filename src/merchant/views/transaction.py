@@ -22,6 +22,7 @@ from merchant.serializers.transaction import (
 )
 from merchant.utils import (
     create_bulk_merchant_escrow_transactions,
+    create_bulk_merchant_transactions_and_products_and_log_activity,
     get_customer_merchant_instance,
     get_merchant_by_id,
     get_merchant_escrow_users,
@@ -31,6 +32,7 @@ from merchant.utils import (
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.serializers.user import UserSerializer
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
@@ -38,7 +40,12 @@ from utils.transaction import (
     get_merchant_escrow_transaction_stakeholders,
     release_escrow_funds_by_merchant,
 )
-from utils.utils import add_commas_to_transaction_amount, parse_date, parse_datetime
+from utils.utils import (
+    PAYMENT_GATEWAY_PROVIDER,
+    add_commas_to_transaction_amount,
+    parse_date,
+    parse_datetime,
+)
 
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
@@ -150,9 +157,11 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
 
     @authorized_api_call
     def post(self, request, *args, **kwargs):
+        request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
         serializer = self.get_serializer(
-            data=request.data, context={"merchant": merchant}
+            data=request.data,
+            context={"merchant": merchant, "request_meta": request_meta},
         )
         if not serializer.is_valid():
             return Response(
@@ -160,7 +169,9 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
-        flw_init_txn_data, payment_breakdown = self.perform_create(serializer)
+        deposit_txn, flw_init_txn_data, payment_breakdown = self.perform_create(
+            serializer
+        )
         obj = self.flw_api.initiate_payment_link(flw_init_txn_data)
         if obj["status"] == "error":
             return Response(
@@ -169,7 +180,12 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
                 message=obj["message"],
             )
 
-        payload = {"link": obj["data"]["link"], "payment_breakdown": payment_breakdown}
+        link = obj["data"]["link"]
+        payload = {"link": link, "payment_breakdown": payment_breakdown}
+
+        description = f"Payment link: {link} successfully generated on {PAYMENT_GATEWAY_PROVIDER}."
+        log_transaction_activity(deposit_txn, description, request_meta)
+
         return Response(
             success=True,
             status_code=status.HTTP_201_CREATED,
@@ -184,6 +200,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
     flw_api = FlwAPI
 
     def get(self, request):
+        request_meta = extract_api_request_metadata(request)
         flw_status = request.query_params.get("status", None)
         tx_ref = request.query_params.get("tx_ref", None)
         flw_transaction_id = request.query_params.get("transaction_id", None)
@@ -197,11 +214,26 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
+        buyer_redirect_url = None
+        redirect_urls = get_merchant_users_redirect_url(txn.merchant)
+        if redirect_urls:
+            buyer_redirect_url = redirect_urls.get("buyer_redirect_url")
+
         if txn.verified:
+            total_payable_amount_to_charge = txn.meta.get(
+                "total_payable_amount_to_charge"
+            )
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
                 message="Transaction successfully verified",
+                data={
+                    "transaction_reference": txn.reference,
+                    "amount": total_payable_amount_to_charge,
+                    "redirect_url": buyer_redirect_url
+                    if buyer_redirect_url
+                    else f"{FRONTEND_BASE_URL}/login",
+                },
             )
 
         if flw_status == "cancelled":
@@ -209,6 +241,10 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             txn.status = "CANCELLED"
             txn.meta.update({"description": f"FLW Escrow Transaction cancelled"})
             txn.save()
+
+            description = f"Payment was cancelled."
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -220,6 +256,10 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             txn.status = "FAILED"
             txn.meta.update({"description": f"FLW Escrow Transaction failed"})
             txn.save()
+
+            description = f"Payment failed."
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -233,24 +273,35 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             )
 
         obj = self.flw_api.verify_transaction(flw_transaction_id)
+
         if obj["status"] == "error":
             msg = obj["message"]
             txn.meta.update({"description": f"FLW Escrow Transaction {msg}"})
             txn.save()
+
+            description = (
+                f"Error occurred while verifying transaction. Description: {msg}"
+            )
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}[]",
+                message=msg,
             )
 
         if obj["data"]["status"] == "failed":
             msg = obj["data"]["processor_response"]
             txn.meta.update({"description": f"FLW Escrow Transaction {msg}"})
             txn.save()
+
+            description = f"Transaction failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"{msg}",
+                message=msg,
             )
 
         if (
@@ -268,17 +319,22 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             txn.remitted_amount = obj["data"]["amount_settled"]
             txn.provider_tx_reference = flw_ref
             txn.narration = narration
+            payment_type = obj["data"]["payment_type"]
+            total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
             txn.meta.update(
                 {
-                    "payment_method": obj["data"]["payment_type"],
+                    "payment_method": payment_type,
                     "provider_txn_id": obj["data"]["id"],
                     "description": f"FLW Escrow Transaction {narration}_{flw_ref}",
+                    "total_payable_amount_to_charge": total_payable_amount_to_charge,
                 }
             )
             txn.save()
-            total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
             customer_email = obj["data"]["customer"]["email"]
             amount_charged = obj["data"]["charged_amount"]
+
+            description = f"Payment received via {payment_type} channel. Transaction verified via REDIRECT URL."
+            log_transaction_activity(txn, description, request_meta)
 
             user = User.objects.filter(email=customer_email).first()
             if not user:
@@ -287,7 +343,17 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
+            _, wallet = user.get_currency_wallet(txn.currency)
+
+            description = f"Previous Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
+
             user.credit_wallet(amount_charged, txn.currency)
+            _, wallet = user.get_currency_wallet(txn.currency)
+
+            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
+
             user.debit_wallet(total_payable_amount_to_charge, txn.currency)
             user.update_locked_amount(
                 amount=txn.amount,
@@ -296,54 +362,38 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 type="CREDIT",
             )
 
-            escrow_entities = txn.meta.get("seller_escrow_breakdown")
-            payout_config_id = txn.meta.get("payout_config")
-            payout_config = PayoutConfig.objects.filter(id=payout_config_id).first()
-            merchant_id = txn.meta.get("merchant")
-            merchant = get_merchant_by_id(merchant_id)
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
 
-            # create bulk escrow transactions from entities data
-            escrows = create_bulk_merchant_escrow_transactions(
-                merchant, user, escrow_entities, txn, payout_config, txn.currency
+            (
+                products,
+                escrow_references,
+            ) = create_bulk_merchant_transactions_and_products_and_log_activity(
+                txn, user, request_meta
             )
-            products = []
-            for transaction in escrows:
-                escrow_users = get_merchant_escrow_users(transaction, merchant)
-                seller: CustomerMerchant = escrow_users.get("seller")
-                products.append(
-                    {
-                        "name": transaction.escrowmeta.item_type,
-                        "quantity": transaction.escrowmeta.item_quantity,
-                        "amount": f"{txn.currency} {add_commas_to_transaction_amount(str(transaction.amount))}",
-                        "store_owner": seller.alternate_name,
-                    }
-                )
             buyer_values = {
                 "date": parse_datetime(txn.updated_at),
-                "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(str(amount_charged))}",
+                "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(amount_charged)}",
                 "merchant_platform": merchant.name,
                 "products": products,
             }
             txn_tasks.send_lock_funds_merchant_buyer_email.delay(
                 user.email, buyer_values
             )
-            amt = add_commas_to_transaction_amount(str(amount_charged))
-            UserNotification.objects.create(
-                user=user,
-                category="FUNDS_LOCKED_BUYER",
-                title=notifications.FundsLockedBuyerNotification(
-                    amt, txn.currency
-                ).TITLE,
-                content=notifications.FundsLockedBuyerNotification(
-                    amt, txn.currency
-                ).CONTENT,
-                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
-            )
-
-        buyer_redirect_url = None
-        redirect_urls = get_merchant_users_redirect_url(merchant)
-        if redirect_urls:
-            buyer_redirect_url = redirect_urls.get("buyer_redirect_url")
+            amt = add_commas_to_transaction_amount(amount_charged)
+            for ref in escrow_references:
+                UserNotification.objects.create(
+                    user=user,
+                    category="FUNDS_LOCKED_BUYER",
+                    title=notifications.FundsLockedBuyerNotification(
+                        amt, txn.currency
+                    ).TITLE,
+                    content=notifications.FundsLockedBuyerNotification(
+                        amt, txn.currency
+                    ).CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{ref}",
+                )
 
         return Response(
             success=True,

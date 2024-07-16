@@ -7,6 +7,9 @@ from console import tasks as console_tasks
 from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
+from merchant.utils import (
+    create_bulk_merchant_transactions_and_products_and_log_activity,
+)
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from utils.activity_log import log_transaction_activity
@@ -261,8 +264,11 @@ def handle_deposit(data, request_meta, pusher):
 
         user.credit_wallet(txn.amount, txn.currency)
         # Now we need to know if the purpose of this deposit is to fund wallet or fund escrow
+        action = meta.get("action", None)
+        platform = meta.get("platform")
         escrow_transaction_reference = meta.get("escrow_transaction_reference", None)
-        if escrow_transaction_reference:
+        if action == "FUND_ESCROW" and platform == "WEB":
+            # Fund escrow transaction initiated on web platform
             escrow_txn = Transaction.objects.filter(
                 reference=escrow_transaction_reference
             ).first()
@@ -382,7 +388,60 @@ def handle_deposit(data, request_meta, pusher):
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{escrow_transaction_reference}",
             )
-        else:
+        elif action == "FUND_MERCHANT_ESCROW" and platform == "MERCHANT_API":
+            # Fund escrow transaction initiated via merchant API
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"Balance after topup: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
+
+            total_payable_amount_to_charge = obj["data"]["meta"]["total_payable_amount"]
+            txn.meta.update(
+                {
+                    "total_payable_amount_to_charge": total_payable_amount_to_charge,  # This is done to maintain state of transaction in case verification via redirect url is triggered
+                }
+            )
+            user.debit_wallet(total_payable_amount_to_charge, txn.currency)
+            user.update_locked_amount(
+                amount=txn.amount,
+                currency=txn.currency,
+                mode="OUTWARD",
+                type="CREDIT",
+            )
+
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"New Balance after final debit: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+            log_transaction_activity(txn, description, request_meta)
+
+            (
+                products,
+                escrow_references,
+            ) = create_bulk_merchant_transactions_and_products_and_log_activity(
+                txn, user, request_meta
+            )
+            buyer_values = {
+                "date": parse_datetime(txn.updated_at),
+                "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(amount_charged)}",
+                "merchant_platform": txn.merchant.name,
+                "products": products,
+            }
+            txn_tasks.send_lock_funds_merchant_buyer_email.delay(
+                user.email, buyer_values
+            )
+            amt = add_commas_to_transaction_amount(amount_charged)
+            for ref in escrow_references:
+                UserNotification.objects.create(
+                    user=user,
+                    category="FUNDS_LOCKED_BUYER",
+                    title=notifications.FundsLockedBuyerNotification(
+                        amt, txn.currency
+                    ).TITLE,
+                    content=notifications.FundsLockedBuyerNotification(
+                        amt, txn.currency
+                    ).CONTENT,
+                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{ref}",
+                )
+
+        elif action == "FUND_WALLET" and platform == "WEB":
             _, wallet = user.get_currency_wallet(txn.currency)
             description = f"New Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
