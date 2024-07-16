@@ -73,7 +73,7 @@ class MerchantTransactionListView(generics.ListAPIView):
     @authorized_api_call
     def list(self, request, *args, **kwargs):
         merchant = request.merchant
-        queryset = self.get_queryset().filter(merchant=merchant, type="ESCROW")
+        queryset = self.get_queryset().filter(merchant=merchant)
         filtered_queryset = self.filter_queryset(queryset)
         qs = self.paginate_queryset(filtered_queryset)
         serializer = self.get_serializer(
