@@ -134,10 +134,8 @@ class CustomUser(AbstractUser):
                 raise ValidationError(
                     f"{currency.upper()} wallet for user does not exist."
                 )
-            if wallet.balance < amount:
+            if wallet.balance < Decimal(str(amount)):
                 raise ValidationError("Insufficient funds.")
-            # wallet.balance -= Decimal(str(amount))
-            # wallet.save()
             wallet.debit(amount, currency)
 
     def update_locked_amount(self, amount, currency="NGN", mode=None, type=None):
