@@ -20,6 +20,7 @@ from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, Payout
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
+from utils.activity_log import log_transaction_activity
 from utils.text import notifications
 from utils.utils import (
     add_commas_to_transaction_amount,
@@ -372,6 +373,7 @@ def create_merchant_escrow_transaction(
     source: Transaction,
     payout_config: PayoutConfig,
     currency: str,
+    request_meta: dict,
 ):
     title = item.get("title")
     description = item.get("description")
@@ -428,14 +430,16 @@ def create_merchant_escrow_transaction(
         status="ESCROW",
     )
 
-    # seller.customer.user.userprofile.locked_amount += int(escrow_txn.amount)
-    # seller.customer.user.userprofile.save()
     seller.customer.user.update_locked_amount(
         amount=escrow_txn.amount,
         currency=escrow_txn.currency,
         mode="INWARD",
         type="CREDIT",
     )
+    # Buyer locked amount has already been updated before this function call.
+
+    description = f"{(merchant.name).upper()} <{merchant.user_id.email}> [MERCHANT] successfully initiated escrow worth {escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} for RECEIPIENT/BUYER {(buyer.alternate_name).upper()} <{buyer.customer.user.email}> and SENDER/SELLER {(seller.alternate_name).upper()} <{seller.customer.user.email}"
+    log_transaction_activity(escrow_txn, description, request_meta)
 
     notify_seller_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
     notify_merchant_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
@@ -450,6 +454,7 @@ def create_bulk_merchant_escrow_transactions(
     source: Transaction,
     payout_config: PayoutConfig,
     currency: str,
+    request_meta: dict,
 ):
     escrows = []
     for entity in entities:
@@ -464,6 +469,7 @@ def create_bulk_merchant_escrow_transactions(
                 source,
                 payout_config,
                 currency,
+                request_meta,
             )
             escrows.append(txn)
     return escrows
@@ -773,6 +779,48 @@ def unlock_customer_escrow_transactions(transactions: list, user: User):
         else True,
         "Funds unlocked successfully.",
     )
+
+
+def create_bulk_merchant_transactions_and_products_and_log_activity(
+    txn: Transaction, user: User, request_meta: dict
+) -> list[str]:
+    escrow_entities = txn.meta.get("seller_escrow_breakdown")
+    payout_config_id = txn.meta.get("payout_config")
+    payout_config = PayoutConfig.objects.filter(id=payout_config_id).first()
+    merchant_id = txn.meta.get("merchant")
+    merchant = get_merchant_by_id(merchant_id)
+
+    # create bulk escrow transactions from entities data
+    escrows = create_bulk_merchant_escrow_transactions(
+        merchant,
+        user,
+        escrow_entities,
+        txn,
+        payout_config,
+        txn.currency,
+        request_meta,
+    )
+    products = []
+    escrow_references = []
+    for transaction in escrows:
+        escrow_users = get_merchant_escrow_users(transaction, merchant)
+        seller: CustomerMerchant = escrow_users.get("seller")
+        products.append(
+            {
+                "name": transaction.escrowmeta.item_type,
+                "quantity": transaction.escrowmeta.item_quantity,
+                "amount": f"{txn.currency} {add_commas_to_transaction_amount(transaction.amount)}",
+                "store_owner": seller.alternate_name,
+            }
+        )
+        escrow_references.append(transaction.reference)
+
+    description = (
+        f"Escrow transaction(s) {[{', '.join(escrow_references)}]} successfully created"
+    )
+    log_transaction_activity(txn, description, request_meta)
+
+    return products, escrow_references
 
 
 def generate_api_key(merchant_id):

@@ -701,6 +701,8 @@ class FundEscrowTransactionView(generics.GenericAPIView):
                 "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
             },
             "meta": {
+                "action": "FUND_ESCROW",
+                "platform": "WEB",
                 "escrow_transaction_reference": escrow_transaction_reference,
             },
             "configurations": {
