@@ -58,7 +58,6 @@ User = get_user_model()
 
 class MerchantTransactionListView(generics.ListAPIView):
     serializer_class = MerchantTransactionSerializer
-    queryset = Transaction.objects.filter().order_by("-created_at")
     permission_classes = (permissions.AllowAny,)
     pagination_class = CustomPagination
     filter_backends = [filters.SearchFilter]
@@ -73,7 +72,9 @@ class MerchantTransactionListView(generics.ListAPIView):
     @authorized_api_call
     def list(self, request, *args, **kwargs):
         merchant = request.merchant
-        queryset = self.get_queryset().filter(merchant=merchant)
+        queryset = Transaction.objects.filter(
+            type__in=["DEPOSIT", "ESCROW", "WITHDRAW"], merchant=merchant
+        ).order_by("-created_at")
         filtered_queryset = self.filter_queryset(queryset)
         qs = self.paginate_queryset(filtered_queryset)
         serializer = self.get_serializer(
