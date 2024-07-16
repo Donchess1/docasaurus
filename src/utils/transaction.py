@@ -83,7 +83,7 @@ def get_escrow_transaction_users(transaction: Transaction) -> dict:
 def get_merchant_escrow_transaction_stakeholders(id):
     buyer_email, seller_email, merchant_email = None, None, None
     try:
-        transaction = Transaction.objects.get(id=id)
+        transaction = get_transaction_instance(id)
         if transaction.escrowmeta.meta:
             meta = transaction.escrowmeta.meta
             parties = meta.get("parties")
@@ -91,7 +91,7 @@ def get_merchant_escrow_transaction_stakeholders(id):
             seller_email = parties.get("seller")
             merchant_email = (transaction.merchant.user_id.email,)
     except Exception as e:
-        print("Error Fetching Merchant Escrow Transactio  Stakeholders: ", str(e))
+        print("Error Fetching Merchant Escrow Transaction  Stakeholders: ", str(e))
 
     return {"BUYER": buyer_email, "SELLER": seller_email, "MERCHANT": merchant_email}
 
