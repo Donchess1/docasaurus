@@ -313,7 +313,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "payout_config": str(merchant_payout_config.id),
         }
         deposit_txn = generate_deposit_transaction_for_escrow(
-            payer, amount_to_charge, tx_ref, meta, currency
+            payer, amount_to_charge, tx_ref, meta, currency, merchant
         )
 
         buyer_customer_instance = get_customer_merchant_instance(buyer, merchant)

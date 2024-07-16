@@ -481,6 +481,7 @@ def generate_deposit_transaction_for_escrow(
     tx_ref: str,
     meta: dict,
     currency: str,
+    merchant: Merchant,
 ):
     meta.update({"title": "Escrow transaction fund"})
     deposit_txn = Transaction.objects.create(
@@ -491,6 +492,7 @@ def generate_deposit_transaction_for_escrow(
         status="PENDING",
         reference=tx_ref,
         currency=currency,
+        merchant=merchant,
         provider="FLUTTERWAVE",
         meta=meta,
     )
