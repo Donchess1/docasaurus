@@ -1,5 +1,6 @@
 import os
 
+from django.contrib.auth import get_user_model
 from django.db.models import OuterRef, Q, Subquery
 from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
@@ -47,6 +48,7 @@ CUSTOMER_WIDGET_BUYER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BUYER_BASE_URL"
 CUSTOMER_WIDGET_SELLER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_SELLER_BASE_URL", "")
 
 cache = Cache()
+User = get_user_model()
 
 
 class CustomerWidgetSessionView(generics.GenericAPIView):
@@ -441,12 +443,8 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
     @authorized_api_call
     def post(self, request):
         merchant = request.merchant
-        user = request.user
         serializer = self.serializer_class(
             data=request.data,
-            context={
-                "user": user,
-            },
         )
         if not serializer.is_valid():
             return Response(
@@ -466,6 +464,8 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
                 message=resource,
             )
         data = resource.get("data")
+        email = data.get("email")
+        user = User.objects.filter(email=email).first()
         successful, resource = initiate_gateway_withdrawal_transaction(user, data)
         return (
             Response(
@@ -476,7 +476,7 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
             if not successful
             else Response(
                 success=True,
-                message="Withdrawal is currently being processed",
+                message="Withdrawal is currently being processed. You should get a notification shortly",
                 status_code=status.HTTP_200_OK,
                 data=resource,
             )
