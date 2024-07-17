@@ -29,9 +29,11 @@ from merchant.utils import (
 )
 from transaction.serializers.locked_amount import LockedAmountSerializer
 from transaction.services import get_escrow_transaction_parties_info
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
 from utils.utils import (
     CURRENCIES,
+    add_commas_to_transaction_amount,
     generate_random_text,
     generate_txn_reference,
     get_escrow_fees,
@@ -47,7 +49,7 @@ env = "live" if ENVIRONMENT == "production" else "test"
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
     # author_name = serializers.SerializerMethodField()
     parties = serializers.SerializerMethodField()
-    payment_breakdown = serializers.SerializerMethodField()
+    # payment_breakdown = serializers.SerializerMethodField()
 
     class Meta:
         model = EscrowMeta
@@ -61,7 +63,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             "delivery_date",
             # "meta",
             "parties",
-            "payment_breakdown",
+            # "payment_breakdown",
             "buyer_consent_to_unlock",
             # "partner_email",
             # "delivery_tolerance",
@@ -78,8 +80,8 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
         parties = get_escrow_transaction_parties_info(obj.transaction_id)
         return parties
 
-    def get_payment_breakdown(self, obj):
-        return obj.meta.get("payment_breakdown", None)
+    # def get_payment_breakdown(self, obj):
+    #     return obj.meta.get("payment_breakdown", None)
 
 
 class MerchantTransactionSerializer(serializers.ModelSerializer):
@@ -131,6 +133,11 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             "provider",
         )
 
+    def __init__(self, *args, **kwargs):
+        super(MerchantTransactionSerializer, self).__init__(*args, **kwargs)
+        if self.context.get("hide_escrow_details"):
+            self.fields.pop("escrow")
+
     def get_locked_amount(self, obj):
         instance = LockedAmount.objects.filter(transaction=obj).first()
         if not instance:
@@ -173,7 +180,9 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
 
     def validate_payout_configuration(self, value):
         merchant = self.context.get("merchant")
-        valid_config = PayoutConfig.objects.filter(id=value).first()
+        valid_config = PayoutConfig.objects.filter(
+            id=str(value), merchant=merchant
+        ).first()
         if not valid_config:
             raise serializers.ValidationError("Payout configuration does not exist.")
         return valid_config
@@ -195,17 +204,34 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         today = timezone.now().date()
         return False if value < today else True
 
-    def validate_amount(self, value):
-        return False if env == "test" and value > 5000 else True
+    def validate_amount(self, value, title, currency):
+        MINIMUM_AMOUNT = 500 if currency == "NGN" else 100
+        if env == "test":
+            MAXIMUM_AMOUNT = 5000 if currency == "NGN" else 1000
+        else:  # live environment
+            MAXIMUM_AMOUNT = float(
+                "inf"
+            )  # No cap on maximum amount in live environment
+
+        if value < MINIMUM_AMOUNT:
+            return (
+                False,
+                f"Minimum amount allowed in test mode is {currency} {add_commas_to_transaction_amount(MINIMUM_AMOUNT)}. Update <{title.upper()}>",
+            )
+        if value > MAXIMUM_AMOUNT:
+            message = f"Maximum transaction amount allowed in test mode is {currency} {add_commas_to_transaction_amount(MAXIMUM_AMOUNT)}. Kindly update <{title.upper()}>"
+            return (False, message)
+
+        return True, "Valid amount"
 
     def validate_entities(self, entities):
         merchant = self.context.get("merchant")
-        currency = self.validated_data.get("currency")
+        currency = self.initial_data.get("currency", "NGN")
         for entity in entities:
             seller_email = entity.get("seller")
             if not self.validate_seller(seller_email, merchant):
                 raise serializers.ValidationError(
-                    f"Seller {seller_email} does not exist."
+                    f"Seller <{seller_email}> does not exist."
                 )
             for item in entity.get("items"):
                 title = item.get("title")
@@ -213,17 +239,17 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 amount = item.get("amount")
                 if not self.validate_delivery_date(delivery_date):
                     raise serializers.ValidationError(
-                        f"Delivery date for {seller_email} to deliver {title} cannot be in the past."
+                        f"Delivery date for {seller_email} to deliver <{title}> cannot be earlier than today."
                     )
-                if not self.validate_amount(amount):
-                    raise serializers.ValidationError(
-                        f"Amount for {title} should be {currency} 5,000 or less."
-                    )
+                amount_is_valid, message = self.validate_amount(amount, title, currency)
+                if not amount_is_valid:
+                    raise serializers.ValidationError(message)
         return entities
 
     @transaction.atomic
     def create(self, validated_data):
         merchant = self.context.get("merchant")
+        request_meta = self.context.get("request_meta")
         buyer = validated_data.get("buyer")
         entities = validated_data.get("entities")
         currency = validated_data.get("currency")
@@ -260,6 +286,8 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             escrow_credits_used = True
 
         amount_to_charge = total_amount + buyer_charge + int(merchant_buyer_charge)
+        tx_ref = generate_txn_reference()
+
         payment_breakdown = {
             "base_amount": str(total_amount),
             "buyer_escrow_fees": str(buyer_charge),
@@ -273,17 +301,24 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             ),
             "total_payable": str(amount_to_charge),
             "currency": currency,
+            "payout_configuration_name": merchant_payout_config.name,
+            "payout_configuration_id": str(merchant_payout_config),
+            "payment_reference": tx_ref,
         }
-        tx_ref = generate_txn_reference()
+
         meta = {
-            "payment_breakdown": "payment_breakdown",
+            "payment_breakdown": payment_breakdown,
             "seller_escrow_breakdown": entities,
             "merchant": str(merchant.id),
             "payout_config": str(merchant_payout_config.id),
         }
         deposit_txn = generate_deposit_transaction_for_escrow(
-            payer, amount_to_charge, tx_ref, meta, currency
+            payer, amount_to_charge, tx_ref, meta, currency, merchant
         )
+
+        buyer_customer_instance = get_customer_merchant_instance(buyer, merchant)
+        description = f"Merchant {(merchant.name).upper()} initiated payment of {currency} {add_commas_to_transaction_amount(amount_to_charge)} for SENDER/BUYER {(buyer_customer_instance.alternate_name).upper()} <{payer.email}> to fund escrow transaction."
+        log_transaction_activity(deposit_txn, description, request_meta)
 
         flw_txn_data = {
             "tx_ref": tx_ref,
@@ -300,6 +335,8 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
             },
             "meta": {
+                "action": "FUND_MERCHANT_ESCROW",
+                "platform": "MERCHANT_API",
                 "total_payable_amount": str(amount_to_charge),
             },
             "configurations": {
@@ -307,7 +344,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "max_retry_attempt": 3,  # Max retry (int)
             },
         }
-        return flw_txn_data, payment_breakdown
+        return deposit_txn, flw_txn_data, payment_breakdown
 
 
 class MerchantEscrowRedirectPayloadSerializer(serializers.Serializer):
@@ -359,7 +396,10 @@ class UnlockCustomerEscrowTransactionByBuyerSerializer(serializers.Serializer):
     def create(self, validated_data):
         transactions = validated_data.get("transactions")
         user = self.context.get("user")
-        completed, message = unlock_customer_escrow_transactions(transactions, user)
+        request_meta = self.context.get("request_meta")
+        completed, message = unlock_customer_escrow_transactions(
+            transactions, user, request_meta
+        )
         if not completed:
             raise serializers.ValidationError({"error": message})
         return completed, message

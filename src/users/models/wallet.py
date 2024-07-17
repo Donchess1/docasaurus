@@ -58,7 +58,7 @@ class Wallet(models.Model):
     @transaction.atomic()
     def debit(self, amount, currency):
         obj = self.get_queryset(currency=currency).select_for_update().get()
-        if amount > obj.balance:
+        if Decimal(str(amount)) > obj.balance:
             # raise errors.InsufficientFunds()
             # TODO: flag wallet
             pass

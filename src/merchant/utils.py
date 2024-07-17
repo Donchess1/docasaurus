@@ -20,6 +20,7 @@ from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, Payout
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
+from utils.activity_log import log_transaction_activity
 from utils.text import notifications
 from utils.utils import (
     add_commas_to_transaction_amount,
@@ -372,6 +373,7 @@ def create_merchant_escrow_transaction(
     source: Transaction,
     payout_config: PayoutConfig,
     currency: str,
+    request_meta: dict,
 ):
     title = item.get("title")
     description = item.get("description")
@@ -428,14 +430,16 @@ def create_merchant_escrow_transaction(
         status="ESCROW",
     )
 
-    # seller.customer.user.userprofile.locked_amount += int(escrow_txn.amount)
-    # seller.customer.user.userprofile.save()
     seller.customer.user.update_locked_amount(
         amount=escrow_txn.amount,
         currency=escrow_txn.currency,
         mode="INWARD",
         type="CREDIT",
     )
+    # Buyer locked amount has already been updated before this function call.
+
+    description = f"{(merchant.name).upper()} <{merchant.user_id.email}> [MERCHANT] successfully initiated escrow worth {escrow_txn.currency} {add_commas_to_transaction_amount(escrow_txn.amount)} for RECEIPIENT/BUYER {(buyer.alternate_name).upper()} <{buyer.customer.user.email}> and SENDER/SELLER {(seller.alternate_name).upper()} <{seller.customer.user.email}"
+    log_transaction_activity(escrow_txn, description, request_meta)
 
     notify_seller_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
     notify_merchant_escrow_transaction_via_email(seller, buyer, merchant, escrow_txn)
@@ -450,6 +454,7 @@ def create_bulk_merchant_escrow_transactions(
     source: Transaction,
     payout_config: PayoutConfig,
     currency: str,
+    request_meta: dict,
 ):
     escrows = []
     for entity in entities:
@@ -464,6 +469,7 @@ def create_bulk_merchant_escrow_transactions(
                 source,
                 payout_config,
                 currency,
+                request_meta,
             )
             escrows.append(txn)
     return escrows
@@ -475,6 +481,7 @@ def generate_deposit_transaction_for_escrow(
     tx_ref: str,
     meta: dict,
     currency: str,
+    merchant: Merchant,
 ):
     meta.update({"title": "Escrow transaction fund"})
     deposit_txn = Transaction.objects.create(
@@ -485,6 +492,7 @@ def generate_deposit_transaction_for_escrow(
         status="PENDING",
         reference=tx_ref,
         currency=currency,
+        merchant=merchant,
         provider="FLUTTERWAVE",
         meta=meta,
     )
@@ -576,13 +584,11 @@ def transactions_are_already_unlocked(transactions):
 
 
 def settle_merchant_escrow_charges(
-    transaction: Transaction, merchant: Merchant
+    transaction: Transaction,
+    merchant: Merchant,
+    request_meta: dict,
+    merchant_payout_config: PayoutConfig,
 ) -> None:
-    merchant_payout_config = (
-        transaction.escrowmeta.payout_config
-        if transaction.escrowmeta.payout_config
-        else get_merchant_active_payout_configuration(merchant)
-    )
     merchant_user_charges = get_merchant_transaction_charges(
         merchant, transaction.amount, merchant_payout_config
     )
@@ -601,14 +607,26 @@ def settle_merchant_escrow_charges(
         currency=currency,
         provider="MYBALANCE",
         meta={
-            # "title": "Escrow Settlement",
+            "title": "Escrow Settlement",
             "description": "Merchant Escrow Settlement",
             "escrow_transaction": str(transaction.id),
         },
     )
-    # merchant.user_id.userprofile.wallet_balance += int(merchant_settlement)
-    # merchant.user_id.userprofile.save()
-    merchant.user_id.credit_wallet(merchant_settlement, currency)
+
+    merchant_user = merchant.user_id
+
+    description = f"Settlement with reference {tx_ref} generated to credit merchant wallet with {currency} {add_commas_to_transaction_amount(merchant_settlement)}"
+    log_transaction_activity(transaction, description, request_meta)
+
+    _, wallet = merchant_user.get_currency_wallet(currency)
+    description = f"Previous Merchant Balance: {currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    log_transaction_activity(transaction, description, request_meta)
+
+    merchant_user.credit_wallet(merchant_settlement, currency)
+
+    _, wallet = merchant_user.get_currency_wallet(currency)
+    description = f"New Merchant Balance: {currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    log_transaction_activity(transaction, description, request_meta)
 
     escrow_users = get_merchant_escrow_users(transaction, merchant)
     buyer = escrow_users.get("buyer")
@@ -636,18 +654,22 @@ def settle_merchant_escrow_charges(
     )
 
 
-def unlock_customer_escrow_transaction_by_id(id: UUID, user: User):
+def unlock_customer_escrow_transaction_by_id(id: UUID, user: User, request_meta: dict):
     try:
         txn = get_transaction_by_id(id)
         txn.status = "FUFILLED"
         txn.save()
-
         merchant = txn.merchant
         transaction_payout_config = (
             txn.escrowmeta.payout_config
             if txn.escrowmeta.payout_config
             else get_merchant_active_payout_configuration(merchant)
         )
+
+        # Log Payout configuration used to settle transactions
+        description = f"Payout Configuration used for settling funds: {(transaction_payout_config.name).upper()} <{str(transaction_payout_config)}>"
+        log_transaction_activity(txn, description, request_meta)
+
         merchant_user_charges = get_merchant_transaction_charges(
             merchant, txn.amount, transaction_payout_config
         )
@@ -671,12 +693,14 @@ def unlock_customer_escrow_transaction_by_id(id: UUID, user: User):
         seller_charges = int(txn.charge) + int(merchant_seller_charge)
         amount_to_credit_seller = int(txn.amount - seller_charges)
         seller = User.objects.filter(email=txn.lockedamount.seller_email).first()
+        escrow_credits_used = False
         if seller.userprofile.free_escrow_transactions > 0:
             # credit full amount to seller and deplete free credits
             amount_to_credit_seller = int(txn.amount) - int(merchant_seller_charge)
             seller_charges = int(merchant_seller_charge)
             seller.userprofile.free_escrow_transactions -= 1
             seller.userprofile.save()
+            escrow_credits_used = True
         profile.save()
         locked_amount_instance = LockedAmount.objects.get(transaction=txn)
 
@@ -691,6 +715,14 @@ def unlock_customer_escrow_transaction_by_id(id: UUID, user: User):
 
         locked_amount_instance.status = "SETTLED"
         locked_amount_instance.save()
+
+        escrow_credits_message = " " if escrow_credits_used else " not "
+        description = (
+            f"{txn.currency} {add_commas_to_transaction_amount(amount_to_credit_seller)} was released successfully by merchant: {(txn.merchant.name).upper()} <{txn.merchant.user_id.email}>. Escrow credit was"
+            + escrow_credits_message
+            + f"used to settle seller."
+        )
+        log_transaction_activity(txn, description, request_meta)
 
         seller_values = {
             "date": parse_datetime(txn.updated_at),
@@ -742,7 +774,9 @@ def unlock_customer_escrow_transaction_by_id(id: UUID, user: User):
             action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{txn.reference}",
         )
         # Settle Merchant Funds
-        settle_merchant_escrow_charges(txn, merchant)
+        settle_merchant_escrow_charges(
+            txn, merchant, request_meta, transaction_payout_config
+        )
         return True, "Funds unlocked successfully."
     except Exception as e:
         print(
@@ -750,29 +784,74 @@ def unlock_customer_escrow_transaction_by_id(id: UUID, user: User):
         )
         return (
             False,
-            "An error occurred while unlocking funds with transaction. Contact Support",
+            "An error occurred while unlocking funds with transaction. Kindly contact Support",
         )
 
 
-def unlock_customer_escrow_transactions(transactions: list, user: User):
+def unlock_customer_escrow_transactions(
+    transactions: list, user: User, request_meta: dict
+):
     for transaction in transactions:
         id = str(transaction)
         err = False
         try:
-            unlock_customer_escrow_transaction_by_id(id, user)
+            unlock_customer_escrow_transaction_by_id(id, user, request_meta)
         except Exception as e:
             print(
                 f"Exception occurred while unlocking funds with transaction {id}: {str(e)}"
             )
             err = True
 
-    return (
-        False,
-        "An error occurred while unlocking funds with one or more transactions. Contact Support."
-        if err
-        else True,
-        "Funds unlocked successfully.",
+    if err:
+        return (
+            False,
+            "An error occurred while unlocking funds with one or more transactions. Contact Support.",
+        )
+    else:
+        return True, "Funds unlocked successfully."
+
+
+def create_bulk_merchant_transactions_and_products_and_log_activity(
+    txn: Transaction, user: User, request_meta: dict
+) -> list[str]:
+    escrow_entities = txn.meta.get("seller_escrow_breakdown")
+    payout_config_id = txn.meta.get("payout_config")
+    payout_config = PayoutConfig.objects.filter(id=payout_config_id).first()
+    merchant_id = txn.meta.get("merchant")
+    merchant = get_merchant_by_id(merchant_id)
+
+    # create bulk escrow transactions from entities data
+    escrows = create_bulk_merchant_escrow_transactions(
+        merchant,
+        user,
+        escrow_entities,
+        txn,
+        payout_config,
+        txn.currency,
+        request_meta,
     )
+    products = []
+    escrow_references = []
+    for transaction in escrows:
+        escrow_users = get_merchant_escrow_users(transaction, merchant)
+        seller: CustomerMerchant = escrow_users.get("seller")
+        products.append(
+            {
+                "name": transaction.escrowmeta.item_type,
+                "quantity": transaction.escrowmeta.item_quantity,
+                "amount": f"{txn.currency} {add_commas_to_transaction_amount(transaction.amount)}",
+                "store_owner": seller.alternate_name,
+            }
+        )
+        escrow_references.append(transaction.reference)
+
+    formatted_escrow_references = f"[{', '.join(escrow_references)}]"
+    description = (
+        f"Escrow transaction(s) {formatted_escrow_references} successfully created"
+    )
+    log_transaction_activity(txn, description, request_meta)
+
+    return products, escrow_references
 
 
 def generate_api_key(merchant_id):

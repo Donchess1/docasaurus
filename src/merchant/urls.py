@@ -25,6 +25,8 @@ from merchant.views.transaction import (
     MandateFundsReleaseView,
     MerchantEscrowTransactionRedirectView,
     MerchantSettlementTransactionListView,
+    MerchantTransactionActivityLogView,
+    MerchantTransactionDetailView,
     MerchantTransactionListView,
     ReleaseEscrowFundsByMerchantView,
     UnlockEscrowFundsByBuyerView,
@@ -56,17 +58,27 @@ urlpatterns = [
         name="merchant-transactions",
     ),
     path(
+        "transactions/<str:id>",
+        MerchantTransactionDetailView.as_view(),
+        name="merchant-transaction-detail",
+    ),
+    path(
+        "transactions/<str:id>/activity-logs",
+        MerchantTransactionActivityLogView.as_view(),
+        name="merchant-transaction-detail",
+    ),
+    path(
         "settlements",
         MerchantSettlementTransactionListView.as_view(),
         name="merchant-settlement-transactions",
     ),
     path(
-        "customer-transactions/<uuid:id>/mandate-release",
+        "customer-transactions/<str:id>/mandate-release",
         MandateFundsReleaseView.as_view(),
         name="consent-funds-release",
     ),
     path(
-        "customer-transactions/<uuid:id>/release-funds",
+        "customer-transactions/<str:id>/release-funds",
         ReleaseEscrowFundsByMerchantView.as_view(),
         name="unlock-customer-escrow-funds-merchant",
     ),

@@ -1,6 +1,8 @@
 import os
 
+from django.contrib.auth import get_user_model
 from django.db.models import OuterRef, Q, Subquery
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import action
@@ -29,6 +31,7 @@ from merchant.utils import (
     validate_request,
     verify_otp,
 )
+from transaction.filters import TransactionFilter
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
@@ -45,6 +48,7 @@ CUSTOMER_WIDGET_BUYER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BUYER_BASE_URL"
 CUSTOMER_WIDGET_SELLER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_SELLER_BASE_URL", "")
 
 cache = Cache()
+User = get_user_model()
 
 
 class CustomerWidgetSessionView(generics.GenericAPIView):
@@ -108,13 +112,14 @@ class CustomerTransactionListView(generics.ListAPIView):
     queryset = Transaction.objects.filter().order_by("-created_at")
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = CustomPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
     search_fields = ["reference", "customer"]
 
     @swagger_auto_schema(
         operation_description="Get Customer Transactions",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     def list(self, request, *args, **kwargs):
@@ -161,7 +166,9 @@ class CustomerTransactionListView(generics.ListAPIView):
             customer_queryset.filter(status="SUCCESSFUL")
         )
         qs = self.paginate_queryset(filtered_queryset)
-        serializer = self.get_serializer(qs, many=True)
+        serializer = self.get_serializer(
+            qs, context={"hide_escrow_details": True}, many=True
+        )
         self.pagination_class.message = "Transactions retrieved successfully"
         response = self.get_paginated_response(
             serializer.data,
@@ -188,7 +195,7 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
     @swagger_auto_schema(
         operation_description="Get A Customer transaction detail by ID",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     def get(self, request, id, *args, **kwargs):
@@ -436,12 +443,8 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
     @authorized_api_call
     def post(self, request):
         merchant = request.merchant
-        user = request.user
         serializer = self.serializer_class(
             data=request.data,
-            context={
-                "user": user,
-            },
         )
         if not serializer.is_valid():
             return Response(
@@ -461,6 +464,8 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
                 message=resource,
             )
         data = resource.get("data")
+        email = data.get("email")
+        user = User.objects.filter(email=email).first()
         successful, resource = initiate_gateway_withdrawal_transaction(user, data)
         return (
             Response(
@@ -471,7 +476,7 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
             if not successful
             else Response(
                 success=True,
-                message="Withdrawal is currently being processed",
+                message="Withdrawal is currently being processed. You should get a notification shortly",
                 status_code=status.HTTP_200_OK,
                 data=resource,
             )

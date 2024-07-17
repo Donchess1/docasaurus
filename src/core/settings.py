@@ -33,6 +33,7 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt",
     "drf_yasg",
     "drf_api_logger",
+    "django_filters",
 ]
 
 LOCAL_APPS = [
