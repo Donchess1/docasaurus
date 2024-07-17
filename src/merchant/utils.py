@@ -788,25 +788,27 @@ def unlock_customer_escrow_transaction_by_id(id: UUID, user: User, request_meta:
         )
 
 
-def unlock_customer_escrow_transactions(transactions: list, user: User):
+def unlock_customer_escrow_transactions(
+    transactions: list, user: User, request_meta: dict
+):
     for transaction in transactions:
         id = str(transaction)
         err = False
         try:
-            unlock_customer_escrow_transaction_by_id(id, user)
+            unlock_customer_escrow_transaction_by_id(id, user, request_meta)
         except Exception as e:
             print(
                 f"Exception occurred while unlocking funds with transaction {id}: {str(e)}"
             )
             err = True
 
-    return (
-        False,
-        "An error occurred while unlocking funds with one or more transactions. Contact Support."
-        if err
-        else True,
-        "Funds unlocked successfully.",
-    )
+    if err:
+        return (
+            False,
+            "An error occurred while unlocking funds with one or more transactions. Contact Support.",
+        )
+    else:
+        return True, "Funds unlocked successfully."
 
 
 def create_bulk_merchant_transactions_and_products_and_log_activity(

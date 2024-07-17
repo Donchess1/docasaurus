@@ -1,6 +1,7 @@
 import os
 
 from django.db.models import OuterRef, Q, Subquery
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import action
@@ -29,6 +30,7 @@ from merchant.utils import (
     validate_request,
     verify_otp,
 )
+from transaction.filters import TransactionFilter
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
@@ -108,7 +110,8 @@ class CustomerTransactionListView(generics.ListAPIView):
     queryset = Transaction.objects.filter().order_by("-created_at")
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = CustomPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
     search_fields = ["reference", "customer"]
 
     @swagger_auto_schema(
@@ -161,7 +164,9 @@ class CustomerTransactionListView(generics.ListAPIView):
             customer_queryset.filter(status="SUCCESSFUL")
         )
         qs = self.paginate_queryset(filtered_queryset)
-        serializer = self.get_serializer(qs, many=True)
+        serializer = self.get_serializer(
+            qs, context={"hide_escrow_details": True}, many=True
+        )
         self.pagination_class.message = "Transactions retrieved successfully"
         response = self.get_paginated_response(
             serializer.data,

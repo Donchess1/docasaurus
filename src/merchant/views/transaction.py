@@ -596,8 +596,8 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
 
         successful, message = release_escrow_funds_by_merchant(instance, request_meta)
         return Response(
-            status=True if successful else False,
-            message="Funds unlocked successfully" if successful else message,
+            success=True if successful else False,
+            message=message,
             status_code=status.HTTP_200_OK
             if successful
             else status.HTTP_400_BAD_REQUEST,
@@ -623,6 +623,7 @@ class UnlockEscrowFundsByBuyerView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         user = request.user
         merchant_id = request.query_params.get("merchant")
+        request_meta = extract_api_request_metadata(request)
         if not merchant_id:
             return Response(
                 success=False,
@@ -654,6 +655,7 @@ class UnlockEscrowFundsByBuyerView(generics.CreateAPIView):
             context={
                 "merchant": merchant,
                 "user": user,
+                "request_meta": request_meta,
             },
         )
         if not serializer.is_valid():
@@ -663,16 +665,10 @@ class UnlockEscrowFundsByBuyerView(generics.CreateAPIView):
                 errors=serializer.errors,
             )
         completed, message = self.perform_create(serializer)
-        return (
-            Response(
-                status=True,
-                message=message,
-                status_code=status.HTTP_200_OK,
-            )
+        return Response(
+            success=True if completed else False,
+            message=message,
+            status_code=status.HTTP_200_OK
             if completed
-            else Response(
-                status=False,
-                message=message,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            else status.HTTP_400_BAD_REQUEST,
         )

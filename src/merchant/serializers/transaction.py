@@ -396,7 +396,10 @@ class UnlockCustomerEscrowTransactionByBuyerSerializer(serializers.Serializer):
     def create(self, validated_data):
         transactions = validated_data.get("transactions")
         user = self.context.get("user")
-        completed, message = unlock_customer_escrow_transactions(transactions, user)
+        request_meta = self.context.get("request_meta")
+        completed, message = unlock_customer_escrow_transactions(
+            transactions, user, request_meta
+        )
         if not completed:
             raise serializers.ValidationError({"error": message})
         return completed, message
