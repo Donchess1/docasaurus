@@ -525,7 +525,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
             if txn.escrowmeta.author == "SELLER":
                 seller = txn.user_id
                 seller.update_locked_amount(
-                    amount=escrow_txn.amount,
+                    amount=txn.amount,
                     currency=txn.currency,
                     mode="INWARD",
                     type="CREDIT",
