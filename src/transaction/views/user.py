@@ -476,6 +476,7 @@ class TransactionDetailView(generics.GenericAPIView):
             )
 
         instance.meta.update({"escrow_action": "REVOKED", "rejected_reason": reason})
+        instance.status = "CANCELLED"
         instance.save()
 
         description = f"Escrow was successfully revoked by {(user.name).upper()} <{user.email}>. Reason: {reason}"
