@@ -134,3 +134,7 @@ class UpdateEscrowTransactionSerializer(serializers.Serializer):
             )
 
         return data
+
+
+class RevokeEscrowTransactionSerializer(serializers.Serializer):
+    reason = serializers.CharField()

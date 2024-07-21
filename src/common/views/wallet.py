@@ -333,6 +333,11 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 success=True,
                 status_code=status.HTTP_200_OK,
                 message="Payment already verified.",
+                data={
+                    "transaction_reference": txn.reference,
+                    "amount": txn.amount,
+                    "currency": txn.currency,
+                },
             )
 
         if flw_status == "cancelled":
@@ -574,16 +579,10 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
                 data={
                     "transaction_reference": escrow_txn_ref,
                     "amount": escrow_amount_to_charge,
+                    "currency": txn.currency,
                 },
                 message="Transaction verified.",
             )
-
-        return Response(
-            success=True,
-            message="Payment successfully verified",
-            status_code=status.HTTP_200_OK,
-            data={"transaction_reference": tx_ref},
-        )
 
 
 class WalletWithdrawalFeeView(GenericAPIView):
