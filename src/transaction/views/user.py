@@ -14,7 +14,7 @@ from console.models.transaction import LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
 from notifications.models.notification import UserNotification
 from transaction import tasks
-from transaction.permissions import IsBuyer, IsTransactionStakeholder
+from transaction.permissions import IsAdminOrReadOnly, IsBuyer, IsTransactionStakeholder
 from transaction.serializers.transaction import (
     EscrowTransactionPaymentSerializer,
     EscrowTransactionSerializer,
@@ -22,6 +22,7 @@ from transaction.serializers.transaction import (
     UnlockEscrowTransactionSerializer,
 )
 from transaction.serializers.user import (
+    RevokeEscrowTransactionSerializer,
     UpdateEscrowTransactionSerializer,
     UserTransactionSerializer,
 )
@@ -359,7 +360,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
 
 class TransactionDetailView(generics.GenericAPIView):
     serializer_class = UserTransactionSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAdminOrReadOnly,)
 
     def get_queryset(self):
         return Transaction.objects.all()
@@ -385,6 +386,105 @@ class TransactionDetailView(generics.GenericAPIView):
             message="Transaction detail retrieved successfully.",
             status_code=status.HTTP_200_OK,
             data=serializer.data,
+        )
+
+    def patch(self, request, id, *args, **kwargs):
+        user = request.user
+        request_meta = extract_api_request_metadata(request)
+        instance = get_transaction_instance(id)
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.type != "ESCROW":
+            return Response(
+                success=False,
+                message=f"{instance.type} transactions cannot be revoked",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        stakeholders = get_escrow_transaction_stakeholders(instance.reference)
+        if user.email in stakeholders.values():
+            return Response(
+                success=False,
+                message="Action failed. You cannot revoke your own escrow transaction.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        escrow_action = instance.meta.get("escrow_action", None)
+        if escrow_action:
+            return Response(
+                success=False,
+                message=f"Transaction already {escrow_action.lower()}!",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = RevokeEscrowTransactionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if instance.status in ["PENDING", "REJECTED", "CANCELLED", "FUFILLED"]:
+            return Response(
+                success=False,
+                message=f"{(instance.status).title()} transaction cannot be revoked.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Reverse locked funds if the amount was deducted initially
+        if (
+            instance.escrowmeta.author == "BUYER"
+            and LockedAmount.objects.filter(transaction=instance).exists()
+        ):
+            amount_to_return = instance.amount + instance.charge
+            reason = serializer.validated_data.get("reason")
+
+            buyer = instance.user_id
+            buyer.credit_wallet(amount_to_return, instance.currency)
+            buyer.update_locked_amount(
+                amount=instance.amount,
+                currency=instance.currency,
+                mode="OUTWARD",
+                type="DEBIT",
+            )
+
+            description = f"{instance.currency} {add_commas_to_transaction_amount(amount_to_return)} was successfully reversed to buyer wallet."
+            log_transaction_activity(instance, description, request_meta)
+
+            values = {
+                "first_name": buyer.name.split(" ")[0],
+                "recipient": buyer.email,
+                "date": parse_datetime(instance.updated_at),
+                "status": "REVOKED",
+                "transaction_id": instance.reference,
+                "item_name": instance.meta["title"],
+                "partner_email": instance.escrowmeta.partner_email,
+                "amount": f"{instance.currency} {add_commas_to_transaction_amount(instance.amount)}",
+                "reason": reason,
+            }
+            tasks.send_revoked_escrow_transaction_email.delay(buyer.email, values)
+            # Create Notification
+            UserNotification.objects.create(
+                user=buyer,
+                category="ESCROW_REJECTED",
+                title=notifications.ESCROW_TRANSACTION_REJECTED_TITLE,
+                content=notifications.ESCROW_TRANSACTION_REJECTED_CONTENT,
+                action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
+            )
+
+        instance.meta.update({"escrow_action": "REVOKED", "rejected_reason": reason})
+        instance.save()
+
+        description = f"Escrow was successfully revoked by {(user.name).upper()} <{user.email}>. Reason: {reason}"
+        log_transaction_activity(instance, description, request_meta)
+
+        return Response(
+            success=True,
+            message=f"Escrow transaction revoked",
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -456,7 +556,7 @@ class LockEscrowFundsView(generics.CreateAPIView):
             return Response(
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
-                message="You do not have permission to perform this action",
+                message="Only buyer can lock funds",
             )
 
         txn = Transaction.objects.filter(reference=reference).first()
