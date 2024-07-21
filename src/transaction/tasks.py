@@ -53,5 +53,10 @@ def send_approved_escrow_transaction_email(email, values):
 
 
 @shared_task
+def send_revoked_escrow_transaction_email(email, values):
+    EmailClientV2.send_revoked_escrow_transaction_email(email, values)
+
+
+@shared_task
 def log_transaction_activity(transaction, description, request_meta):
     create_transaction_activity_log(transaction, description, request_meta)

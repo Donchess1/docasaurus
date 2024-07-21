@@ -76,6 +76,13 @@ class EmailClientV2:
         return cls.send_email(email, subject, html_content)
 
     @classmethod
+    def send_revoked_escrow_transaction_email(cls, email: str, context: dict):
+        template_name = "escrow_transaction_revoked.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Offer Revoked ❌"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
     def send_lock_funds_buyer_email(cls, email: str, context: dict):
         template_name = "escrow_funds_locked_buyer.html"
         html_content = render_to_string(template_name=template_name, context=context)
