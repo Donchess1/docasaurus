@@ -20,6 +20,8 @@ User = get_user_model()
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(max_length=255)
+    last_name = serializers.CharField(max_length=255)
     phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
     email = serializers.EmailField()
     referrer = serializers.ChoiceField(choices=REGISTRATION_REFERRER, default="OTHERS")
@@ -28,7 +30,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id",
-            "name",
+            "first_name",
+            "last_name",
             "email",
             "phone",
             "referrer",
@@ -50,6 +53,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         )
         if not is_valid:
             raise serializers.ValidationError(message)
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email already exists.")
         return validated_response["normalized_email"].lower()
 
     def validate_phone(self, phone):
@@ -63,11 +68,14 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        first_name = validated_data.get("first_name")
+        last_name = validated_data.get("last_name")
+        name = f"{first_name} {last_name}"
         user_data = {
             "email": validated_data["email"],
             "password": validated_data["password"],
             "phone": validated_data["phone"],
-            "name": validated_data["name"],
+            "name": name,
             "is_buyer": True,
         }
         user = User.objects.create_user(**user_data)
@@ -97,6 +105,8 @@ class RegisteredUserPayloadSerializer(serializers.Serializer):
 class RegisterSellerSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN])
     email = serializers.EmailField()
+    first_name = serializers.CharField(max_length=255)
+    last_name = serializers.CharField(max_length=255)
     business_name = serializers.CharField()
     business_description = serializers.CharField()
     address = serializers.CharField()
@@ -110,7 +120,8 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id",
-            "name",
+            "first_name",
+            "last_name",
             "email",
             "phone",
             "password",
@@ -139,6 +150,8 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
         )
         if not is_valid:
             raise serializers.ValidationError(message)
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email already exists.")
         return validated_response["normalized_email"].lower()
 
     def validate_phone(self, phone):
@@ -148,11 +161,14 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        first_name = validated_data.get("first_name")
+        last_name = validated_data.get("last_name")
+        name = f"{first_name} {last_name}"
         user_data = {
             "email": validated_data["email"],
             "password": validated_data["password"],
             "phone": validated_data["phone"],
-            "name": validated_data["name"],
+            "name": name,
             "is_seller": True,
         }
         user = User.objects.create_user(**user_data)

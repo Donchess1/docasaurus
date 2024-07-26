@@ -412,6 +412,12 @@ class TransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        if instance.status == "REVOKED":
+            return Response(
+                success=False,
+                message="Transaction is already revoked.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         escrow_action = instance.meta.get("escrow_action", None)
         if escrow_action:
             return Response(
@@ -476,7 +482,7 @@ class TransactionDetailView(generics.GenericAPIView):
             )
 
         instance.meta.update({"escrow_action": "REVOKED", "rejected_reason": reason})
-        instance.status = "CANCELLED"
+        instance.status = "REVOKED"
         instance.save()
 
         description = f"Escrow was successfully revoked by {(user.name).upper()} <{user.email}>. Reason: {reason}"

@@ -83,7 +83,11 @@ isort:
 	docker compose -f docker-compose.yml exec api isort . --skip /app/env --skip migrations --skip=__init__.py --skip=admin.py --skip /app/venv
 
 test:
+	docker compose -f docker-compose.yml exec api pytest --ds=core.settings_test
+
+run-test:
 	docker compose -f docker-compose.yml exec api pytest $(TEST_PATH)
+
 
 format:
 	make isort
