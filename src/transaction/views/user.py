@@ -441,14 +441,17 @@ class TransactionDetailView(generics.GenericAPIView):
             )
 
         # Reverse locked funds if the amount was deducted initially
-        if (
-            instance.escrowmeta.author == "BUYER"
-            and LockedAmount.objects.filter(transaction=instance).exists()
-        ):
+        if LockedAmount.objects.filter(transaction=instance).exists():
             amount_to_return = instance.amount + instance.charge
             reason = serializer.validated_data.get("reason")
 
-            buyer = instance.user_id
+            buyer = (
+                instance.user_id
+                if instance.escrowmeta.author == "BUYER"
+                else User.objects.filter(
+                    email=instance.escrowmeta.partner_email
+                ).first()
+            )
             buyer.credit_wallet(amount_to_return, instance.currency)
             buyer.update_locked_amount(
                 amount=instance.amount,
