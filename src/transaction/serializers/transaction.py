@@ -27,8 +27,8 @@ class EscrowTransactionSerializer(serializers.Serializer):
     delivery_date = serializers.DateField()
     amount = serializers.IntegerField()
     currency = serializers.ChoiceField(choices=CURRENCIES, default="NGN")
-    bank_code = serializers.CharField(max_length=255)
-    bank_account_number = serializers.CharField(max_length=10)
+    # bank_code = serializers.CharField(max_length=255)
+    # bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()
     # partner_number = serializers.CharField(
     #     validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False
@@ -48,35 +48,35 @@ class EscrowTransactionSerializer(serializers.Serializer):
             )
         return validated_response["normalized_email"].lower()
 
-    def validate_bank_code(self, value):
-        banks = cache.get("banks")
-        if banks is None:
-            banks = ThirdPartyAPI.list_banks()
-            if not banks:
-                raise serializers.ValidationError(
-                    "Error occurred while retrieving list of banks"
-                )
-        bank_codes = [item["code"] for item in banks.get("sorted_banks")]
-        if value not in bank_codes:
-            raise serializers.ValidationError("Invalid bank!")
-        return value
+    # def validate_bank_code(self, value):
+    #     banks = cache.get("banks")
+    #     if banks is None:
+    #         banks = ThirdPartyAPI.list_banks()
+    #         if not banks:
+    #             raise serializers.ValidationError(
+    #                 "Error occurred while retrieving list of banks"
+    #             )
+    #     bank_codes = [item["code"] for item in banks.get("sorted_banks")]
+    #     if value not in bank_codes:
+    #         raise serializers.ValidationError("Invalid bank!")
+    #     return value
 
     def validate(self, data):
-        bank_code = data.get("bank_code")
-        bank_account_number = data.get("bank_account_number")
+        # bank_code = data.get("bank_code")
+        # bank_account_number = data.get("bank_account_number")
 
-        banks = ThirdPartyAPI.list_banks()
-        if not banks:
-            raise serializers.ValidationError(
-                {"bank": ["Error fetching list of banks"]}
-            )
-        bank_name = banks["banks_map"].get(bank_code)
+        # banks = ThirdPartyAPI.list_banks()
+        # if not banks:
+        #     raise serializers.ValidationError(
+        #         {"bank": ["Error fetching list of banks"]}
+        #     )
+        # bank_name = banks["banks_map"].get(bank_code)
 
-        obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)
-        if obj["status"] in ["error", False]:
-            raise serializers.ValidationError({"bank": [obj["message"]]})
-        data["bank_name"] = bank_name
-        data["account_name"] = obj["data"]["account_name"]
+        # obj = ThirdPartyAPI.validate_bank_account(bank_code, bank_account_number)
+        # if obj["status"] in ["error", False]:
+        #     raise serializers.ValidationError({"bank": [obj["message"]]})
+        # data["bank_name"] = bank_name
+        # data["account_name"] = obj["data"]["account_name"]
 
         # Validate delivery date
         delivery_date = data.get("delivery_date")
