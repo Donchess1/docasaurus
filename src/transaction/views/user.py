@@ -418,13 +418,13 @@ class TransactionDetailView(generics.GenericAPIView):
                 message="Transaction is already revoked.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        escrow_action = instance.meta.get("escrow_action", None)
-        if escrow_action:
-            return Response(
-                success=False,
-                message=f"Transaction already {escrow_action.lower()}!",
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+        # escrow_action = instance.meta.get("escrow_action", None)
+        # if escrow_action:
+        #     return Response(
+        #         success=False,
+        #         message=f"Transaction already {escrow_action.lower()}!",
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #     )
 
         serializer = RevokeEscrowTransactionSerializer(data=request.data)
         if not serializer.is_valid():
