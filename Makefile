@@ -1,12 +1,12 @@
 build:
 	docker compose -f docker-compose.yml build
 build-staging:
-	docker compose -f docker-compose-staging.yml up --build --remove-orphans --scale api=2
+	docker compose -f docker-compose-staging.yml up --build --remove-orphans --scale api=1
 build-prod:
-	docker compose -f docker-compose-prod.yml up --build --remove-orphans --scale api=2
+	docker compose -f docker-compose-prod.yml up --build --remove-orphans --scale api=1
 
 up:
-	docker compose -f docker-compose.yml up --build --remove-orphans --scale api=2
+	docker compose -f docker-compose.yml up --build --remove-orphans --scale api=1
 up-staging:
 	docker compose -f docker-compose-staging.yml up
 up-prod:
@@ -54,6 +54,20 @@ makemigrations-staging:
 makemigrations-prod:
 	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py makemigrations
 
+createwallets:
+	docker compose -f docker-compose.yml run --rm api python3 manage.py create_wallets
+createwallets-staging:
+	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py create_wallets
+createwallets-prod:
+	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py create_wallets
+
+migratewallets:
+	docker compose -f docker-compose.yml run --rm api python3 manage.py migrate_wallets
+migratewallets-staging:
+	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py migrate_wallets
+migratewallets-prod:
+	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py migrate_wallets
+
 black-check:
 	docker compose -f docker-compose.yml exec api black --check --exclude=migrations --exclude=/app/venv --exclude=/app/env --exclude=venv --exclude=env .
 black-diff:
@@ -69,7 +83,11 @@ isort:
 	docker compose -f docker-compose.yml exec api isort . --skip /app/env --skip migrations --skip=__init__.py --skip=admin.py --skip /app/venv
 
 test:
+	docker compose -f docker-compose.yml exec api pytest --ds=core.settings_test
+
+run-test:
 	docker compose -f docker-compose.yml exec api pytest $(TEST_PATH)
+
 
 format:
 	make isort

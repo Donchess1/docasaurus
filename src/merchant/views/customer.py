@@ -1,6 +1,8 @@
 import os
 
+from django.contrib.auth import get_user_model
 from django.db.models import OuterRef, Q, Subquery
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import action
@@ -18,7 +20,8 @@ from merchant.serializers.merchant import (
 )
 from merchant.serializers.transaction import (
     ConfirmMerchantWalletWithdrawalSerializer,
-    InitiateMerchantWalletWithdrawalSerializer,
+    InitiateCustomerWalletWithdrawalByMerchantSerializer,
+    InitiateCustomerWalletWithdrawalSerializer,
     MerchantTransactionSerializer,
 )
 from merchant.utils import (
@@ -28,6 +31,7 @@ from merchant.utils import (
     validate_request,
     verify_otp,
 )
+from transaction.filters import TransactionFilter
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
@@ -44,6 +48,7 @@ CUSTOMER_WIDGET_BUYER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BUYER_BASE_URL"
 CUSTOMER_WIDGET_SELLER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_SELLER_BASE_URL", "")
 
 cache = Cache()
+User = get_user_model()
 
 
 class CustomerWidgetSessionView(generics.GenericAPIView):
@@ -79,11 +84,20 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
         token = self.jwt_client.sign(user.id)
         access_key = token["access_token"]
         merchant_id = str(merchant.id)
+
+        otp_key = generate_txn_reference()
+        value = {
+            "merchant_id": merchant_id,
+            "access_key": access_key,
+            "is_valid": True,
+        }
+        cache.set(otp_key, value, 60 * 60 * 5)  # 5 minutes
         url = (
-            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{generate_random_text(36)}{merchant_id}8q&Z!{access_key}&:%{generate_random_text(36)}"
+            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{otp_key}"
             if user_type == "BUYER"
-            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{generate_random_text(36)}{merchant_id}8q&Z!{access_key}&:%{generate_random_text(36)}"
+            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{otp_key}"
         )
+
         payload = {"session_lifetime": "120MINS", "url": url}
         return Response(
             success=True,
@@ -98,13 +112,14 @@ class CustomerTransactionListView(generics.ListAPIView):
     queryset = Transaction.objects.filter().order_by("-created_at")
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = CustomPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
     search_fields = ["reference", "customer"]
 
     @swagger_auto_schema(
         operation_description="Get Customer Transactions",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     def list(self, request, *args, **kwargs):
@@ -151,7 +166,9 @@ class CustomerTransactionListView(generics.ListAPIView):
             customer_queryset.filter(status="SUCCESSFUL")
         )
         qs = self.paginate_queryset(filtered_queryset)
-        serializer = self.get_serializer(qs, many=True)
+        serializer = self.get_serializer(
+            qs, context={"hide_escrow_details": True}, many=True
+        )
         self.pagination_class.message = "Transactions retrieved successfully"
         response = self.get_paginated_response(
             serializer.data,
@@ -178,7 +195,7 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
     @swagger_auto_schema(
         operation_description="Get A Customer transaction detail by ID",
         responses={
-            200: MerchantTransactionSerializer,
+            200: None,
         },
     )
     def get(self, request, id, *args, **kwargs):
@@ -258,7 +275,7 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
 
 
 class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
-    serializer_class = InitiateMerchantWalletWithdrawalSerializer
+    serializer_class = InitiateCustomerWalletWithdrawalSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     @swagger_auto_schema(
@@ -294,15 +311,71 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
 
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
+        currency = data.get("currency")
 
         dynamic_values = {
             "otp": otp,
             "merchant_platform": merchant_platform,
             "expiry_time_minutes": "10 minutes",
-            "action_description": f"confirm withdrawal of NGN {add_commas_to_transaction_amount(int(amount))} from your wallet",
+            "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet",
         }
         tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
             user.email, dynamic_values
+        )
+
+        return Response(
+            success=True,
+            message="Withdrawal initiated",
+            status_code=status.HTTP_200_OK,
+            data=payload,
+        )
+
+
+class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
+    serializer_class = InitiateCustomerWalletWithdrawalByMerchantSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    @authorized_api_call
+    def post(self, request):
+        merchant = request.merchant
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "merchant": merchant,
+            },
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        otp = generate_otp()
+        otp_key = generate_temp_id()
+
+        payload = {
+            "temp_id": otp_key,
+        }
+        value = {
+            "otp": otp,
+            "data": dict(data),
+            "is_valid": True,
+        }
+        cache.set(otp_key, value, 60 * 60 * 10)
+        merchant_platform = data.get("merchant_platform")
+        amount = data.get("amount")
+        currency = data.get("currency")
+        email = data.get("email")
+
+        dynamic_values = {
+            "otp": otp,
+            "merchant_platform": merchant_platform,
+            "expiry_time_minutes": "10 minutes",
+            "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet",
+        }
+        tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
+            email, dynamic_values
         )
 
         return Response(
@@ -357,6 +430,53 @@ class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
             else Response(
                 success=True,
                 message="Withdrawal is currently being processed",
+                status_code=status.HTTP_200_OK,
+                data=resource,
+            )
+        )
+
+
+class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
+    serializer_class = ConfirmMerchantWalletWithdrawalSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    @authorized_api_call
+    def post(self, request):
+        merchant = request.merchant
+        serializer = self.serializer_class(
+            data=request.data,
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        otp = data.get("otp")
+        temp_id = data.get("temp_id")
+
+        is_valid, resource = verify_otp(otp, temp_id)
+        if not is_valid:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=resource,
+            )
+        data = resource.get("data")
+        email = data.get("email")
+        user = User.objects.filter(email=email).first()
+        successful, resource = initiate_gateway_withdrawal_transaction(user, data)
+        return (
+            Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=resource,
+            )
+            if not successful
+            else Response(
+                success=True,
+                message="Withdrawal is currently being processed. You should get a notification shortly",
                 status_code=status.HTTP_200_OK,
                 data=resource,
             )

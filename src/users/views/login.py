@@ -80,6 +80,8 @@ class LoginView(GenericAPIView):
                 "phone_number_flagged": user.userprofile.phone_number_flagged,
                 "user": UserSerializer(user).data,
                 "merchant": str(merchant.id) if merchant else None,
+                "role": None,
+                "permissions": [],
             },
             status_code=status.HTTP_200_OK,
         )

@@ -115,9 +115,6 @@ def get_priv_key():
     return "{}_{}".format(f"{api_key_prefix}_priv", generate_short_uuid())
 
 
-MODES = ["LIVE", "TEST"]
-
-
 def generate_otp():
     return str(random.randint(100000, 999999))
 
@@ -181,12 +178,6 @@ def get_withdrawal_fee(amount):
     return charge, amount_payable
 
 
-def deconstruct_merchant_widget_key(key):
-    parts = key.split("&:%")[0].split("8q&Z!")
-    x = parts[0]
-    return {"token": parts[1], "merchant_id": x[36:]}
-
-
 def get_escrow_fees(amount):
     if amount < 100000:
         charge_percentage = 0.015  # 1.5%
@@ -195,6 +186,7 @@ def get_escrow_fees(amount):
     else:
         charge_percentage = 0.008  # 0.8%
 
+    charge_percentage = 0  # temporarily disable escrow fee
     charge = amount * charge_percentage
     amount_payable = amount + charge
 
@@ -223,7 +215,7 @@ PHONE_NUMBER_SERIALIZER_REGEX_NGN = RegexValidator(
     regex=r"^\d{11}$", message="Phone number must be 11 digits only."
 )
 RECORD_NOT_FOUND_PAYLOAD = {
-    "message": "Account resolve unsuccessful.",
+    "message": "Invalid bank details.",
     "status": False,
     "data": None,
 }
@@ -251,3 +243,11 @@ TEST_VOTER_LGA = "Ikeja"
 TEST_FNAME = "John"
 TEST_LNAME = "Doe"
 TEST_DOB = "1993-11-03"
+
+CURRENCIES = ["NGN", "USD"]
+MINIMUM_WALLET_DEPOSIT_AMOUNT = 500
+MINIMUM_ESCROW_TOPUP_AMOUNT = 100
+
+MODES = ["LIVE", "TEST"]
+REGISTRATION_REFERRER = ("NYSC", "RCCG", "LASU", "OTHERS")
+PAYMENT_GATEWAY_PROVIDER = "FLUTTERWAVE"

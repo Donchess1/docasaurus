@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
@@ -123,7 +125,7 @@ class DisputeDetailView(generics.GenericAPIView):
             buyer = User.objects.filter(
                 email=instance.transaction.escrowmeta.partner_email
             ).first()
-
+        currency = instance.transaction.currency
         if destination == "BUYER":
             # Revert the transaction plus charges to the buyer wallet.
             # Move amount from locked funds to buyer wallet balance
@@ -131,10 +133,27 @@ class DisputeDetailView(generics.GenericAPIView):
             amount_to_credit_buyer = int(
                 instance.transaction.amount + instance.transaction.charge
             )
-            profile = UserProfile.objects.get(user_id=buyer)
-            profile.wallet_balance += int(amount_to_credit_buyer)
-            profile.locked_amount -= int(instance.transaction.amount)
-            profile.save()
+            profile = buyer.userprofile
+            # profile.wallet_balance += int(amount_to_credit_buyer)
+            # profile.locked_amount -= Decimal(str(instance.transaction.amount))
+            # profile.save()
+            buyer.credit_wallet(amount_to_credit_buyer, currency)
+            buyer.update_locked_amount(
+                amount=instance.transaction.amount,
+                currency=currency,
+                mode="OUTWARD",
+                type="DEBIT",
+            )
+            # seller.userprofile.locked_amount -= Decimal(
+            #     str(instance.transaction.amount)
+            # )
+            # seller.userprofile.save()
+            seller.update_locked_amount(
+                amount=instance.transaction.amount,
+                currency=currency,
+                mode="INWARD",
+                type="DEBIT",
+            )
         else:
             # Move amount from buyer Locked amount to unlocked amount
             # Move amount to seller wallet and remove charges only if there are no free transaction credit
@@ -148,10 +167,33 @@ class DisputeDetailView(generics.GenericAPIView):
                 seller.userprofile.free_escrow_transactions -= 1
                 amount_to_credit_seller = int(instance.transaction.amount)
 
-            seller.userprofile.wallet_balance += amount_to_credit_seller
-            seller.userprofile.save()
-            buyer.userprofile.locked_amount -= int(instance.transaction.amount)
-            buyer.userprofile.save()
+            # seller.userprofile.wallet_balance += amount_to_credit_seller
+            # seller.userprofile.locked_amount -= Decimal(
+            #     str(instance.transaction.amount)
+            # )
+            # seller.userprofile.save()
+            seller.credit_wallet(amount_to_credit_seller, currency)
+            seller.update_locked_amount(
+                amount=instance.transaction.amount,
+                currency=currency,
+                mode="INWARD",
+                type="DEBIT",
+            )
+
+            # buyer.userprofile.locked_amount -= int(instance.transaction.amount)
+            # buyer.userprofile.unlocked_amount += int(instance.transaction.amount)
+            # buyer.userprofile.save()
+            buyer.update_locked_amount(
+                amount=instance.transaction.amount,
+                currency=currency,
+                mode="OUTWARD",
+                type="DEBIT",
+            )
+            buyer.update_unlocked_amount(
+                amount=instance.transaction.amount,
+                currency=currency,
+                type="CREDIT",
+            )
 
         instance.status = "RESOLVED"
         instance.meta = {"destination": destination, "admin": request.user.email}

@@ -5,7 +5,6 @@ from rest_framework.permissions import AllowAny
 
 from common.serializers.banks import (
     BankAccountPayloadSerializer,
-    BankAccountSerializer,
     BankListSerializer,
     ValidateBankAccountSerializer,
 )
@@ -25,7 +24,6 @@ class ListBanksView(GenericAPIView):
         operation_description="Retrieve list of banks",
     )
     def get(self, request):
-        banks = None
         banks = self.cache.get("banks")
         if banks is None:
             banks = self.third_party.list_banks()

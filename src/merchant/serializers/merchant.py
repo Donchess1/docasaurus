@@ -12,8 +12,9 @@ from merchant.utils import (
 )
 from users.models import CustomUser, UserProfile
 from users.models.bank_account import BankAccount
+from users.models.wallet import Wallet
 from users.serializers.profile import UserProfileSerializer
-from utils.email import validate_email_body
+from utils.email import validate_email_address
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, generate_random_text
 
 User = get_user_model()
@@ -93,8 +94,6 @@ class MerchantSerializer(serializers.ModelSerializer):
 
 
 class MerchantDetailSerializer(serializers.ModelSerializer):
-    wallet_balance = serializers.SerializerMethodField()
-
     class Meta:
         model = Merchant
         fields = (
@@ -102,36 +101,62 @@ class MerchantDetailSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "address",
-            "wallet_balance",
             "created_at",
             "updated_at",
         )
 
-    def get_wallet_balance(self, obj):
-        user_profile = UserProfile.objects.get(user_id=obj.user_id)
-        # data = UserProfileSerializer(user_profile).data
-        return str(user_profile.wallet_balance)
+
+class MerchantWalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = (
+            "balance",
+            "currency",
+        )
+
+
+class MerchantCustomerWalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = (
+            # "id",
+            "currency",
+            "balance",
+            "locked_amount_outward",
+            "locked_amount_inward",
+            "unlocked_amount",
+            "withdrawn_amount",
+            # "created_at",
+            # "updated_at",
+        )
 
 
 class CustomerUserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     phone_number = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
-    user_type = serializers.SerializerMethodField()
+    # user_type = serializers.SerializerMethodField()
     # merchant_name = serializers.SerializerMethodField()
+    wallets = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
         fields = (
-            # "id",
-            "user_type",
+            "id",
+            # "user_type",
             "created_at",
             "updated_at",
             "full_name",
             "phone_number",
             # "merchant_name",
             "email",
+            "wallets",
         )
+
+    def __init__(self, *args, **kwargs):
+        super(CustomerUserProfileSerializer, self).__init__(*args, **kwargs)
+        if self.context.get("hide_wallet_details"):
+            self.fields.pop("wallets")
 
     def get_merchant(self, *args, **kwargs):
         self.merchant = self.context.get("merchant", None)
@@ -156,11 +181,11 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     def get_email(self, obj):
         return obj.user.email
 
-    def get_user_type(self, obj):
-        customer_merchant_instance = self.get_merchant_customer_instance(obj)
-        if customer_merchant_instance:
-            return customer_merchant_instance.user_type
-        return None
+    # def get_user_type(self, obj):
+    #     customer_merchant_instance = self.get_merchant_customer_instance(obj)
+    #     if customer_merchant_instance:
+    #         return customer_merchant_instance.user_type
+    #     return None
 
     def get_merchant_name(self, obj):
         customer_merchant_instance = self.get_merchant_customer_instance(obj)
@@ -168,9 +193,20 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
             return customer_merchant_instance.merchant.name
         return None
 
+    def get_wallets(self, obj):
+        customer_merchant_instance = self.get_merchant_customer_instance(obj)
+        if customer_merchant_instance:
+            wallets = Wallet.objects.filter(
+                user=customer_merchant_instance.customer.user
+            )
+            return MerchantCustomerWalletSerializer(wallets, many=True).data
+        return []
+
 
 class RegisterCustomerSerializer(serializers.Serializer):
-    customer_type = serializers.ChoiceField(choices=("BUYER", "SELLER"))
+    customer_type = serializers.ChoiceField(
+        choices=("BUYER", "SELLER", "CUSTOM"),
+    )
     email = serializers.EmailField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
@@ -183,28 +219,27 @@ class RegisterCustomerSerializer(serializers.Serializer):
         phone_number = data.get("phone_number")
         merchant = self.context.get("merchant")
 
-        obj = validate_email_body(email)
-        if obj[0]:
-            raise serializers.ValidationError({"email": obj[1]})
+        is_valid, message, validated_response = validate_email_address(
+            email, check_deliverability=True
+        )
+        if not is_valid:
+            raise serializers.ValidationError({"email": message})
 
         if customer_phone_numer_exists_for_merchant(merchant, phone_number):
             raise serializers.ValidationError(
-                {
-                    "phone_number": "This phone number is already in use by another customer."
-                }
+                {"phone_number": "Customer with phone number already exists."}
             )
 
-        user = User.objects.filter(email=email).first()
+        user = User.objects.filter(
+            email=validated_response["normalized_email"].lower()
+        ).first()
         if user:
             if customer_with_email_exists_for_merchant(merchant, user):
                 raise serializers.ValidationError(
-                    {"email": "This email is already in use by another customer."}
+                    {"email": "Customer with email already exists."}
                 )
+        data["email"] = validated_response["normalized_email"].lower()
         return data
-
-    def to_internal_value(self, data):
-        data["email"] = data.get("email", "").lower()
-        return super().to_internal_value(data)
 
     @transaction.atomic
     def create(self, validated_data):
@@ -221,6 +256,58 @@ class RegisterCustomerSerializer(serializers.Serializer):
         if error:
             raise serializers.ValidationError(error)
         return user
+
+
+class UpdateCustomerSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    phone_number = serializers.CharField(
+        validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False
+    )
+
+    def validate(self, data):
+        if not data:
+            raise serializers.ValidationError(
+                {"error": "At least one field must be updated."}
+            )
+        phone_number = data.get("phone_number")
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        merchant = self.context.get("merchant")
+
+        if customer_phone_numer_exists_for_merchant(merchant, phone_number):
+            raise serializers.ValidationError(
+                {"phone_number": "Customer with phone number already exists."}
+            )
+        return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        customer_merchant_instance = self.context.get("customer_merchant_instance")
+        customer_merchant_instance_name = customer_merchant_instance.alternate_name
+        first_name = validated_data.get(
+            "first_name", customer_merchant_instance_name.split(" ")[0]
+        )
+        last_name = validated_data.get(
+            "last_name", customer_merchant_instance_name.split(" ")[1]
+        )
+        name = f"{first_name} {last_name}"
+        phone_number = validated_data.get(
+            "phone_number", customer_merchant_instance.alternate_phone_number
+        )
+        merchant = self.context.get("merchant")
+        customer_merchant_instance.alternate_phone_number = phone_number
+        customer_merchant_instance.alternate_name = name
+        customer_merchant_instance.name_match = (
+            True if name == customer_merchant_instance.customer.user.name else False
+        )
+        phone_number_match = (
+            True
+            if phone_number == customer_merchant_instance.customer.user.phone
+            else False
+        )
+        customer_merchant_instance.save()
+        return customer_merchant_instance
 
 
 class CustomerWidgetSessionSerializer(serializers.Serializer):
@@ -267,6 +354,11 @@ class PayoutConfigSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def __init__(self, *args, **kwargs):
+        super(PayoutConfigSerializer, self).__init__(*args, **kwargs)
+        if self.context.get("view_action") in ["list", "retrieve"]:
+            self.fields.pop("merchant")
+
     def validate_buyer_amount(self, value):
         buyer_charge_type = self.initial_data.get("buyer_charge_type")
         if (
@@ -288,7 +380,7 @@ class PayoutConfigSerializer(serializers.ModelSerializer):
         merchant = self.context.get("merchant")
         if PayoutConfig.objects.filter(merchant=merchant, name=name).exists():
             raise serializers.ValidationError(
-                {"name": "Payout config with this name already exists."}
+                {"name": "Payout configuration with this name already exists."}
             )
         return data
 

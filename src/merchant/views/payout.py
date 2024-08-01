@@ -8,7 +8,10 @@ from utils.response import Response
 
 class PayoutConfigViewSet(viewsets.ModelViewSet):
     queryset = PayoutConfig.objects.all().order_by("-created_at")
-    http_method_names = ["get", "post", "delete"]
+    http_method_names = [
+        "get",
+        "post",
+    ]
     serializer_class = PayoutConfigSerializer
 
     @authorized_api_call
@@ -34,19 +37,21 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
             success=True,
             status_code=status.HTTP_201_CREATED,
             data=serializer.data,
-            message="Payout Config Created",
+            message="Payout Configuration Created",
         )
 
     @authorized_api_call
     def list(self, request, *args, **kwargs):
         merchant = request.merchant
         queryset = self.queryset.filter(merchant=merchant)
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = self.get_serializer(
+            queryset, context={"view_action": "retrieve"}, many=True
+        )
         return Response(
             success=True,
             status_code=status.HTTP_200_OK,
             data=serializer.data,
-            message="Payout Config retrieved successfully",
+            message="Payout Configurations retrieved successfully",
         )
 
     @authorized_api_call
@@ -56,10 +61,10 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
         if instance.merchant != merchant:
             return Response(
                 success=False,
-                message="Payout config does not belong to this merchant",
-                status=status.HTTP_403_FORBIDDEN,
+                message="Forbidden action.",
+                status_code=status.HTTP_403_FORBIDDEN,
             )
-        serializer = self.get_serializer(instance)
+        serializer = self.get_serializer(instance, context={"view_action": "retrieve"})
         return Response(
             success=True,
             status_code=status.HTTP_200_OK,
@@ -74,18 +79,18 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
         if instance.merchant != merchant:
             return Response(
                 success=False,
-                message="Payout config does not belong to this merchant",
-                status=status.HTTP_403_FORBIDDEN,
+                message="Forbidden action",
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         if instance.is_active:
             return Response(
                 success=False,
                 message="Active payout configuration cannot be deleted",
-                status=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         self.perform_destroy(instance)
         return Response(
             success=True,
             message="Payout config deleted successfully",
-            status=status.HTTP_204_NO_CONTENT,
+            status_code=status.HTTP_204_NO_CONTENT,
         )

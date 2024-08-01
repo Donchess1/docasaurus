@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from transaction.serializers.locked_amount import LockedAmountSerializer
-from utils.transaction import get_escrow_transaction_users
+from transaction.services import get_escrow_transaction_parties_info
 
 
 class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
@@ -22,6 +22,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
             "delivery_date",
             "parties",
             "delivery_tolerance",
+            "buyer_consent_to_unlock",
             "charge",
             "meta",
             "created_at",
@@ -32,24 +33,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
         return obj.transaction_id.user_id.name
 
     def get_parties(self, obj):
-        users = get_escrow_transaction_users(obj.transaction_id)
-        buyer = users.get("BUYER")
-        seller = users.get("SELLER")
-        merchant = users.get("MERCHANT")
-        parties = {
-            "buyer": {
-                "name": buyer["name"] if buyer else "",
-                "email": buyer["email"] if buyer else "",
-            },
-            "seller": {
-                "name": seller["name"] if seller else "",
-                "email": seller["email"] if seller else "",
-            },
-            "merchant": {
-                "name": merchant["name"] if merchant else "",
-                "email": merchant["email"] if merchant else "",
-            },
-        }
+        parties = get_escrow_transaction_parties_info(obj.transaction_id)
         return parties
 
 
@@ -150,3 +134,7 @@ class UpdateEscrowTransactionSerializer(serializers.Serializer):
             )
 
         return data
+
+
+class RevokeEscrowTransactionSerializer(serializers.Serializer):
+    reason = serializers.CharField()

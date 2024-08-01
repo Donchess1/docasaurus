@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from utils.email import validate_email_body
+from utils.email import validate_email_address
 
 User = get_user_model()
 
@@ -10,14 +10,17 @@ class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        obj = validate_email_body(value)
-        if obj[0]:
-            raise serializers.ValidationError(obj[1])
-        try:
-            User.objects.get(email=value)
-        except User.DoesNotExist:
+        is_valid, message, validated_response = validate_email_address(
+            value, check_deliverability=True
+        )
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        user = User.objects.filter(
+            email=validated_response["normalized_email"].lower()
+        ).first()
+        if not user:
             raise serializers.ValidationError("User with this email does not exist.")
-        return value.lower()
+        return validated_response["normalized_email"].lower()
 
 
 class ResetPasswordSerializer(serializers.Serializer):

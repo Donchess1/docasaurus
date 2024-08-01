@@ -1,45 +1,56 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from merchant.views.payout import PayoutConfigViewSet
-
-router = DefaultRouter()
-router.register(r"payout-config", PayoutConfigViewSet)
 from merchant.views.base import (
     MerchantApiKeyView,
     MerchantCreateView,
+    MerchantCustomerDetailView,
     MerchantCustomerView,
     MerchantListView,
     MerchantProfileView,
+    MerchantWalletsView,
 )
 from merchant.views.customer import (
+    ConfirmMerchantWalletWithdrawalByMerchantView,
     ConfirmMerchantWalletWithdrawalView,
     CustomerTransactionDetailView,
     CustomerTransactionListView,
     CustomerWidgetSessionView,
+    InitiateMerchantWalletWithdrawalByMerchantView,
     InitiateMerchantWalletWithdrawalView,
 )
+from merchant.views.payout import PayoutConfigViewSet
 from merchant.views.transaction import (
     InitiateMerchantEscrowTransactionView,
+    MandateFundsReleaseView,
     MerchantEscrowTransactionRedirectView,
     MerchantSettlementTransactionListView,
+    MerchantTransactionActivityLogView,
+    MerchantTransactionDetailView,
     MerchantTransactionListView,
-    UnlockEscrowFundsView,
+    ReleaseEscrowFundsByMerchantView,
+    UnlockEscrowFundsByBuyerView,
 )
 
+router = DefaultRouter()
+router.register(r"payout-config", PayoutConfigViewSet)
 urlpatterns = [
-    path("", include(router.urls)),
     path("list", MerchantListView.as_view(), name="list-merchants"),
-    path("profile", MerchantProfileView.as_view(), name="merchant-profile"),
     path("create", MerchantCreateView.as_view(), name="create-merchants"),
     path("api-key", MerchantApiKeyView.as_view(), name="merchant-api-key"),
+    # =================================================================
+    # MERCHANT AUTHORIZED CALLS VIA API KEY
+    # =================================================================
+    path("", include(router.urls)),  # payout config
+    path("profile", MerchantProfileView.as_view(), name="merchant-profile"),
+    path("wallets", MerchantWalletsView.as_view(), name="merchant-wallets"),
     path(
         "customers", MerchantCustomerView.as_view(), name="register-merchant-customer"
     ),
     path(
-        "customers/unlock-funds",
-        UnlockEscrowFundsView.as_view(),
-        name="unlock-customer-escrow-funds",
+        "customers/<int:id>",
+        MerchantCustomerDetailView.as_view(),
+        name="merchant-customer-user-detail",
     ),
     path(
         "transactions",
@@ -47,9 +58,60 @@ urlpatterns = [
         name="merchant-transactions",
     ),
     path(
+        "transactions/<str:id>",
+        MerchantTransactionDetailView.as_view(),
+        name="merchant-transaction-detail",
+    ),
+    path(
+        "transactions/<str:id>/activity-logs",
+        MerchantTransactionActivityLogView.as_view(),
+        name="merchant-transaction-detail",
+    ),
+    path(
         "settlements",
         MerchantSettlementTransactionListView.as_view(),
         name="merchant-settlement-transactions",
+    ),
+    path(
+        "customer-transactions/<str:id>/mandate-release",
+        MandateFundsReleaseView.as_view(),
+        name="consent-funds-release",
+    ),
+    path(
+        "customer-transactions/<str:id>/release-funds",
+        ReleaseEscrowFundsByMerchantView.as_view(),
+        name="unlock-customer-escrow-funds-merchant",
+    ),
+    path(
+        "initiate-customer-withdrawal",
+        InitiateMerchantWalletWithdrawalByMerchantView.as_view(),
+        name="initiate-customer-wallet-withdrawal",
+    ),
+    path(
+        "confirm-customer-withdrawal",
+        ConfirmMerchantWalletWithdrawalByMerchantView.as_view(),
+        name="confirm-customer-wallet-withdrawal",
+    ),
+    # =================================================================
+    # ESCROW INITIALIZATION & VERIFICATION
+    # =================================================================
+    path(
+        "initiate-escrow",
+        InitiateMerchantEscrowTransactionView.as_view(),
+        name="initiate-merchant-escrow",
+    ),
+    path(
+        "escrow-redirect",
+        MerchantEscrowTransactionRedirectView.as_view(),
+        name="validate-merchant-escrow-payment",
+    ),
+    # =================================================================
+    # MERCHANT WIDGET API
+    # =================================================================
+    path(
+        "generate-widget-session",
+        CustomerWidgetSessionView.as_view(),
+        name="customer-widget-session",
     ),
     path(
         "customer-transactions",
@@ -57,14 +119,14 @@ urlpatterns = [
         name="customer-transactions",
     ),
     path(
+        "customers/unlock-funds",
+        UnlockEscrowFundsByBuyerView.as_view(),
+        name="unlock-customer-escrow-funds-buyer",
+    ),
+    path(
         "customer-transactions/<uuid:id>",
         CustomerTransactionDetailView.as_view(),
         name="customer-transaction-detail-view",
-    ),
-    path(
-        "initiate-escrow",
-        InitiateMerchantEscrowTransactionView.as_view(),
-        name="initiate-merchant-escrow",
     ),
     path(
         "customers/initiate-withdrawal",
@@ -76,14 +138,6 @@ urlpatterns = [
         ConfirmMerchantWalletWithdrawalView.as_view(),
         name="confirm-wallet-withdrawal",
     ),
-    path(
-        "escrow-redirect",
-        MerchantEscrowTransactionRedirectView.as_view(),
-        name="validate-merchant-escrow-payment",
-    ),
-    path(
-        "generate-widget-session",
-        CustomerWidgetSessionView.as_view(),
-        name="customer-widget-session",
-    ),
+    # =================================================================
+    # =================================================================
 ]

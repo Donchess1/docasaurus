@@ -5,45 +5,55 @@ class BaseNotification:
 
 
 class WalletDepositNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Deposit Confirmation"
-        CONTENT = f"You deposited {amount} into your Wallet. Your funds are now securely stored with us."
+        CONTENT = f"You deposited {currency} {amount} into your Wallet. Your funds are now securely stored with us. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 class WalletWithdrawalNotification(BaseNotification):
-    def __init__(self, amount):
+    def __init__(self, amount, currency):
         TITLE = "Withdrawal Confirmation"
-        CONTENT = f"You withdrew {amount} from your Wallet. Your requested amount has been processed."
+        CONTENT = f"You withdrew {currency} {amount} from your Wallet. Your requested amount has been processed into your bank account. Kindly check your email for more information."
+        super().__init__(TITLE, CONTENT)
+
+
+class FundsLockedBuyerNotification(BaseNotification):
+    def __init__(self, amount, currency):
+        TITLE = "Locked Funds Notification"
+        CONTENT = f"You have locked {currency} {amount}. This ensures an extra layer of security for your account. Kindly check your email for more information."
+        super().__init__(TITLE, CONTENT)
+
+
+class FundsLockedSellerNotification(BaseNotification):
+    def __init__(self, amount, currency):
+        TITLE = "Locked Funds Confirmation"
+        CONTENT = f"{currency} {amount} has been locked for you. Your account is now more secure with the additional locking feature. Kindly check your email for more information."
+        super().__init__(TITLE, CONTENT)
+
+
+class FundsUnlockedBuyerNotification(BaseNotification):
+    def __init__(self, amount, currency):
+        TITLE = "Unlocked Funds Notification"
+        CONTENT = f"You have unlocked {currency} {amount}. Your account is now flexible for further transactions. Kindly check your email for more information."
+        super().__init__(TITLE, CONTENT)
+
+
+class FundsUnlockedSellerNotification(BaseNotification):
+    def __init__(self, amount, currency):
+        TITLE = "Unlocked Funds Confirmation"
+        CONTENT = f"{currency} {amount} has been unlocked for you. You now have full access to your account for transactions. Kindly check your email for more information."
         super().__init__(TITLE, CONTENT)
 
 
 ESCROW_TRANSACTION_APPROVED_TITLE = "Transaction Approved"
-ESCROW_TRANSACTION_APPROVED_CONTENT = "Your transaction has been Approved. Thank you for choosing MyBalance for your financial transactions."
+ESCROW_TRANSACTION_APPROVED_CONTENT = "Your transaction has been approved. Thank you for choosing MyBalance for your financial transactions. Kindly check your email for more information."
 
 ESCROW_TRANSACTION_REJECTED_TITLE = "Transaction Rejected"
-ESCROW_TRANSACTION_REJECTED_CONTENT = "Your transaction has been Rejected. Thank you for choosing MyBalance for your financial transactions."
-
-FUNDS_LOCKED_BUYER_TITLE = "Funds Lock Notification"
-FUNDS_LOCKED_BUYER_CONTENT = (
-    "You have locked funds. This ensures an extra layer of security for your account."
-)
-
-FUNDS_LOCKED_CONFIRMATION_TITLE = "Funds Lock Confirmation"
-FUNDS_LOCKED_CONFIRMATION_CONTENT = "Funds have been locked for you. Your account is now more secure with the additional locking feature."
-
-FUNDS_UNLOCKED_BUYER_TITLE = "Funds Unlock Notification"
-FUNDS_UNLOCKED_BUYER_CONTENT = (
-    "You have unlocked funds. Your account is now flexible for further transactions."
-)
-
-FUNDS_UNLOCKED_CONFIRMATION_TITLE = "Funds Unlock Confirmation"
-FUNDS_UNLOCKED_CONFIRMATION_CONTENT = "Funds have been unlocked for you. You now have full access to your account for transactions."
+ESCROW_TRANSACTION_REJECTED_CONTENT = "Your transaction has been rejected. Thank you for choosing MyBalance for your financial transactions. Kindly check your email for more information."
 
 DISPUTE_RAISED_NOTIFICATION_TITLE = "Dispute Raised Confirmation"
-DISPUTE_RAISED_NOTIFICATION_CONTENT = (
-    "You raised a dispute. We are reviewing the matter and will update you shortly."
-)
+DISPUTE_RAISED_NOTIFICATION_CONTENT = "You raised a dispute. We are reviewing the matter and will update you shortly. Kindly check your email for more information."
 
 DISPUTE_RESOLUTION_NOTIFICATION_TITLE = "Dispute Resolution Notification"
-DISPUTE_RESOLUTION_NOTIFICATION_CONTENT = "Your dispute has been resolved. Thank you for your patience. If you have any further concerns, feel free to reach out."
+DISPUTE_RESOLUTION_NOTIFICATION_CONTENT = "Your dispute has been resolved. Thank you for your patience. Kindly check your email for more information. If you have any further concerns, feel free to reach out."

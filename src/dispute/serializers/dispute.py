@@ -69,8 +69,10 @@ class DisputeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Delivery date is not due yet")
         if Dispute.objects.filter(transaction=value).exists():
             raise serializers.ValidationError(
-                "A dispute has already been created for this transaction."
+                "Dispute already exists for this transaction."
             )
+        if value.status == "FUFILLED":
+            raise serializers.ValidationError("Transaction was already fulfilled!")
         escrow_action = value.meta.get("escrow_action")
         if not escrow_action:
             raise serializers.ValidationError(

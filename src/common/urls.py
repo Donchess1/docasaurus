@@ -3,6 +3,7 @@ from django.urls import path
 from common.views.banks import ListBanksView, ValidateBankAccountView
 from common.views.bvn import ValidateBVNView
 from common.views.driver_license import ValidateDriverLicenseView
+from common.views.email import ValidateEmailAddressView
 from common.views.merchant import TrimMerchantTokenView
 from common.views.nin import ValidateNINView
 from common.views.passport import ValidatePassportView
@@ -17,6 +18,7 @@ from common.views.wallet import (
     WalletWithdrawalFeeView,
     WalletWithdrawalView,
 )
+from common.views.webhook import FlwWebhookView
 
 urlpatterns = [
     # path("banks", ListBanksView.as_view(), name="list-banks"),
@@ -29,6 +31,11 @@ urlpatterns = [
     # path("lookup/passport", ValidatePassportView.as_view(), name="validate-international-passport"),
     path(
         "lookup/nuban", ValidateBankAccountView.as_view(), name="validate-bank-account"
+    ),
+    path(
+        "lookup/email",
+        ValidateEmailAddressView.as_view(),
+        name="validate-email-address",
     ),
     path("fund-wallet", FundWalletView.as_view(), name="fund-wallet"),
     path(
@@ -54,4 +61,9 @@ urlpatterns = [
         name="withdraw-funds-callback",
     ),
     path("upload", UploadMediaView.as_view(), name="upload-media"),
+    path(
+        "flw-webhook",
+        FlwWebhookView.as_view(),
+        name="flw-webhook",
+    ),
 ]
