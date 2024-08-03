@@ -11,7 +11,7 @@ class FileUploadClient:
     CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
     CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY")
     CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET")
-    MAX_IMAGE_SIZE_BYTES = 1024 * 1024  # 1MB in bytes
+    MAX_IMAGE_SIZE_BYTES = 1024 * 1024 * 2  # 2MB in bytes
     ALLOWED_IMAGE_FORMATS = ["jpg", "jpeg"]
 
     @classmethod
@@ -33,7 +33,7 @@ class FileUploadClient:
         return uploaded_file.size <= cls.MAX_IMAGE_SIZE_BYTES
 
     @classmethod
-    def execute(cls, file):
+    def execute(cls, file, cloudinary_folder="MYBALANCE"):
         if not cls.is_image(file):
             return {
                 "message": "Invalid file format. Only image (JPG) are allowed",
@@ -48,7 +48,7 @@ class FileUploadClient:
             }
         cls.initialize_cloudinary()
         try:
-            result = upload(file, folder="MYBALANCE")
+            result = upload(file, folder=cloudinary_folder)
             file_url = result["secure_url"]
             return {
                 "message": "Upload Successful",

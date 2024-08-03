@@ -29,6 +29,15 @@ urlpatterns = [
     path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
     path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
     path(
+        "resend-otp",
+        ResendAccountVerificationOTPView.as_view(),
+        name="resend-account-otp",
+    ),
+    path("verify-account", VerifyOTPView.as_view(), name="verify-email"),
+    path("register", RegisterBuyerView.as_view(), name="register-buyer"),
+    path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
+    path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
+    path(
         "bank-accounts",
         UserBankAccountListCreateView.as_view(),
         name="user-bank-accounts",
