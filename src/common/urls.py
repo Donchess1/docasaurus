@@ -8,6 +8,7 @@ from common.views.merchant import TrimMerchantTokenView
 from common.views.nin import ValidateNINView
 from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
+from common.views.upload import UploadMediaView
 from common.views.voter_card import ValidateVoterCardView
 from common.views.wallet import (
     FundEscrowTransactionRedirectView,
@@ -59,6 +60,7 @@ urlpatterns = [
         WalletWithdrawalCallbackView.as_view(),
         name="withdraw-funds-callback",
     ),
+    path("upload", UploadMediaView.as_view(), name="upload-media"),
     path(
         "flw-webhook",
         FlwWebhookView.as_view(),
