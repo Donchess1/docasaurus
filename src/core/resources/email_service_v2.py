@@ -209,11 +209,15 @@ class EmailClientV2:
             print("SUCCESSFUL -->", response == 1)
             logger.info(f"{subject.upper()} - EMAIL SUCCESSFUL ✅")
             # TODO: Log Email Message and Status
-            return (f"{subject.upper()} - EMAIL SUCCESSFUL ✅", "SUCCESSFUL -->", response == 1)
+            return (
+                f"{subject.upper()} - EMAIL SUCCESSFUL ✅",
+                "SUCCESSFUL -->",
+                response == 1,
+            )
         except Exception as e:
             err = str(e)
             print(err)
             logger.error(f"{subject.upper()} - EMAIL FAILED ❌")
             logger.error(f"Error: {err}")
             # TODO: Log Email Message and Status
-            return (f"{subject.upper()} - EMAIL FAILED ❌")
+            return f"{subject.upper()} - EMAIL FAILED ❌"
