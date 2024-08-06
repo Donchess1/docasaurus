@@ -6,11 +6,13 @@ from rest_framework import generics, mixins, permissions, status, viewsets
 from console.serializers.base import ConsoleUserWalletSerializer
 from users.models.profile import UserProfile
 from users.models.wallet import Wallet
+from users.serializers.profile import UserProfileSerializer
 from users.serializers.user import (
     CheckUserByEmailViewSerializer,
     CheckUserByPhoneNumberViewSerializer,
     UserSerializer,
 )
+from users.services import get_user_profile_data
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.utils import REGISTRATION_REFERRER
@@ -24,11 +26,16 @@ class UserViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = User.objects.all().order_by("-created_at")
+    queryset = User.objects.all().exclude(is_admin=True).order_by("-created_at")
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = CustomPagination
-    http_method_names = ["get", "post", "delete", "put"]
+    http_method_names = ["get"]
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return UserProfileSerializer
+        return UserSerializer
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -46,12 +53,11 @@ class UserViewSet(
                 message=f"User with id {pk} does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
-        serializer = self.get_serializer(user)
+        data = get_user_profile_data(user)
         return Response(
             success=True,
             message="User fetched successfully",
-            data=serializer.data,
+            data=data,
             status_code=status.HTTP_200_OK,
         )
 
