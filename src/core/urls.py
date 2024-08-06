@@ -32,6 +32,6 @@ urlpatterns = [
     path("v1/transaction/", include("transaction.urls")),
     path("v1/dispute/", include("dispute.urls")),
     path("v1/notifications/", include("notifications.urls")),
-    path("v1/merchants/", include("merchant.urls")),
+    # path("v1/merchants/", include("merchant.urls")),
     path("v1/blog/", include("blog.urls")),
 ]
