@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmailClientV2:
-    FROM_EMAIL = f"MyBalance <mybalance@oinvent.com>"
+    FROM_EMAIL = settings.FROM_EMAIL
 
     @classmethod
     def send_account_verification_email(cls, email: str, context: dict):
@@ -122,6 +122,75 @@ class EmailClientV2:
         template_name = "dispute_raised_recipient.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Escrow Transaction Disputed 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_lock_funds_merchant_buyer_email(cls, email: str, context: dict):
+        template_name = "merchant/escrow_funds_locked_buyer.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Locked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_lock_funds_merchant_seller_email(cls, email: str, context: dict):
+        template_name = "merchant/escrow_funds_locked_seller.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Locked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_lock_funds_merchant_email(cls, email: str, context: dict):
+        template_name = "merchant/escrow_funds_locked_merchant.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Locked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_unlock_funds_merchant_buyer_email(cls, email: str, context: dict):
+        template_name = "merchant/escrow_funds_unlocked_buyer.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Unlocked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_unlock_funds_merchant_seller_email(cls, email: str, context: dict):
+        template_name = "merchant/escrow_funds_unlocked_seller.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Funds Unlocked 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_unlock_funds_merchant_email(cls, email: str, context: dict):
+        template_name = "merchant/escrow_funds_unlocked_merchant.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Settlement 🎉"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_merchant_wallet_withdrawal_confirmation_email(
+        cls, email: str, context: dict
+    ):
+        template_name = "merchant/merchant_wallet_withdrawal_confirmation_code.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "MyBalance Confirmation Code 🔐"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_dispute_raised_via_merchant_widget_author_email(
+        cls, email: str, context: dict
+    ):
+        template_name = "merchant/dispute_raised_author.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Dispute Raised"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
+    def send_dispute_raised_via_merchant_widget_receiver_email(
+        cls, email: str, context: dict
+    ):
+        template_name = "merchant/dispute_raised_receipient.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Escrow Transaction Disputed"
         return cls.send_email(email, subject, html_content)
 
     # ENTRY POINT

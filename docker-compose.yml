@@ -66,6 +66,22 @@ services:
     networks:
       - myb
 
+  dashboard:
+    <<: *api
+    command: celery --broker=${REDIS_URL} flower --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+      - redis
+      - celery
+    networks:
+      - myb
+
 volumes:
   myb-dev-static-data:
   myb-dev-db:
