@@ -112,7 +112,7 @@ class UserDisputeView(generics.ListCreateAPIView):
             "date": parse_datetime(dispute.created_at),
             "transaction_id": transaction.reference,
             "item_name": transaction.meta.get("title"),
-            "dispute_author_is_seller": not dispute_author_is_seller,
+            "dispute_author_is_seller": dispute_author_is_seller,
             "partner_name": user.name,
             "dispute_reason": reason,
             "amount": transaction_amount,
