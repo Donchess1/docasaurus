@@ -645,6 +645,12 @@ class WalletWithdrawalView(GenericAPIView):
         user = request.user
         request_meta = extract_api_request_metadata(request)
         profile = user.userprofile
+        if profile.is_flagged or profile.is_deactivated:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="Account restricted.",
+            )
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(

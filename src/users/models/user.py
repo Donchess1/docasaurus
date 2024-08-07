@@ -198,3 +198,19 @@ class CustomUser(AbstractUser):
 
             wallet.withdrawn_amount += Decimal(str(amount))
             wallet.save()
+
+    def flag_account(self):
+        self.userprofile.is_flagged = True
+        self.userprofile.save(update_fields=["is_flagged"])
+
+    def unflag_account(self):
+        self.userprofile.is_flagged = False
+        self.userprofile.save(update_fields=["is_flagged"])
+
+    def deactivate_account(self):
+        self.userprofile.is_deactivated = True
+        self.userprofile.save(update_fields=["is_deactivated"])
+
+    def reactivate_account(self):
+        self.userprofile.is_deactivated = False
+        self.userprofile.save(update_fields=["is_deactivated"])

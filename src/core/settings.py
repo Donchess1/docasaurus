@@ -81,6 +81,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
+    "http://staging.mybalanceapp.com",
+    "https://staging.mybalanceapp.com",
     "https://mybalanceapp.netlify.app",
     "https://api.mybalanceapp.com",
     "http://staging-api.mybalanceapp.com",

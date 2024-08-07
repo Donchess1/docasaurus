@@ -53,6 +53,10 @@ class UserProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_login_date = models.DateTimeField(null=True, blank=True)
+    is_flagged = models.BooleanField(default=False)
+    flagged_date = models.DateTimeField(null=True, blank=True)
+    is_deactivated = models.BooleanField(default=False)
+    deactivated_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.user_id.email}"

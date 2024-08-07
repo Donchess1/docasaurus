@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from console import tasks
 from console.models.dispute import Dispute
 from console.models.transaction import Transaction
-from console.permissions.admin import IsSuperUserPermission
+from console.permissions import IsSuperAdmin
 from dispute import tasks as dispute_tasks
 from dispute.serializers.dispute import DisputeSerializer, ResolveDisputeSerializer
 from users.models import UserProfile
@@ -22,7 +22,7 @@ User = get_user_model()
 
 class DisputeListView(generics.GenericAPIView):
     serializer_class = DisputeSerializer
-    permission_classes = (IsSuperUserPermission,)
+    permission_classes = (IsSuperAdmin,)
     pagination_class = CustomPagination
 
     def get_queryset(self):
@@ -47,7 +47,7 @@ class DisputeListView(generics.GenericAPIView):
 
 class DisputeDetailView(generics.GenericAPIView):
     serializer_class = DisputeSerializer
-    permission_classes = (IsSuperUserPermission,)
+    permission_classes = (IsSuperAdmin,)
 
     def get_serializer_class(self, *args, **kwargs):
         if self.request.method == "PUT":

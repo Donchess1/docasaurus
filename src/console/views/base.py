@@ -2,7 +2,9 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status, viewsets
+from rest_framework.decorators import action
 
+from console.permissions import IsSuperAdmin
 from console.serializers.base import ConsoleUserWalletSerializer
 from users.models.profile import UserProfile
 from users.models.wallet import Wallet
@@ -30,7 +32,7 @@ class UserViewSet(
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = CustomPagination
-    http_method_names = ["get"]
+    http_method_names = ["get", "patch"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -110,6 +112,46 @@ class UserViewSet(
         return Response(
             success=True,
             message="User deleted successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsSuperAdmin])
+    def flag(self, request, pk=None):
+        user = self.get_object()
+        user.flag_account()
+        return Response(
+            success=True,
+            message="User flagged successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsSuperAdmin])
+    def unflag(self, request, pk=None):
+        user = self.get_object()
+        user.unflag_account()
+        return Response(
+            success=True,
+            message="User unflagged successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsSuperAdmin])
+    def deactivate(self, request, pk=None):
+        user = self.get_object()
+        user.deactivate_account()
+        return Response(
+            success=True,
+            message="User deactivated successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsSuperAdmin])
+    def reactivate(self, request, pk=None):
+        user = self.get_object()
+        user.reactivate_account()
+        return Response(
+            success=True,
+            message="User reactivated successfully",
             status_code=status.HTTP_200_OK,
         )
 
