@@ -27,6 +27,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "bank_account_id",
             "business_id",
             "kyc_id",
+            "is_flagged",
+            "is_deactivated",
             "unread_notification_count",
         )
 
