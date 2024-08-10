@@ -32,7 +32,7 @@ from transaction.services import get_escrow_transaction_parties_info
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
 from utils.utils import (
-    CURRENCIES,
+    SYSTEM_CURRENCIES,
     add_commas_to_transaction_amount,
     generate_random_text,
     generate_txn_reference,
@@ -175,7 +175,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     payout_configuration = serializers.PrimaryKeyRelatedField(
         queryset=PayoutConfig.objects.all(), required=False
     )
-    currency = serializers.ChoiceField(choices=CURRENCIES, default="NGN")
+    currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES, default="NGN")
     entities = EscrowEntitySerializer(many=True)
 
     def validate_payout_configuration(self, value):
@@ -407,7 +407,7 @@ class UnlockCustomerEscrowTransactionByBuyerSerializer(serializers.Serializer):
 
 class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
-    currency = serializers.ChoiceField(choices=CURRENCIES)
+    currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES)
     bank_code = serializers.CharField()
     account_number = serializers.CharField(max_length=10, min_length=10)
     merchant_id = serializers.UUIDField()
@@ -440,7 +440,7 @@ class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
 class InitiateCustomerWalletWithdrawalByMerchantSerializer(serializers.Serializer):
     email = serializers.EmailField()
     amount = serializers.IntegerField()
-    currency = serializers.ChoiceField(choices=CURRENCIES)
+    currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES)
     bank_code = serializers.CharField()
     account_number = serializers.CharField(max_length=10, min_length=10)
 
