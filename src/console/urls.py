@@ -9,6 +9,7 @@ from console.views.base import (
     UserViewSet,
 )
 from console.views.dispute import DisputeDetailView, DisputeListView
+from console.views.overview import ConsoleOverviewView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
 
@@ -16,6 +17,7 @@ router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="users")
 
 urlpatterns = [
+    path("overview", ConsoleOverviewView.as_view(), name="overview"),
     path(
         "registration-metrics",
         UserRegistrationMetricsView.as_view(),
