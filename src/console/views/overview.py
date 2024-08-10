@@ -1,153 +1,186 @@
-from datetime import date, datetime, timedelta
-from typing import Optional, Tuple
-
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum
-from django.utils import timezone
-from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, mixins, permissions, status, viewsets
-from rest_framework.decorators import action
+from rest_framework import generics, permissions, status
 
-from console.models import Dispute, EscrowMeta, Transaction
+from console.models import Dispute, Transaction
 from console.permissions import IsSuperAdmin
 from console.utils import (
+    DEFAULT_CURRENCY,
+    DEFAULT_PERIOD,
     DEPOSIT_STATES,
+    DISPUTE_STATES,
     ESCROW_STATES,
+    VALID_PERIODS,
     WITHDRAWAL_STATES,
-    get_transaction_data,
+    get_aggregated_system_dispute_data_by_type,
+    get_aggregated_system_transaction_data_by_type,
+    get_time_range_from_period,
 )
-from users.services import get_user_profile_data
-from utils.pagination import CustomPagination
 from utils.response import Response
+from utils.utils import SYSTEM_CURRENCIES
 
 User = get_user_model()
 
 
-class ConsoleOverviewView(generics.GenericAPIView):
+class UserOverviewView(generics.GenericAPIView):
     permission_classes = (IsSuperAdmin,)
-    DEFAULT_PERIOD = "TODAY"
-    VALID_PERIODS = {
-        "TODAY",
-        "DAY",
-        "WEEK",
-        "MONTH",
-        "3_MONTHS",
-        "6_MONTHS",
-        "YEAR",
-        "CUSTOM",
-    }
-
-    def get_time_range(
-        self,
-        period: str,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-    ) -> Tuple[Optional[date], Optional[date]]:
-        """
-        Get the time range based on the specified period.
-
-        Args:
-            period (str): The period for which the time range is calculated. Options are "DAY", "WEEK", "MONTH", "CUSTOM".
-            start_date (Optional[date]): The start date for a custom period (only applicable if period is "CUSTOM").
-            end_date (Optional[date]): The end date for a custom period (only applicable if period is "CUSTOM").
-
-        Returns:
-            Tuple[Optional[date], Optional[date]]: A tuple containing the start date and end date for the time range.
-                                                   If no filtering is applied, both values will be None.
-        """
-        if period not in self.VALID_PERIODS:
-            period = self.DEFAULT_PERIOD
-
-        today = timezone.now()
-        start_of_today = today.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        if period == "TODAY":
-            return start_of_today, today
-        elif period == "DAY":
-            return today, today + timedelta(days=1)
-        elif period == "WEEK":
-            return today - timedelta(days=7), today
-        elif period == "MONTH":
-            return today - timedelta(days=30), today
-        elif period == "3_MONTHS":
-            return today - timedelta(days=90), today
-        elif period == "6_MONTHS":
-            return today - timedelta(days=180), today
-        elif period == "YEAR":
-            return today - timedelta(days=365), today
-        elif period == "CUSTOM" and start_date and end_date:
-            # Convert date objects to datetime objects, setting time to start of the day
-            start_date = datetime.combine(start_date, datetime.min.time())
-            end_date = datetime.combine(end_date, datetime.max.time())
-            # Ensure timezone awareness
-            if timezone.is_naive(start_date):
-                start_date = timezone.make_aware(start_date)
-            if timezone.is_naive(end_date):
-                end_date = timezone.make_aware(end_date)
-            return start_date, end_date
-        return None, None
+    permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
-        period = request.query_params.get("period", self.DEFAULT_PERIOD).upper()
-        if period and period not in self.VALID_PERIODS:
+        period = request.query_params.get("period", DEFAULT_PERIOD).upper()
+        if period and period not in VALID_PERIODS:
             return Response(
                 success=False,
-                message=f"Invalid period. Valid options are: {', '.join(self.VALID_PERIODS)}",
+                message=f"Invalid period. Valid options are: {', '.join(VALID_PERIODS)}",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        if period == "CUSTOM":
-            start_date_str = request.query_params.get("start_date")
-            end_date_str = request.query_params.get("end_date")
-
-            if not start_date_str or not end_date_str:
-                return Response(
-                    success=False,
-                    message="start_date and end_date must be provided for CUSTOM period.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Validate the date format
-            try:
-                start_date_str = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-                end_date_str = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-            except ValueError:
-                return Response(
-                    success=False,
-                    message="start_date and end_date must be in the format YYYY-MM-DD.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-            start_date, end_date = self.get_time_range(
-                period, start_date_str, end_date_str
+        period_data = get_time_range_from_period(period, request.query_params)
+        if not period_data.get("success"):
+            return Response(
+                success=False,
+                message=period_data.get("message"),
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-        else:
-            start_date, end_date = self.get_time_range(period)
+        period_data = period_data.get("data", {})
+        start_date = period_data.get("start_date", None)
+        end_date = period_data.get("end_date", None)
 
         users = User.objects.all()
-        transactions = Transaction.objects.all()
-        disputes = Dispute.objects.all()
 
         if start_date and end_date:
             users = users.filter(created_at__range=(start_date, end_date))
-            transactions = transactions.filter(created_at__range=(start_date, end_date))
-            disputes = disputes.filter(created_at__range=(start_date, end_date))
 
-        # Aggregate data for each transaction type
-        deposit_data = get_transaction_data(transactions, "DEPOSIT", DEPOSIT_STATES)
-        withdrawal_data = get_transaction_data(
-            transactions, "WITHDRAW", WITHDRAWAL_STATES
-        )
-        escrow_data = get_transaction_data(transactions, "ESCROW", ESCROW_STATES)
-
-        data = {
-            "period": period if period in self.VALID_PERIODS else self.DEFAULT_PERIOD,
+        user_data = {
+            "period": period,
             "start_date": start_date,
             "end_date": end_date,
-            "total_users": users.count(),
-            "total_transactions": transactions.count(),
-            "total_disputes": disputes.count(),
+            "total": users.count(),
+            "buyers": users.filter(is_buyer=True).count(),
+            "sellers": users.filter(is_seller=True).count(),
+            "merchants": users.filter(is_merchant=True).count(),
+            "admins": users.filter(is_admin=True).count(),
+        }
+
+        return Response(
+            success=True,
+            message="Users overview retrieved successfully",
+            data=user_data,
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class TransactionOverviewView(generics.GenericAPIView):
+    permission_classes = (IsSuperAdmin,)
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        period = request.query_params.get("period", DEFAULT_PERIOD).upper()
+        currency = request.query_params.get("currency", DEFAULT_CURRENCY).upper()
+        if currency and currency not in SYSTEM_CURRENCIES:
+            return Response(
+                success=False,
+                message=f"Invalid currency. Valid options are: {', '.join(SYSTEM_CURRENCIES)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if period and period not in VALID_PERIODS:
+            return Response(
+                success=False,
+                message=f"Invalid period. Valid options are: {', '.join(VALID_PERIODS)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        period_data = get_time_range_from_period(period, request.query_params)
+        if not period_data.get("success"):
+            return Response(
+                success=False,
+                message=period_data.get("message"),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        period_data = period_data.get("data", {})
+        start_date = period_data.get("start_date", None)
+        end_date = period_data.get("end_date", None)
+
+        transactions = Transaction.objects.filter(currency=currency)
+
+        if start_date and end_date:
+            transactions = transactions.filter(created_at__range=(start_date, end_date))
+
+        # Aggregate data for each transaction type
+        deposit_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "DEPOSIT", DEPOSIT_STATES
+        )
+        withdrawal_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "WITHDRAW", WITHDRAWAL_STATES
+        )
+        escrow_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "ESCROW", ESCROW_STATES
+        )
+
+        data = {
+            "currency": currency,
+            "period": period,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total": transactions.count(),
             "deposits": deposit_data,
             "withdrawals": withdrawal_data,
             "escrows": escrow_data,
+        }
+
+        return Response(
+            success=True,
+            message="Overview data retrieved successfully",
+            data=data,
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class DisputeOverviewView(generics.GenericAPIView):
+    permission_classes = (IsSuperAdmin,)
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        period = request.query_params.get("period", DEFAULT_PERIOD).upper()
+        if period and period not in VALID_PERIODS:
+            return Response(
+                success=False,
+                message=f"Invalid period. Valid options are: {', '.join(VALID_PERIODS)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        period_data = get_time_range_from_period(period, request.query_params)
+        if not period_data.get("success"):
+            return Response(
+                success=False,
+                message=period_data.get("message"),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        period_data = period_data.get("data", {})
+        start_date = period_data.get("start_date", None)
+        end_date = period_data.get("end_date", None)
+
+        disputes = Dispute.objects.all()
+
+        if start_date and end_date:
+            disputes = disputes.filter(created_at__range=(start_date, end_date))
+
+        low_priority_dispute_data = get_aggregated_system_dispute_data_by_type(
+            disputes, "LOW", DISPUTE_STATES
+        )
+        medium_priority_dispute_data = get_aggregated_system_dispute_data_by_type(
+            disputes, "MEDIUM", DISPUTE_STATES
+        )
+        high_priority_dispute_data = get_aggregated_system_dispute_data_by_type(
+            disputes, "HIGH", DISPUTE_STATES
+        )
+
+        data = {
+            "period": period,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total": disputes.count(),
+            "low": low_priority_dispute_data,
+            "medium": medium_priority_dispute_data,
+            "high": high_priority_dispute_data,
         }
 
         return Response(

@@ -11,9 +11,9 @@ from users.models.profile import UserProfile
 from users.models.wallet import Wallet
 from utils.email import validate_email_address
 from utils.utils import (
-    CURRENCIES,
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
     REGISTRATION_REFERRER,
+    SYSTEM_CURRENCIES,
 )
 
 User = get_user_model()
@@ -89,7 +89,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             free_escrow_transactions=5,
             referrer=validated_data.get("referrer"),
         )
-        for currency in CURRENCIES:  # Consider creating wallets after KYC
+        for currency in SYSTEM_CURRENCIES:  # Consider creating wallets after KYC
             Wallet.objects.create(
                 user=user,
                 currency=currency,
@@ -199,7 +199,7 @@ class RegisterSellerSerializer(serializers.ModelSerializer):
             free_escrow_transactions=10,
             referrer=validated_data.get("referrer"),
         )
-        for currency in CURRENCIES:
+        for currency in SYSTEM_CURRENCIES:
             Wallet.objects.create(
                 user=user,
                 currency=currency,
