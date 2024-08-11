@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from console.serializers.overview import BaseSummarySerializer, VolumeCountSerializer
 
+
 class DepositStatusSerializer(serializers.Serializer):
     PENDING = VolumeCountSerializer()
     SUCCESSFUL = VolumeCountSerializer()
@@ -9,11 +10,13 @@ class DepositStatusSerializer(serializers.Serializer):
     CANCELLED = VolumeCountSerializer()
     TOTAL = VolumeCountSerializer()
 
+
 class WithdrawalStatusSerializer(serializers.Serializer):
     PENDING = VolumeCountSerializer()
     SUCCESSFUL = VolumeCountSerializer()
     FAILED = VolumeCountSerializer()
     TOTAL = VolumeCountSerializer()
+
 
 class EscrowStatusSerializer(serializers.Serializer):
     PENDING = VolumeCountSerializer()
@@ -23,9 +26,9 @@ class EscrowStatusSerializer(serializers.Serializer):
     REVOKED = VolumeCountSerializer()
     TOTAL = VolumeCountSerializer()
 
+
 class TransactionSummarySerializer(BaseSummarySerializer):
     currency = serializers.CharField()
     deposits = DepositStatusSerializer()
     withdrawals = WithdrawalStatusSerializer()
     escrows = EscrowStatusSerializer()
-
