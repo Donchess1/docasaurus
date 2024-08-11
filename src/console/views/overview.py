@@ -3,6 +3,9 @@ from rest_framework import generics, permissions, status
 
 from console.models import Dispute, Transaction
 from console.permissions import IsSuperAdmin
+from console.serializers.dispute import DisputeSummarySerializer
+from console.serializers.transaction import TransactionSummarySerializer
+from console.serializers.user import UserSummarySerializer
 from console.utils import (
     DEFAULT_CURRENCY,
     DEFAULT_PERIOD,
@@ -23,7 +26,7 @@ User = get_user_model()
 
 class UserOverviewView(generics.GenericAPIView):
     permission_classes = (IsSuperAdmin,)
-    permission_classes = (permissions.AllowAny,)
+    serializer_class = UserSummarySerializer
 
     def get(self, request):
         period = request.query_params.get("period", DEFAULT_PERIOD).upper()
@@ -59,18 +62,18 @@ class UserOverviewView(generics.GenericAPIView):
             "merchants": users.filter(is_merchant=True).count(),
             "admins": users.filter(is_admin=True).count(),
         }
-
+        serializer = self.serializer_class(user_data)
         return Response(
             success=True,
             message="Users overview retrieved successfully",
-            data=user_data,
+            data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
 
 
 class TransactionOverviewView(generics.GenericAPIView):
     permission_classes = (IsSuperAdmin,)
-    permission_classes = (permissions.AllowAny,)
+    serializer_class = TransactionSummarySerializer
 
     def get(self, request):
         period = request.query_params.get("period", DEFAULT_PERIOD).upper()
@@ -125,18 +128,18 @@ class TransactionOverviewView(generics.GenericAPIView):
             "withdrawals": withdrawal_data,
             "escrows": escrow_data,
         }
-
+        serializer = self.serializer_class(data)
         return Response(
             success=True,
-            message="Overview data retrieved successfully",
-            data=data,
+            message="Transaction overview retrieved successfully",
+            data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
 
 
 class DisputeOverviewView(generics.GenericAPIView):
     permission_classes = (IsSuperAdmin,)
-    permission_classes = (permissions.AllowAny,)
+    serializer_class = DisputeSummarySerializer
 
     def get(self, request):
         period = request.query_params.get("period", DEFAULT_PERIOD).upper()
@@ -182,10 +185,10 @@ class DisputeOverviewView(generics.GenericAPIView):
             "medium": medium_priority_dispute_data,
             "high": high_priority_dispute_data,
         }
-
+        serializer = self.serializer_class(data)
         return Response(
             success=True,
-            message="Overview data retrieved successfully",
-            data=data,
+            message="Disputes data retrieved successfully",
+            data=serializer.data,
             status_code=status.HTTP_200_OK,
         )

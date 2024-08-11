@@ -1,9 +1,13 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, mixins, permissions, status, viewsets
+from rest_framework import filters, generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
+from console.filters import UserFilter
 from console.permissions import IsSuperAdmin
 from console.serializers.base import ConsoleUserWalletSerializer
 from users.models.profile import UserProfile
@@ -33,6 +37,14 @@ class UserViewSet(
     permission_classes = [permissions.AllowAny]
     pagination_class = CustomPagination
     http_method_names = ["get", "patch"]
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = UserFilter
+    search_fields = ["name", "email", "phone"]
+    ordering_fields = ["name", "email", "phone", "created_at"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -40,12 +52,34 @@ class UserViewSet(
         return UserSerializer
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        qs = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(qs, many=True)
-        self.pagination_class.message = "Users retrieved successfully"
-        response = self.get_paginated_response(serializer.data)
-        return response
+        try:
+            queryset = self.get_queryset()
+            filtered_queryset = self.filter_queryset(queryset)
+            qs = self.paginate_queryset(filtered_queryset)
+            serializer = self.get_serializer(qs, many=True)
+            self.pagination_class.message = "Users retrieved successfully"
+            response = self.get_paginated_response(serializer.data)
+            return response
+
+        except DjangoValidationError as e:
+            return Response(
+                success=False,
+                message=f"{str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except DRFValidationError as e:
+            return Response(
+                success=False,
+                message=f"{e.detail}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"Unexpected error occurred. {str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         user = User.objects.filter(pk=pk).first()
