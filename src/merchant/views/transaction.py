@@ -35,7 +35,6 @@ from transaction import tasks as txn_tasks
 from transaction.filters import TransactionFilter
 from transaction.models import TransactionActivityLog
 from transaction.serializers.activity_log import TransactionActivityLogSerializer
-from users.serializers.user import UserSerializer
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.pagination import CustomPagination
 from utils.response import Response
