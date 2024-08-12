@@ -1,11 +1,16 @@
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from console.models import Dispute, Transaction
+from dispute.services import get_user_owned_dispute_queryset
+from transaction.services import get_user_owned_transaction_queryset
+
+User = get_user_model()
 
 DISPUTE_STATES = ["PENDING", "PROGRESS", "RESOLVED", "TOTAL"]
 DEPOSIT_STATES = ["PENDING", "SUCCESSFUL", "FAILED", "CANCELLED", "TOTAL"]
@@ -226,3 +231,20 @@ def get_time_range_from_period(period: str, params: dict):
             "message": "",
             "data": {"start_date": start_date, "end_date": end_date},
         }
+
+
+def get_user_system_metrics(user: User, currency: str = "NGN") -> dict:
+    transactions = get_user_owned_transaction_queryset(user, currency)
+    disputes = get_user_owned_dispute_queryset(user)
+    total = transactions.count()
+    deposits = transactions.filter(type="DEPOSIT").count()
+    withdrawals = transactions.filter(type="WITHDRAW").count()
+    escrows = transactions.filter(type="ESCROW").count()
+    disputes = disputes.count()
+    return {
+        "total_transactions": total,
+        "deposits": deposits,
+        "withdrawals": withdrawals,
+        "escrows": escrows,
+        "disputes": disputes,
+    }

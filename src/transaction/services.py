@@ -1,5 +1,10 @@
+from django.contrib.auth import get_user_model
+from django.db.models import Q, QuerySet
+
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from utils.transaction import get_escrow_transaction_users
+
+User = get_user_model()
 
 
 def get_escrow_transaction_parties_info(transaction: Transaction) -> dict:
@@ -22,3 +27,25 @@ def get_escrow_transaction_parties_info(transaction: Transaction) -> dict:
         },
     }
     return parties
+
+
+def get_user_owned_transaction_queryset(
+    user: User, currency: str = "NGN"
+) -> QuerySet[Transaction]:
+    # Transactions where user is the main user or user is involved in escrow
+    # this includes all deposits, withdrawals and escrow transactions
+    # where the user was a stakeholder
+    queryset = (
+        Transaction.objects.filter(
+            (
+                Q(user_id=user)
+                | Q(escrowmeta__partner_email=user.email)
+                | Q(escrowmeta__meta__parties__buyer=user.email)
+                | Q(escrowmeta__meta__parties__seller=user.email)
+            )
+            & Q(currency=currency)
+        )
+        .order_by("-created_at")
+        .distinct()
+    )
+    return queryset
