@@ -228,7 +228,7 @@ def customer_with_email_exists_for_merchant(merchant, user):
 
 def create_customer_user_instance_for_merchant(
     customer, merchant, phone_number, name, email, customer_type
-):
+):  
     CustomerMerchant.objects.create(
         customer=customer,
         merchant=merchant,
