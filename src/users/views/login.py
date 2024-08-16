@@ -1,24 +1,21 @@
 import re
 
-from django.contrib.auth import authenticate, get_user_model
-from django.utils import timezone
+from django.contrib.auth import authenticate
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
-from core.resources.jwt_client import JWTClient
-from merchant.utils import get_merchant_by_email
 from users.models.profile import UserProfile
 from users.serializers.login import LoginPayloadSerializer, LoginSerializer
 from users.serializers.user import UserSerializer
+from users.services import handle_successful_login
 from utils.response import Response
 
 
 class LoginView(GenericAPIView):
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
-    jwt_client = JWTClient
 
     @swagger_auto_schema(
         operation_description="Login User",
@@ -55,33 +52,18 @@ class LoginView(GenericAPIView):
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
-        user_id = user.id
+        profile = UserProfile.objects.filter(user_id=user).first()
+        if not profile:
+            return Response(
+                success=False,
+                message="Profile not set. Contact Support.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
 
-        profile = UserProfile.objects.get(user_id=user_id)
-        profile.last_login_date = timezone.now()
-        profile.save()
-
-        # validate phone number - flag 02000000000 - 02000000099
-        user_phone = user.phone
-        phone_pattern = re.compile(r"^020000000\d{2}$")
-        user.userprofile.phone_number_flagged = (
-            True if phone_pattern.match(user_phone) else False
-        )
-        user.userprofile.save()
-
-        token = self.jwt_client.sign(user_id)
-        merchant = get_merchant_by_email(user.email)
-
+        data = handle_successful_login(user)
         return Response(
             success=True,
             message="Login successful",
-            data={
-                "token": token["access_token"],
-                "phone_number_flagged": user.userprofile.phone_number_flagged,
-                "user": UserSerializer(user).data,
-                "merchant": str(merchant.id) if merchant else None,
-                "role": None,
-                "permissions": [],
-            },
+            data=data,
             status_code=status.HTTP_200_OK,
         )

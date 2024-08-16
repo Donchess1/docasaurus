@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
 from users.models.wallet import Wallet
-from utils.utils import CURRENCIES
+from utils.utils import SYSTEM_CURRENCIES
 
 
 class Manager(BaseUserManager):
@@ -41,7 +41,7 @@ class CustomUser(AbstractUser):
     username = None
     name = models.CharField(max_length=255)
     email = models.EmailField(max_length=255, unique=True)
-    phone = models.CharField(max_length=50, unique=True)
+    phone = models.CharField(max_length=50, unique=True, null=True, blank=True)
     is_verified = models.BooleanField(default=False)
     is_buyer = models.BooleanField(default=False)
     is_seller = models.BooleanField(default=False)
@@ -59,14 +59,14 @@ class CustomUser(AbstractUser):
         return self.email
 
     def create_wallet(self):
-        for currency in CURRENCIES:  # Consider creating wallets after KYC
+        for currency in SYSTEM_CURRENCIES:  # Consider creating wallets after KYC
             wallet, created = Wallet.objects.get_or_create(
                 user=self,
                 currency=currency,
             )
 
     def validate_amount_and_currency(self, amount, currency):
-        if currency not in CURRENCIES:
+        if currency not in SYSTEM_CURRENCIES:
             raise ValidationError("Invalid currency.")
         try:
             amount = Decimal(str(amount))  # Ensure amount is Decimal-compatible
@@ -83,7 +83,7 @@ class CustomUser(AbstractUser):
         return True, wallets
 
     def get_currency_wallet(self, currency):
-        if currency not in CURRENCIES:
+        if currency not in SYSTEM_CURRENCIES:
             return False, "Invalid currency."
 
         wallet = Wallet.objects.filter(user=self, currency=currency).first()
@@ -93,7 +93,7 @@ class CustomUser(AbstractUser):
         return True, wallet
 
     def validate_wallet_withdrawal_amount(self, amount, currency):
-        if currency not in CURRENCIES:
+        if currency not in SYSTEM_CURRENCIES:
             return False, "Invalid currency."
         try:
             amount = Decimal(str(amount))  # Ensure amount is Decimal-compatible

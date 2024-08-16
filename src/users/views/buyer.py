@@ -13,7 +13,7 @@ from users.serializers.register import (
     RegisterUserSerializer,
 )
 from utils.response import Response
-from utils.utils import CURRENCIES, EDIT_PROFILE_URL, generate_otp, generate_temp_id
+from utils.utils import EDIT_PROFILE_URL, generate_otp, generate_temp_id
 
 User = get_user_model()
 cache = Cache()

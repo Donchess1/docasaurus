@@ -10,8 +10,8 @@ from core.resources.cache import Cache
 from core.resources.third_party.main import ThirdPartyAPI
 from utils.email import validate_email_address
 from utils.utils import (
-    CURRENCIES,
     PHONE_NUMBER_SERIALIZER_REGEX_NGN,
+    SYSTEM_CURRENCIES,
     generate_txn_reference,
     get_escrow_fees,
 )
@@ -26,7 +26,7 @@ class EscrowTransactionSerializer(serializers.Serializer):
     item_quantity = serializers.IntegerField()
     delivery_date = serializers.DateField()
     amount = serializers.IntegerField()
-    currency = serializers.ChoiceField(choices=CURRENCIES, default="NGN")
+    currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES, default="NGN")
     # bank_code = serializers.CharField(max_length=255)
     # bank_account_number = serializers.CharField(max_length=10)
     partner_email = serializers.EmailField()

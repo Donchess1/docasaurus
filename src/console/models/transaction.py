@@ -46,7 +46,9 @@ class Transaction(models.Model):
     amount = models.IntegerField(default=0, null=True, blank=True)
     charge = models.IntegerField(default=0, null=True, blank=True)
     remitted_amount = models.IntegerField(default=0, null=True, blank=True)
-    currency = models.CharField(max_length=255, default="NGN", choices=CURRENCY)
+    currency = models.CharField(
+        max_length=255, default="NGN", choices=CURRENCY, db_index=True
+    )
     provider = models.CharField(max_length=255, choices=PROVIDER)
     provider_tx_reference = models.CharField(max_length=255, null=True, blank=True)
     meta = models.JSONField(null=True, blank=True)

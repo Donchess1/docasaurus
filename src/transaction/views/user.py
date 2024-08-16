@@ -98,7 +98,6 @@ class UserLockedEscrowTransactionListView(generics.ListAPIView):
             type="ESCROW",
             status="SUCCESSFUL",
         ).order_by("-created_at")
-
         return queryset
 
     @swagger_auto_schema(

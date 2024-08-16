@@ -204,19 +204,19 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
 
 
 class RegisterCustomerSerializer(serializers.Serializer):
-    customer_type = serializers.ChoiceField(
-        choices=("BUYER", "SELLER", "CUSTOM"),
-    )
+    # customer_type = serializers.ChoiceField(
+    #     choices=("BUYER", "SELLER", "CUSTOM"),
+    # )
     email = serializers.EmailField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     phone_number = serializers.CharField(
-        validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN],
+        validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False
     )
 
     def validate(self, data):
         email = data.get("email")
-        phone_number = data.get("phone_number")
+        phone_number = data.get("phone_number", None)
         merchant = self.context.get("merchant")
 
         is_valid, message, validated_response = validate_email_address(
@@ -225,7 +225,7 @@ class RegisterCustomerSerializer(serializers.Serializer):
         if not is_valid:
             raise serializers.ValidationError({"email": message})
 
-        if customer_phone_numer_exists_for_merchant(merchant, phone_number):
+        if phone_number and customer_phone_numer_exists_for_merchant(merchant, phone_number):
             raise serializers.ValidationError(
                 {"phone_number": "Customer with phone number already exists."}
             )
@@ -243,7 +243,7 @@ class RegisterCustomerSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        customer_type = validated_data.get("customer_type")
+        customer_type = validated_data.get("customer_type", "CUSTOM")
         email = validated_data.get("email")
         first_name = validated_data.get("first_name")
         last_name = validated_data.get("last_name")

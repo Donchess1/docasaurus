@@ -8,17 +8,16 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 
 from core.resources.cache import Cache
-from core.resources.email_service import EmailClient
 from core.resources.jwt_client import JWTClient
-from merchant.utils import get_merchant_by_email
 from users import tasks
+from users.models.profile import UserProfile
 from users.serializers.register import RegisteredUserPayloadSerializer
-from users.serializers.user import UserSerializer
 from users.serializers.verify_email import (
     ResendOTPSerializer,
     VerifiedOTPPayloadSerializer,
     VerifyOTPSerializer,
 )
+from users.services import handle_successful_login
 from utils.response import Response
 from utils.utils import (
     EDIT_PROFILE_URL,
@@ -172,7 +171,6 @@ class ResendAccountVerificationOTPView(GenericAPIView):
 class VerifyOneTimeLoginCodeView(GenericAPIView):
     serializer_class = VerifyOTPSerializer
     permission_classes = [AllowAny]
-    jwt_client = JWTClient
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -219,29 +217,18 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
                 message="Your email is not verified yet",
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
+        profile = UserProfile.objects.filter(user_id=user).first()
+        if not profile:
+            return Response(
+                success=False,
+                message="Profile not set. Contact Support.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
 
-        profile = user.userprofile
-        profile.last_login_date = timezone.now()
-
-        # validate phone number - flag 02000000000 - 02000000099
-        user_phone = user.phone
-        phone_pattern = re.compile(r"^020000000\d{2}$")
-        if phone_pattern.match(user_phone):
-            profile.phone_number_flagged = True
-        profile.save()
-        token = self.jwt_client.sign(user.id)
-        merchant = get_merchant_by_email(user.email)
-
+        data = handle_successful_login(user)
         return Response(
             success=True,
             message="Login successful",
-            data={
-                "token": token["access_token"],
-                "phone_number_flagged": user.userprofile.phone_number_flagged,
-                "user": UserSerializer(user).data,
-                "merchant": str(merchant.id) if merchant else None,
-                "role": None,
-                "permissions": [],
-            },
+            data=data,
             status_code=status.HTTP_200_OK,
         )

@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from users.models import UserProfile
 from utils.email import validate_email_address
 from utils.kyc import KYC_CHOICES
 from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN
@@ -12,6 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(
         validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False
     )
+    metadata = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -25,9 +27,27 @@ class UserSerializer(serializers.ModelSerializer):
             "is_seller",
             "is_merchant",
             "is_admin",
+            "metadata",
             "created_at",
             "updated_at",
         )
+
+    def get_metadata(self, obj):
+        user_profile_exists = UserProfile.objects.filter(user_id=obj).exists()
+        meta_data = {}
+        meta_data["default_user_type"] = (
+            obj.userprofile.user_type if user_profile_exists else "UNDEFINED"
+        )
+        meta_data["flagged_status"] = (
+            obj.userprofile.is_flagged if user_profile_exists else "UNDEFINED"
+        )
+        meta_data["deactivated_status"] = (
+            obj.userprofile.is_deactivated if user_profile_exists else "UNDEFINED"
+        )
+        meta_data["avatar_url"] = (
+            obj.userprofile.avatar if user_profile_exists else "UNDEFINED"
+        )
+        return meta_data
 
 
 class UploadUserAvatarSerializer(serializers.Serializer):
