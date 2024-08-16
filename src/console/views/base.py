@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Count
+from django.db.models import Count, QuerySet
 from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, mixins, permissions, status, viewsets
@@ -8,8 +8,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from console.filters import UserFilter
+from console.models.transaction import Transaction
 from console.permissions import IsSuperAdmin
 from console.serializers.base import ConsoleUserWalletSerializer
+from console.serializers.overview import UserSystemMetricsSerializer
+from console.utils import get_user_system_metrics
 from users.models.profile import UserProfile
 from users.models.wallet import Wallet
 from users.serializers.profile import UserProfileSerializer
@@ -49,6 +52,10 @@ class UserViewSet(
     def get_serializer_class(self):
         if self.action == "retrieve":
             return UserProfileSerializer
+        elif self.action == "get_user_wallets":
+            return ConsoleUserWalletSerializer
+        elif self.action == "get_user_system_metrics":
+            return UserSystemMetricsSerializer
         return UserSerializer
 
     def list(self, request, *args, **kwargs):
@@ -186,6 +193,44 @@ class UserViewSet(
         return Response(
             success=True,
             message="User reactivated successfully",
+            status_code=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[IsSuperAdmin],
+        url_path="wallets",
+        serializer_class=ConsoleUserWalletSerializer,
+    )
+    def get_user_wallets(self, request, pk=None):
+        user = self.get_object()
+        wallets = Wallet.objects.filter(user=user).order_by(
+            "-currency"
+        )  # ["USD", "NGN"]
+        serializer = self.serializer_class(wallets, many=True)
+        return Response(
+            success=True,
+            message="User Wallets Info retrieved successfully",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[IsSuperAdmin],
+        url_path="system-metrics",
+        serializer_class=UserSystemMetricsSerializer,
+    )
+    def get_user_system_metrics(self, request, pk=None):
+        user = self.get_object()
+        metrics_data = get_user_system_metrics(user)
+        serializer = self.serializer_class(metrics_data)
+        return Response(
+            success=True,
+            message="User metrics retrieved successfully",
+            data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
 

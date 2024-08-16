@@ -15,3 +15,11 @@ class StatusCountSerializer(serializers.Serializer):
 class VolumeCountSerializer(serializers.Serializer):
     volume = serializers.FloatField()
     count = serializers.IntegerField()
+
+
+class UserSystemMetricsSerializer(serializers.Serializer):
+    total_transactions = serializers.IntegerField()
+    deposits = serializers.IntegerField()
+    withdrawals = serializers.IntegerField()
+    escrows = serializers.IntegerField()
+    disputes = serializers.IntegerField()
