@@ -2,6 +2,7 @@ import os
 
 import stripe
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 
 from common.serializers.webhook import FlwWebhookSerializer, StripeWebhookSerializer
@@ -11,10 +12,12 @@ from core.resources.sockets.pusher import PusherSocket
 from transaction import tasks as txn_tasks
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.response import Response
+from utils.utils import add_commas_to_transaction_amount
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
 
+User = get_user_model()
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
@@ -89,9 +92,7 @@ class StripeWebhookView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         request_meta = extract_api_request_metadata(request)
         payload = request.body
-        # signature_header = request.headers.get("Stripe-Signature")
-        signature_header = request.META['HTTP_STRIPE_SIGNATURE']
-        # signature_header = request.headers["STRIPE_SIGNATURE"]
+        signature_header = request.META["HTTP_STRIPE_SIGNATURE"]
         endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
         # endpoint_secret = (
         #     "whsec_e75999dec7f8a9ba7a042e78dcd9cdb85779f9059c1780b8171e5ddae2046f5e"
@@ -177,10 +178,12 @@ class StripeWebhookView(generics.GenericAPIView):
         metadata = data.get("metadata", {})
         tx_ref = metadata.get("transaction_ref", None)
         stripe_transaction_id = data.get("id")
+        customer_details = data.get("customer_details")
         print("TX_REF---->", tx_ref)
         print("STRIPE_TXN_ID---->", stripe_transaction_id)
-        print("DATA received", data)
-        print("CUSTOMER", data.get("customer"))
+        # print("DATA received", data)
+        print("CUSTOMER", customer_details)
+        customer_email = customer_details.get("email", None)
 
         try:
             txn = Transaction.objects.get(reference=tx_ref)
@@ -231,6 +234,10 @@ class StripeWebhookView(generics.GenericAPIView):
         log_transaction_activity(txn, description, request_meta)
 
         user.credit_wallet(txn.amount, txn.currency)
+
+        _, wallet = user.get_currency_wallet(txn.currency)
+        description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
 
         return Response(
             success=True,

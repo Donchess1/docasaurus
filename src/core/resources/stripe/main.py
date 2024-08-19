@@ -7,7 +7,13 @@ class StripeService:
 
     @classmethod
     def create_checkout_session(
-        cls, amount, currency="usd", success_url=None, cancel_url=None, customer_id=None, metadata=None
+        cls,
+        amount,
+        currency="usd",
+        success_url=None,
+        cancel_url=None,
+        customer_id=None,
+        metadata=None,
     ):
         """
         Create a checkout session for redirecting the user to Stripe's hosted checkout page.
