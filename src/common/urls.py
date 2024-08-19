@@ -13,12 +13,13 @@ from common.views.voter_card import ValidateVoterCardView
 from common.views.wallet import (
     FundEscrowTransactionRedirectView,
     FundWalletRedirectView,
+    FundWalletStripeView,
     FundWalletView,
     WalletWithdrawalCallbackView,
     WalletWithdrawalFeeView,
     WalletWithdrawalView,
 )
-from common.views.webhook import FlwWebhookView
+from common.views.webhook import FlwWebhookView, StripeWebhookView
 
 urlpatterns = [
     path("banks", ListBanksView.as_view(), name="list-banks"),
@@ -38,6 +39,9 @@ urlpatterns = [
         name="validate-email-address",
     ),
     path("fund-wallet", FundWalletView.as_view(), name="fund-wallet"),
+    path(
+        "fund-wallet-stripe", FundWalletStripeView.as_view(), name="fund-wallet-stripe"
+    ),
     path(
         "payment-redirect",
         FundWalletRedirectView.as_view(),
@@ -65,5 +69,10 @@ urlpatterns = [
         "flw-webhook",
         FlwWebhookView.as_view(),
         name="flw-webhook",
+    ),
+    path(
+        "stripe-webhook",
+        StripeWebhookView.as_view(),
+        name="stripe-webhook",
     ),
 ]
