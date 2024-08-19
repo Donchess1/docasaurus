@@ -212,8 +212,6 @@ class StripeWebhookView(generics.GenericAPIView):
         description = f"Payment verified via Stripe WEBHOOK."
         log_transaction_activity(txn, description, request_meta)
 
-        # Additional logic like crediting user's wallet, updating locked amounts, sending notifications, etc.
-
         description = f"Payment received via {payment_type} channel. Transaction verified via WEBHOOK."
         log_transaction_activity(txn, description, request_meta)
 
