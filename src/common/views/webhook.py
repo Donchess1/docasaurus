@@ -140,9 +140,6 @@ class StripeWebhookView(generics.GenericAPIView):
         print("STRIPE WEBHOOK CALLED")
         print("===============================================================")
         print("EVENT TYPE---->", event_type)
-        print("DATA---->", data)
-        print("Amount", data.get("amount"))
-        print("CUSTOMER", data.get("customer"))
         print("===============================================================")
         print("===============================================================")
 
