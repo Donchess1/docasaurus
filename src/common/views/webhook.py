@@ -189,18 +189,18 @@ class StripeWebhookView(generics.GenericAPIView):
             txn = Transaction.objects.get(reference=tx_ref)
         except Transaction.DoesNotExist:
             print("TXN DOES NOT EXIST")
-            return Response(
-                success=False,
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="Transaction does not exist",
-            )
+            return {
+                "success": False,
+                "message": "Transaction does not exist",
+                "status_code": status.HTTP_404_NOT_FOUND,
+            }
 
         if txn.verified:
-            return Response(
-                success=False,
-                status_code=status.HTTP_200_OK,
-                message="Transaction already verified",
-            )
+            return {
+                "success": False,
+                "message": "Transaction already verified",
+                "status_code": status.HTTP_200_OK,
+            }
 
         payment_type = "CARD"
         txn.verified = True
@@ -224,7 +224,7 @@ class StripeWebhookView(generics.GenericAPIView):
             user = User.objects.filter(email=customer_email).first()
         except User.DoesNotExist:
             return {
-                "success": True,
+                "success": False,
                 "message": "User does not exist.",
                 "status_code": status.HTTP_404_NOT_FOUND,
             }
@@ -239,11 +239,11 @@ class StripeWebhookView(generics.GenericAPIView):
         description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
-        return Response(
-            success=True,
-            status_code=status.HTTP_200_OK,
-            message="Payment succeeded webhook processed successfully",
-        )
+        return {
+            "success": True,
+            "status_code": status.HTTP_200_OK,
+            "message": "Payment succeeded webhook processed successfully.",
+        }
 
     def handle_payment_failed(self, data, request_meta):
         # Handle payment failure logic
