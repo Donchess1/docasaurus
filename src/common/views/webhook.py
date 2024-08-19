@@ -94,50 +94,27 @@ class StripeWebhookView(generics.GenericAPIView):
         payload = request.body
         signature_header = request.META["HTTP_STRIPE_SIGNATURE"]
         endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
-        # endpoint_secret = (
-        #     "whsec_e75999dec7f8a9ba7a042e78dcd9cdb85779f9059c1780b8171e5ddae2046f5e"
-        # )
-
         try:
-            print("===============================================================")
-            print("SIG_HEADER --->", signature_header)
-            print("===============================================================")
-            print("ENDPOINT SECRET --->", endpoint_secret)
-            print("===============================================================")
-            print("PAYLOAD --->", payload)
-            print("===============================================================")
             event = stripe.Webhook.construct_event(
                 payload, signature_header, endpoint_secret
             )
-            print("===============================================================")
-            print("EVENT --->", event)
-            print("===============================================================")
         except ValueError as e:
-            print("===============================================================")
-            print("Invalid payload", str(e))
-            print("===============================================================")
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Invalid payload",
             )
         except stripe.error.SignatureVerificationError as e:
-            print("===============================================================")
-            print("Invalid signature", str(e))
-            print("===============================================================")
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Invalid signature",
             )
-
-        # Handle the event
         event_type = event["type"]
         data = event["data"]["object"]
-
         print("===============================================================")
         print("===============================================================")
-        print("STRIPE WEBHOOK CALLED")
+        print("STRIPE WEBHOOK CALLED!!!!!")
         print("===============================================================")
         print("EVENT TYPE---->", event_type)
         print("===============================================================")
@@ -146,17 +123,17 @@ class StripeWebhookView(generics.GenericAPIView):
         # Handle the event types you care about
         if event_type == "checkout.session.completed":
             print("===============================================================")
-            print("CHECKOUT SESSION COMPLETED")
+            print("CHECKOUT SESSION COMPLETED - EVENT TYPE")
             print("===============================================================")
             result = self.handle_payment_succeeded(data, request_meta)
         elif event_type == "payment_intent.payment_failed":
             print("===============================================================")
-            print("PAYMENT INTENT PAYMENT FAILED")
+            print("PAYMENT INTENT PAYMENT FAILED - EVENT TYPE")
             print("===============================================================")
             result = self.handle_payment_failed(data, request_meta)
         elif event_type == "payout.paid":
             print("===============================================================")
-            print("PAYOUT PAID")
+            print("PAYOUT PAID - EVENT TYPE")
             print("===============================================================")
             result = self.handle_payout_paid(data, request_meta)
         else:
@@ -181,11 +158,9 @@ class StripeWebhookView(generics.GenericAPIView):
         # print("DATA received", data)
         print("CUSTOMER", customer_details)
         customer_email = customer_details.get("email", None)
-
         try:
             txn = Transaction.objects.get(reference=tx_ref)
         except Transaction.DoesNotExist:
-            print("TXN DOES NOT EXIST")
             return {
                 "success": False,
                 "message": "Transaction does not exist",
@@ -209,10 +184,7 @@ class StripeWebhookView(generics.GenericAPIView):
         )
         txn.save()
 
-        description = f"Payment verified via Stripe WEBHOOK."
-        log_transaction_activity(txn, description, request_meta)
-
-        description = f"Payment received via {payment_type} channel. Transaction verified via WEBHOOK."
+        description = f"Payment received via {payment_type} channel. Transaction verified via Stripe WEBHOOK."
         log_transaction_activity(txn, description, request_meta)
 
         try:
