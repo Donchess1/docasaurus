@@ -182,11 +182,6 @@ class FundWalletStripeView(GenericAPIView):
                     "transaction_ref": tx_ref,
                 },
             )
-            print("=================================================================")
-            print("=================================================================")
-            print("SESSION--->", session)
-            print("=================================================================")
-            print("=================================================================")
         except stripe.error.StripeError as e:
             return Response(
                 success=False,
