@@ -6,7 +6,7 @@ class StripeService:
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
     def create_checkout_session(
-        cls, amount, currency="usd", success_url=None, cancel_url=None, customer_id=None
+        cls, amount, currency="usd", success_url=None, cancel_url=None, customer_id=None, metadata=None
     ):
         """
         Create a checkout session for redirecting the user to Stripe's hosted checkout page.
@@ -29,6 +29,7 @@ class StripeService:
             success_url=success_url,
             cancel_url=cancel_url,
             customer=customer_id,
+            metadata=metadata,
         )
         return session
 
