@@ -5,6 +5,7 @@ from django.conf import settings
 class StripeService:
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
+    @classmethod
     def create_checkout_session(
         cls, amount, currency="usd", success_url=None, cancel_url=None, customer_id=None, metadata=None
     ):
