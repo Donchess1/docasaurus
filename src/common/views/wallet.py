@@ -169,7 +169,7 @@ class FundWalletStripeView(GenericAPIView):
         cancel_url = f"{BACKEND_BASE_URL}/v1/shared/payment-redirect"
         session = None
         customer = self.stripe_api.get_or_create_customer(email=email, name=name)
-
+        print("CUSTOMER", customer)
         try:
             amount_in_cents = int(float(amount) * 100)
             session = self.stripe_api.create_checkout_session(
