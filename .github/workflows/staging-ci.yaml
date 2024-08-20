@@ -44,10 +44,10 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/${ENVIRONMENT}/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Create CodeDeploy Deployment
-        run: |
-          aws deploy create-deployment \
-            --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
-            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
-            --github-location repository=${{ github.repository }},commitId=${{ github.sha }} \
-            --ignore-application-stop-failures
+      # - name: Create CodeDeploy Deployment
+      #   run: |
+      #     aws deploy create-deployment \
+      #       --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
+      #       --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+      #       --github-location repository=${{ github.repository }},commitId=${{ github.sha }} \
+      #       --ignore-application-stop-failures
