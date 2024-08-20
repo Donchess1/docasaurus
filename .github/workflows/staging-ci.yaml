@@ -11,7 +11,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: mybalance-api/staging
+  ECR_REPOSITORY: mybalance-staging-api
   AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ODIC }}  
   ENVIRONMENT: staging  
   CODEDEPLOY_APPLICATION: my-balance-app
