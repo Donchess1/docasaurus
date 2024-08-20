@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: eu-west-1
-  ECR_REPOSITORY: my-balance-project-ecr-repo
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: mybalance-api/staging
   AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ODIC }}  
   ENVIRONMENT: staging  
   CODEDEPLOY_APPLICATION: my-balance-app
