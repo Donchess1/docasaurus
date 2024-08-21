@@ -225,7 +225,9 @@ class RegisterCustomerSerializer(serializers.Serializer):
         if not is_valid:
             raise serializers.ValidationError({"email": message})
 
-        if phone_number and customer_phone_numer_exists_for_merchant(merchant, phone_number):
+        if phone_number and customer_phone_numer_exists_for_merchant(
+            merchant, phone_number
+        ):
             raise serializers.ValidationError(
                 {"phone_number": "Customer with phone number already exists."}
             )

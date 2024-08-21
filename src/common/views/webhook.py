@@ -1,15 +1,24 @@
 import os
 
+import stripe
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 
-from common.serializers.webhook import FlwWebhookSerializer
+from common.serializers.webhook import FlwWebhookSerializer, StripeWebhookSerializer
 from common.services import handle_deposit, handle_withdrawal
+from console.models import Transaction
 from core.resources.sockets.pusher import PusherSocket
-from utils.activity_log import extract_api_request_metadata
+from transaction import tasks as txn_tasks
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.response import Response
+from utils.utils import add_commas_to_transaction_amount
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
+
+User = get_user_model()
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class FlwWebhookView(generics.GenericAPIView):
@@ -73,3 +82,148 @@ class FlwWebhookView(generics.GenericAPIView):
             else handle_deposit(deposit_data, request_meta, self.pusher)
         )
         return Response(**result)
+
+
+class StripeWebhookView(generics.GenericAPIView):
+    serializer_class = StripeWebhookSerializer
+    permission_classes = [permissions.AllowAny]
+    pusher = PusherSocket()
+
+    def post(self, request, *args, **kwargs):
+        request_meta = extract_api_request_metadata(request)
+        payload = request.body
+        signature_header = request.META["HTTP_STRIPE_SIGNATURE"]
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, signature_header, endpoint_secret
+            )
+        except ValueError as e:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid payload",
+            )
+        except stripe.error.SignatureVerificationError as e:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid signature",
+            )
+        event_type = event["type"]
+        data = event["data"]["object"]
+        print("===============================================================")
+        print("===============================================================")
+        print("STRIPE WEBHOOK CALLED!!!!!")
+        print("===============================================================")
+        print("EVENT TYPE---->", event_type)
+        print("===============================================================")
+        print("===============================================================")
+
+        # Handle the event types you care about
+        if event_type == "checkout.session.completed":
+            print("===============================================================")
+            print("CHECKOUT SESSION COMPLETED - EVENT TYPE")
+            print("===============================================================")
+            result = self.handle_payment_succeeded(data, request_meta)
+        elif event_type == "payment_intent.payment_failed":
+            print("===============================================================")
+            print("PAYMENT INTENT PAYMENT FAILED - EVENT TYPE")
+            print("===============================================================")
+            result = self.handle_payment_failed(data, request_meta)
+        elif event_type == "payout.paid":
+            print("===============================================================")
+            print("PAYOUT PAID - EVENT TYPE")
+            print("===============================================================")
+            result = self.handle_payout_paid(data, request_meta)
+        else:
+            print("===============================================================")
+            print("UNHANDLED EVENT TYPE", event_type)
+            print("===============================================================")
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Unhandled event type",
+            )
+
+        return Response(**result)
+
+    def handle_payment_succeeded(self, data, request_meta):
+        metadata = data.get("metadata", {})
+        tx_ref = metadata.get("transaction_ref", None)
+        stripe_transaction_id = data.get("id")
+        customer_details = data.get("customer_details")
+        print("TX_REF---->", tx_ref)
+        print("STRIPE_TXN_ID---->", stripe_transaction_id)
+        # print("DATA received", data)
+        print("CUSTOMER", customer_details)
+        customer_email = customer_details.get("email", None)
+        try:
+            txn = Transaction.objects.get(reference=tx_ref)
+        except Transaction.DoesNotExist:
+            return {
+                "success": False,
+                "message": "Transaction does not exist",
+                "status_code": status.HTTP_404_NOT_FOUND,
+            }
+
+        if txn.verified:
+            return {
+                "success": False,
+                "message": "Transaction already verified",
+                "status_code": status.HTTP_200_OK,
+            }
+
+        payment_type = "CARD"
+        txn.verified = True
+        txn.status = "SUCCESSFUL"
+        txn.meta.update(
+            {
+                "payment_method": payment_type,
+            }
+        )
+        txn.save()
+
+        description = f"Payment received via {payment_type} channel. Transaction verified via Stripe WEBHOOK."
+        log_transaction_activity(txn, description, request_meta)
+
+        try:
+            user = User.objects.filter(email=customer_email).first()
+        except User.DoesNotExist:
+            return {
+                "success": False,
+                "message": "User does not exist.",
+                "status_code": status.HTTP_404_NOT_FOUND,
+            }
+
+        wallet_exists, wallet = user.get_currency_wallet(txn.currency)
+        description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
+        user.credit_wallet(txn.amount, txn.currency)
+
+        _, wallet = user.get_currency_wallet(txn.currency)
+        description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
+        return {
+            "success": True,
+            "status_code": status.HTTP_200_OK,
+            "message": "Payment succeeded webhook processed successfully.",
+        }
+
+    def handle_payment_failed(self, data, request_meta):
+        # Handle payment failure logic
+        return {
+            "success": False,
+            "message": "Payment failed webhook processed.",
+            "status_code": status.HTTP_200_OK,
+        }
+
+    def handle_payout_paid(self, data, request_meta):
+        # Handle payout paid logic
+        return {
+            "success": True,
+            "message": "Payout paid webhook processed.",
+            "status_code": status.HTTP_200_OK,
+        }

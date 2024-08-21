@@ -28,6 +28,8 @@ class Transaction(models.Model):
         ("FLUTTERWAVE", "FLUTTERWAVE"),
         ("PAYSTACK", "PAYSTACK"),
         ("BLUSALT", "BLUSALT"),
+        ("TERRASWITCH", "TERRASWITCH"),
+        ("STRIPE", "STRIPE"),
         ("MYBALANCE", "MYBALANCE"),
     )
     CURRENCY = (
@@ -49,7 +51,7 @@ class Transaction(models.Model):
     currency = models.CharField(
         max_length=255, default="NGN", choices=CURRENCY, db_index=True
     )
-    provider = models.CharField(max_length=255, choices=PROVIDER)
+    provider = models.CharField(max_length=255, choices=PROVIDER, db_index=True)
     provider_tx_reference = models.CharField(max_length=255, null=True, blank=True)
     meta = models.JSONField(null=True, blank=True)
     verified = models.BooleanField(default=False)

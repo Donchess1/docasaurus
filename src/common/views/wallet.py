@@ -1,6 +1,7 @@
 import os
 from decimal import Decimal
 
+import stripe
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -17,6 +18,7 @@ from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
+from core.resources.stripe import StripeAPI
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
@@ -121,6 +123,85 @@ class FundWalletView(GenericAPIView):
             success=True,
             message="Payment successfully initialized",
             status_code=status.HTTP_200_OK,
+            data=payload,
+        )
+
+
+class FundWalletStripeView(GenericAPIView):
+    serializer_class = WalletAmountSerializer
+    permission_classes = [IsAuthenticated]
+    stripe_api = StripeAPI
+
+    def post(self, request):
+        request_meta = extract_api_request_metadata(request)
+        user = request.user
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        amount = data.get("amount", None)
+        currency = "USD"
+
+        tx_ref = generate_txn_reference()
+        email = user.email
+        name = user.name
+        txn = Transaction.objects.create(
+            user_id=user,
+            type="DEPOSIT",
+            amount=amount,
+            status="PENDING",
+            reference=tx_ref,
+            currency=currency,
+            provider="STRIPE",
+            meta={"title": "Wallet credit"},
+        )
+
+        description = f"{(user.name).upper()} initiated deposit of {currency} {add_commas_to_transaction_amount(amount)} to fund wallet."
+        log_transaction_activity(txn, description, request_meta)
+
+        # success_url = f"{FRONTEND_BASE_URL}/buyer/payment-callback"
+        # cancel_url = f"{FRONTEND_BASE_URL}/buyer/payment-callback"
+        success_url = f"{BACKEND_BASE_URL}/v1/shared/payment-redirect"
+        cancel_url = f"{BACKEND_BASE_URL}/v1/shared/payment-redirect"
+        session = None
+        customer = self.stripe_api.get_or_create_customer(email=email, name=name)
+        print("CUSTOMER", customer)
+        try:
+            amount_in_cents = int(float(amount) * 100)
+            session = self.stripe_api.create_checkout_session(
+                amount=amount_in_cents,
+                currency=currency,
+                success_url=success_url,
+                cancel_url=cancel_url,
+                customer_id=customer.id,
+                metadata={
+                    "transaction_ref": tx_ref,
+                },
+            )
+        except stripe.error.StripeError as e:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=str(e),
+            )
+
+        link = session.url
+        payload = {"id": session.id, "url": link, "txn_reference": txn.reference}
+        txn.meta.update({"stripe_session_id": session.id})
+        txn.provider_tx_reference = session.id
+        txn.save()
+
+        description = f"Payment link: {link} successfully generated on STRIPE."
+        log_transaction_activity(txn, description, request_meta)
+
+        return Response(
+            success=True,
+            message="Payment successfully initialized",
+            status_code=status.HTTP_201_CREATED,
             data=payload,
         )
 
