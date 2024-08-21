@@ -36,16 +36,16 @@ class UserOverviewView(generics.GenericAPIView):
                 message=f"Invalid period. Valid options are: {', '.join(VALID_PERIODS)}",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        period_data = get_time_range_from_period(period, request.query_params)
-        if not period_data.get("success"):
+        period_time_range = get_time_range_from_period(period, request.query_params)
+        if not period_time_range.get("success"):
             return Response(
                 success=False,
-                message=period_data.get("message"),
+                message=period_time_range.get("message"),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        period_data = period_data.get("data", {})
-        start_date = period_data.get("start_date", None)
-        end_date = period_data.get("end_date", None)
+        period_time_range = period_time_range.get("data", {})
+        start_date = period_time_range.get("start_date", None)
+        end_date = period_time_range.get("end_date", None)
 
         users = User.objects.all()
 

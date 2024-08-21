@@ -24,6 +24,7 @@ ESCROW_STATES = [
     "TOTAL",
 ]
 VALID_PERIODS = {
+    "ALL_TIME",
     "TODAY",
     "DAY",
     "WEEK",
@@ -33,7 +34,7 @@ VALID_PERIODS = {
     "YEAR",
     "CUSTOM",
 }
-DEFAULT_PERIOD = "TODAY"
+DEFAULT_PERIOD = "ALL_TIME"
 DEFAULT_CURRENCY = "NGN"
 
 
@@ -162,7 +163,7 @@ def compute_start_end_end_date_from_filter_period(
     if period == "TODAY":
         return start_of_today, today
     elif period == "DAY":
-        return today, today + timedelta(days=1)
+        return today - timedelta(hours=24), today
     elif period == "WEEK":
         return today - timedelta(days=7), today
     elif period == "MONTH":
