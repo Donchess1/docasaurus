@@ -12,6 +12,7 @@ from console.utils import (
     DEPOSIT_STATES,
     DISPUTE_STATES,
     ESCROW_STATES,
+    MERCHANT_SETTLEMENT_STATES,
     VALID_PERIODS,
     WITHDRAWAL_STATES,
     get_aggregated_system_dispute_data_by_type,
@@ -91,16 +92,16 @@ class TransactionOverviewView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        period_data = get_time_range_from_period(period, request.query_params)
-        if not period_data.get("success"):
+        period_time_range = get_time_range_from_period(period, request.query_params)
+        if not period_time_range.get("success"):
             return Response(
                 success=False,
-                message=period_data.get("message"),
+                message=period_time_range.get("message"),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        period_data = period_data.get("data", {})
-        start_date = period_data.get("start_date", None)
-        end_date = period_data.get("end_date", None)
+        period_time_range = period_time_range.get("data", {})
+        start_date = period_time_range.get("start_date", None)
+        end_date = period_time_range.get("end_date", None)
 
         transactions = Transaction.objects.filter(currency=currency)
 
@@ -117,6 +118,9 @@ class TransactionOverviewView(generics.GenericAPIView):
         escrow_data = get_aggregated_system_transaction_data_by_type(
             transactions, "ESCROW", ESCROW_STATES
         )
+        merchant_settlement_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "MERCHANT_SETTLEMENT", MERCHANT_SETTLEMENT_STATES
+        )
 
         data = {
             "currency": currency,
@@ -127,6 +131,7 @@ class TransactionOverviewView(generics.GenericAPIView):
             "deposits": deposit_data,
             "withdrawals": withdrawal_data,
             "escrows": escrow_data,
+            "settlements": merchant_settlement_data,
         }
         serializer = self.serializer_class(data)
         return Response(
