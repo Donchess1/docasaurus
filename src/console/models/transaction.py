@@ -28,6 +28,7 @@ class Transaction(models.Model):
         ("FLUTTERWAVE", "FLUTTERWAVE"),
         ("PAYSTACK", "PAYSTACK"),
         ("BLUSALT", "BLUSALT"),
+        ("TERRASWITCH", "TERRASWITCH"),
         ("STRIPE", "STRIPE"),
         ("MYBALANCE", "MYBALANCE"),
     )
