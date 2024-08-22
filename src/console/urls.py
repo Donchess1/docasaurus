@@ -11,9 +11,11 @@ from console.views.base import (
 from console.views.dispute import DisputeDetailView, DisputeListView
 from console.views.overview import (
     DisputeOverviewView,
+    EmailLogOverviewView,
     TransactionOverviewView,
     UserOverviewView,
 )
+from console.views.provider import EmailProviderSwitchView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
 
@@ -22,6 +24,7 @@ router.register(r"users", UserViewSet, basename="users")
 
 urlpatterns = [
     path("overview/users", UserOverviewView.as_view(), name="users-overview"),
+    path("overview/emails", EmailLogOverviewView.as_view(), name="email-log-overview"),
     path(
         "overview/transactions",
         TransactionOverviewView.as_view(),
@@ -60,4 +63,9 @@ urlpatterns = [
         CheckUserWalletInfoByEmailView.as_view(),
         name="user-wallet-info-view",
     ),
+    # path(
+    #     "switch-email-provider",
+    #     EmailProviderSwitchView.as_view(),
+    #     name="toggle-email-provider",
+    # ),
 ] + router.urls

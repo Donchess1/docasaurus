@@ -27,8 +27,16 @@ class EscrowStatusSerializer(serializers.Serializer):
     TOTAL = VolumeCountSerializer()
 
 
+class SettlementStatusSerializer(serializers.Serializer):
+    PENDING = VolumeCountSerializer()
+    SUCCESSFUL = VolumeCountSerializer()
+    FAILED = VolumeCountSerializer()
+    TOTAL = VolumeCountSerializer()
+
+
 class TransactionSummarySerializer(BaseSummarySerializer):
     currency = serializers.CharField()
     deposits = DepositStatusSerializer()
     withdrawals = WithdrawalStatusSerializer()
     escrows = EscrowStatusSerializer()
+    settlements = SettlementStatusSerializer()
