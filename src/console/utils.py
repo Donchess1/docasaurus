@@ -6,12 +6,13 @@ from django.db.models import Count, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
-from console.models import Dispute, Transaction
+from console.models import Dispute, EmailLog, Transaction
 from dispute.services import get_user_owned_dispute_queryset
 from transaction.services import get_user_owned_transaction_queryset
 
 User = get_user_model()
 
+EMAIL_DELIVERY_STATES = ["FAILED", "SUCCESSFUL", "TOTAL"]
 DISPUTE_STATES = ["PENDING", "PROGRESS", "RESOLVED", "TOTAL"]
 DEPOSIT_STATES = ["PENDING", "SUCCESSFUL", "FAILED", "CANCELLED", "TOTAL"]
 MERCHANT_SETTLEMENT_STATES = ["PENDING", "SUCCESSFUL", "FAILED", "TOTAL"]
@@ -87,6 +88,32 @@ def format_system_aggregated_transaction_data(
         status = entry["status"]
         if status in data:
             data[status]["volume"] = entry.get("volume", 0)
+            data[status]["count"] = entry.get("count", 0)
+    return data
+
+
+def get_aggregated_system_email_log_data_by_provider(
+    email_logs: QuerySet[EmailLog], provider: str, statuses: List[str]
+) -> Dict[str, Dict[str, Any]]:
+    data = (
+        email_logs.filter(provider=provider)
+        .values("status")
+        .annotate(count=Coalesce(Count("id"), 0))
+    )
+    total = email_logs.filter(provider=provider).aggregate(
+        count=Coalesce(Count("id"), 0)
+    )
+    data = list(data) + [{"status": "TOTAL", "count": total["count"]}]
+    return format_system_aggregated_email_log_data(data, statuses)
+
+
+def format_system_aggregated_email_log_data(
+    queryset: List[Dict[str, Any]], statuses: List[str]
+) -> Dict[str, Dict[str, int]]:
+    data = {status: {"count": 0} for status in statuses}
+    for entry in queryset:
+        status = entry["status"]
+        if status in data:
             data[status]["count"] = entry.get("count", 0)
     return data
 

@@ -306,16 +306,36 @@ DRF_API_LOGGER_TIME_ZONE = "Africa/Lagos"  # see the API information in local ti
 DRF_API_LOGGER_PATH_TYPE = "ABSOLUTE"
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
-# EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("FROM_EMAIL")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")
 FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"MyBalance <mybalance@oinvent.com>")
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKENDS = {
+    "SENDGRID": {
+        "BACKEND": EMAIL_BACKEND,
+        "HOST": "smtp.sendgrid.net",
+        "PORT": 587,
+        "USERNAME": "apiKey",
+        "PASSWORD": SENDGRID_API_KEY,
+        "USE_TLS": True,
+    },
+    "AWS_SES": {
+        "BACKEND": EMAIL_BACKEND,
+        "HOST": EMAIL_HOST,
+        "PORT": EMAIL_PORT,
+        "USERNAME": EMAIL_HOST_USER,
+        "PASSWORD": EMAIL_HOST_PASSWORD,
+        "USE_TLS": EMAIL_USE_TLS,
+    },
+}
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.environ.get("STRIPE_PUBLIC_KEY")
