@@ -264,8 +264,9 @@ class TerraSwitchWebhookView(generics.GenericAPIView):
         # Verify that the computed hash matches the TerraSwitch signature
         if computed_hash != terraswitch_signature:
             return Response(
-                {"success": False, "message": "Invalid signature."},
-                status=status.HTTP_403_FORBIDDEN
+                success=False, 
+                message="Invalid signature.",
+                status_code=status.HTTP_403_FORBIDDEN
             )
 
         print("================================================================")
