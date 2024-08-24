@@ -19,7 +19,11 @@ from common.views.wallet import (
     WalletWithdrawalFeeView,
     WalletWithdrawalView,
 )
-from common.views.webhook import FlwWebhookView, StripeWebhookView
+from common.views.webhook import (
+    FlwWebhookView,
+    StripeWebhookView,
+    TerraSwitchWebhookView,
+)
 
 urlpatterns = [
     path("banks", ListBanksView.as_view(), name="list-banks"),
@@ -74,5 +78,10 @@ urlpatterns = [
         "stripe-webhook",
         StripeWebhookView.as_view(),
         name="stripe-webhook",
+    ),
+    path(
+        "terraswitch-webhook",
+        TerraSwitchWebhookView.as_view(),
+        name="terraswitch-webhook",
     ),
 ]

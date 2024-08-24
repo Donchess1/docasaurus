@@ -7,14 +7,17 @@ from utils.utils import convert_to_camel
 
 class Requests:
     @classmethod
-    def make_get_request(cls, url, flw_headers=None, zha_headers=None):
+    def make_get_request(
+        cls, url, flw_headers=None, zha_headers=None, terraswitch_headers=None
+    ):
         if flw_headers:
             response = requests.get(url, headers=flw_headers)
         elif zha_headers:
             response = requests.get(url, headers=zha_headers)
+        elif terraswitch_headers:
+            response = requests.get(url, headers=terraswitch_headers)
         else:
             response = requests.get(url)
-
         if response.status_code in [503, 500]:
             print("THIRD PARTY SERVICE NOT AVAILABLE!")
             print("THIRD PARTY STATUS CODE:", response.status_code)
@@ -36,7 +39,13 @@ class Requests:
 
     @classmethod
     def make_post_request(
-        cls, url, data=None, camelize=True, flw_headers=None, zha_headers=None
+        cls,
+        url,
+        data=None,
+        camelize=True,
+        flw_headers=None,
+        zha_headers=None,
+        terraswitch_headers=None,
     ):
         if data and camelize:
             json_data = {convert_to_camel(k): v for k, v in data.items()}
@@ -45,6 +54,8 @@ class Requests:
             response = requests.post(url, json=data, headers=flw_headers)
         elif not camelize and zha_headers:
             response = requests.post(url, json=data, headers=zha_headers)
+        elif not camelize and terraswitch_headers:
+            response = requests.post(url, json=data, headers=terraswitch_headers)
         elif not camelize:
             response = requests.post(url, data)
         else:
