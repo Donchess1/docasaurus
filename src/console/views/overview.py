@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 
-from console.models import Dispute, Transaction
+from console.models import Dispute, EmailLog, Transaction
 from console.permissions import IsSuperAdmin
 from console.serializers.dispute import DisputeSummarySerializer
 from console.serializers.transaction import TransactionSummarySerializer
@@ -11,10 +11,13 @@ from console.utils import (
     DEFAULT_PERIOD,
     DEPOSIT_STATES,
     DISPUTE_STATES,
+    EMAIL_DELIVERY_STATES,
     ESCROW_STATES,
+    MERCHANT_SETTLEMENT_STATES,
     VALID_PERIODS,
     WITHDRAWAL_STATES,
     get_aggregated_system_dispute_data_by_type,
+    get_aggregated_system_email_log_data_by_provider,
     get_aggregated_system_transaction_data_by_type,
     get_time_range_from_period,
 )
@@ -36,16 +39,16 @@ class UserOverviewView(generics.GenericAPIView):
                 message=f"Invalid period. Valid options are: {', '.join(VALID_PERIODS)}",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        period_data = get_time_range_from_period(period, request.query_params)
-        if not period_data.get("success"):
+        period_time_range = get_time_range_from_period(period, request.query_params)
+        if not period_time_range.get("success"):
             return Response(
                 success=False,
-                message=period_data.get("message"),
+                message=period_time_range.get("message"),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        period_data = period_data.get("data", {})
-        start_date = period_data.get("start_date", None)
-        end_date = period_data.get("end_date", None)
+        period_time_range = period_time_range.get("data", {})
+        start_date = period_time_range.get("start_date", None)
+        end_date = period_time_range.get("end_date", None)
 
         users = User.objects.all()
 
@@ -91,16 +94,16 @@ class TransactionOverviewView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        period_data = get_time_range_from_period(period, request.query_params)
-        if not period_data.get("success"):
+        period_time_range = get_time_range_from_period(period, request.query_params)
+        if not period_time_range.get("success"):
             return Response(
                 success=False,
-                message=period_data.get("message"),
+                message=period_time_range.get("message"),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        period_data = period_data.get("data", {})
-        start_date = period_data.get("start_date", None)
-        end_date = period_data.get("end_date", None)
+        period_time_range = period_time_range.get("data", {})
+        start_date = period_time_range.get("start_date", None)
+        end_date = period_time_range.get("end_date", None)
 
         transactions = Transaction.objects.filter(currency=currency)
 
@@ -117,6 +120,9 @@ class TransactionOverviewView(generics.GenericAPIView):
         escrow_data = get_aggregated_system_transaction_data_by_type(
             transactions, "ESCROW", ESCROW_STATES
         )
+        merchant_settlement_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "MERCHANT_SETTLEMENT", MERCHANT_SETTLEMENT_STATES
+        )
 
         data = {
             "currency": currency,
@@ -127,6 +133,7 @@ class TransactionOverviewView(generics.GenericAPIView):
             "deposits": deposit_data,
             "withdrawals": withdrawal_data,
             "escrows": escrow_data,
+            "settlements": merchant_settlement_data,
         }
         serializer = self.serializer_class(data)
         return Response(
@@ -190,5 +197,59 @@ class DisputeOverviewView(generics.GenericAPIView):
             success=True,
             message="Disputes data retrieved successfully",
             data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+
+class EmailLogOverviewView(generics.GenericAPIView):
+    permission_classes = (IsSuperAdmin,)
+    serializer_class = UserSummarySerializer
+
+    def get(self, request):
+        period = request.query_params.get("period", DEFAULT_PERIOD).upper()
+        if period and period not in VALID_PERIODS:
+            return Response(
+                success=False,
+                message=f"Invalid period. Valid options are: {', '.join(VALID_PERIODS)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        period_time_range = get_time_range_from_period(period, request.query_params)
+        if not period_time_range.get("success"):
+            return Response(
+                success=False,
+                message=period_time_range.get("message"),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        period_time_range = period_time_range.get("data", {})
+        start_date = period_time_range.get("start_date", None)
+        end_date = period_time_range.get("end_date", None)
+
+        email_logs = EmailLog.objects.all()
+
+        if start_date and end_date:
+            email_logs = email_logs.filter(sent_at__range=(start_date, end_date))
+
+        # Aggregate data for each email provider. Add more here as we update the providers
+        aws_ses_data = get_aggregated_system_email_log_data_by_provider(
+            email_logs, "AWS_SES", EMAIL_DELIVERY_STATES
+        )
+        sendgrid_data = get_aggregated_system_email_log_data_by_provider(
+            email_logs, "SENDGRID", EMAIL_DELIVERY_STATES
+        )
+
+        email_logs_data = {
+            "period": period,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total": email_logs.count(),
+            "aws_ses": aws_ses_data,
+            "sendgrid": sendgrid_data,
+        }
+        # serializer = self.serializer_class(email_logs_data)
+        return Response(
+            success=True,
+            message="Email Logs overview retrieved successfully",
+            # data=serializer.data,
+            data=email_logs_data,
             status_code=status.HTTP_200_OK,
         )

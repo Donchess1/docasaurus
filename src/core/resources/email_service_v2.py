@@ -2,15 +2,50 @@ import logging
 from datetime import datetime
 
 from django.conf import settings
+from django.core.mail import get_connection
 from django.core.mail import send_mail as django_send_mail
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.html import strip_tags
+
+from console.models.providers import EmailLog
+from utils.utils import EMAIL_SMTP_PROVIDERS
 
 logger = logging.getLogger(__name__)
 
 
 class EmailClientV2:
     FROM_EMAIL = settings.FROM_EMAIL
+    PROVIDER = "AWS_SES"  # Default provider
+    # TODO: Read provider from database or cache
+
+    @classmethod
+    def set_provider(cls, provider: str):
+        if provider.upper() in EMAIL_SMTP_PROVIDERS:
+            cls.PROVIDER = provider.upper()
+        else:
+            raise ValueError("Invalid email provider")
+
+    @classmethod
+    def get_connection(cls):
+        """
+        Get the appropriate connection based on the PROVIDER attribute.
+        """
+        provider = cls.PROVIDER
+        if provider and provider in settings.EMAIL_BACKENDS:
+            backend_config = settings.EMAIL_BACKENDS[provider]
+            return get_connection(
+                backend=backend_config["BACKEND"],
+                host=backend_config["HOST"],
+                port=backend_config["PORT"],
+                username=backend_config["USERNAME"],
+                password=backend_config["PASSWORD"],
+                use_tls=backend_config["USE_TLS"],
+            )
+        else:
+            raise ValueError(
+                f"Provider {provider} is not configured in EMAIL_BACKENDS."
+            )
 
     @classmethod
     def send_account_verification_email(cls, email: str, context: dict):
@@ -198,6 +233,7 @@ class EmailClientV2:
     def send_email(cls, email: str, subject: str, html_body: dict):
         plain_message = strip_tags(html_body)
         try:
+            connection = cls.get_connection()
             response = django_send_mail(
                 subject=subject,
                 message=plain_message,
@@ -205,19 +241,30 @@ class EmailClientV2:
                 recipient_list=[email],
                 html_message=html_body,
                 fail_silently=False,
+                connection=connection,
             )
             print("SUCCESSFUL -->", response == 1)
             logger.info(f"{subject.upper()} - EMAIL SUCCESSFUL ✅")
-            # TODO: Log Email Message and Status
-            return (
-                f"{subject.upper()} - EMAIL SUCCESSFUL ✅",
-                "SUCCESSFUL -->",
-                response == 1,
+            EmailLog.objects.create(
+                recipient=email,
+                subject=subject,
+                body=html_body if html_body else plain_message,
+                sent_at=timezone.now(),
+                status="SUCCESSFUL",
+                smtp_server=connection.host,
+                provider=cls.PROVIDER,
             )
         except Exception as e:
             err = str(e)
             print(err)
             logger.error(f"{subject.upper()} - EMAIL FAILED ❌")
             logger.error(f"Error: {err}")
-            # TODO: Log Email Message and Status
-            return f"{subject.upper()} - EMAIL FAILED ❌"
+            EmailLog.objects.create(
+                recipient=email,
+                subject=subject,
+                body=html_body if html_body else plain_message,
+                sent_at=timezone.now(),
+                status="FAILED",
+                error_message=str(e),
+                provider=cls.PROVIDER,
+            )
