@@ -1,4 +1,6 @@
 import os
+import hashlib
+import hmac
 
 import stripe
 from django.conf import settings
@@ -237,7 +239,7 @@ class TerraSwitchWebhookView(generics.GenericAPIView):
     def post(self, request):
         request_meta = extract_api_request_metadata(request)
         secret_hash = os.environ.get("FLW_SECRET_HASH")
-        verif_hash = request.headers.get("verif-hash", None)
+        terraswitch_signature = request.headers.get("x-terraswitch-signature", None)
 
         # if not verif_hash or verif_hash != secret_hash:
         #     return Response(
@@ -245,6 +247,26 @@ class TerraSwitchWebhookView(generics.GenericAPIView):
         #         message="Invalid authorization token.",
         #         status_code=status.HTTP_403_FORBIDDEN,
         #     )
+        # Calculate the HMAC SHA512 hash using the API key and request body
+        api_key = os.environ.get("TERRASWITCH_SECRET_KEY")
+        payload = request.body  # Use the raw request body for HMAC calculation
+        computed_hash = hmac.new(
+            key=api_key.encode('utf-8'),
+            msg=payload,
+            digestmod=hashlib.sha512
+        ).hexdigest()
+        print("COMPUTED HASH---->", computed_hash)
+        print("TERRASWITCH SIGNATURE---->", terraswitch_signature)
+        print("================================================================")
+        print("comparison results ---> ", computed_hash == terraswitch_signature)
+        print("================================================================")
+
+        # Verify that the computed hash matches the TerraSwitch signature
+        if computed_hash != terraswitch_signature:
+            return Response(
+                {"success": False, "message": "Invalid signature."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         print("================================================================")
         print("================================================================")
