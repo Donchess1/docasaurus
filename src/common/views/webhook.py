@@ -227,3 +227,55 @@ class StripeWebhookView(generics.GenericAPIView):
             "message": "Payout paid webhook processed.",
             "status_code": status.HTTP_200_OK,
         }
+
+
+class TerraSwitchWebhookView(generics.GenericAPIView):
+    serializer_class = FlwWebhookSerializer
+    permission_classes = [permissions.AllowAny]
+    pusher = PusherSocket()
+
+    def post(self, request):
+        request_meta = extract_api_request_metadata(request)
+        secret_hash = os.environ.get("FLW_SECRET_HASH")
+        verif_hash = request.headers.get("verif-hash", None)
+
+        # if not verif_hash or verif_hash != secret_hash:
+        #     return Response(
+        #         success=False,
+        #         message="Invalid authorization token.",
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #     )
+
+        print("================================================================")
+        print("================================================================")
+        print("TERRASWITCH WEBHOOK CALLED")
+        print("================================================================")
+        print("REQUEST DATA---->", request.data)
+        print("================================================================")
+        print("================================================================")
+
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+
+        # event = serializer.validated_data.get("event")
+        # data = serializer.validated_data.get("data")
+
+        # event_type = request.data.get("event.type")
+        # withdrawal_data = request.data.get("transfer") if env == "test" else data
+        # deposit_data = request.data if env == "test" else data
+        # result = (
+        #     handle_withdrawal(withdrawal_data, request_meta, self.pusher)
+        #     if event_type.upper() == "TRANSFER"
+        #     else handle_deposit(deposit_data, request_meta, self.pusher)
+        # )
+        # return Response(**result)
+        return Response(
+            success=True,
+            message="Terra Switch Webhook processed successfully.",
+            status_code=status.HTTP_200_OK,
+        )
