@@ -54,6 +54,11 @@ class UserOverviewView(generics.GenericAPIView):
 
         if start_date and end_date:
             users = users.filter(created_at__range=(start_date, end_date))
+        else:
+            # Since no date filter was applied
+            # We use the earliest and latest dates as default for start_date and end_date
+            start_date = users.earliest("created_at").created_at
+            end_date = users.latest("created_at").created_at
 
         user_data = {
             "period": period,
@@ -109,6 +114,12 @@ class TransactionOverviewView(generics.GenericAPIView):
 
         if start_date and end_date:
             transactions = transactions.filter(created_at__range=(start_date, end_date))
+        else:
+            # Since no date filter was applied
+            # We use the earliest and latest dates as default for start_date and end_date
+            total_system_transactions = Transaction.objects.all()
+            start_date = total_system_transactions.earliest("created_at").created_at
+            end_date = total_system_transactions.latest("created_at").created_at
 
         # Aggregate data for each transaction type
         deposit_data = get_aggregated_system_transaction_data_by_type(
@@ -172,6 +183,11 @@ class DisputeOverviewView(generics.GenericAPIView):
 
         if start_date and end_date:
             disputes = disputes.filter(created_at__range=(start_date, end_date))
+        else:
+            # Since no date filter was applied
+            # We use the earliest and latest dates as default for start_date and end_date
+            start_date = disputes.earliest("created_at").created_at
+            end_date = disputes.latest("created_at").created_at
 
         low_priority_dispute_data = get_aggregated_system_dispute_data_by_type(
             disputes, "LOW", DISPUTE_STATES

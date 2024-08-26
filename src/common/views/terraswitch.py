@@ -19,6 +19,7 @@ from console.serializers.flutterwave import FlwTransferCallbackSerializer
 from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
 from core.resources.stripe import StripeAPI
+from core.resources.terraswitch import TerraSwitchAPI
 from notifications.models.notification import UserNotification
 from transaction import tasks as txn_tasks
 from users.models import UserProfile
@@ -26,7 +27,6 @@ from users.models.wallet import Wallet
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.response import Response
 from utils.text import notifications
-from core.resources.terraswitch import TerraSwitchAPI
 from utils.utils import (
     PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
@@ -86,18 +86,19 @@ class FundWalletTerraSwitchView(GenericAPIView):
             "reuseable": False,
             "amount": amount,
             "reference": tx_ref,
-            "currency":currency,
+            "currency": currency,
             "redirectUrl": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
             "message": "Thank you for your payment. Please wait for a response shortly.",  # Success message after a successful payment.
             "customer": {
                 "email": user.email,
                 "firstName": user.name.split(" ")[0],
                 "lastName": user.name.split(" ")[1]
-                if len(user.name.split()) > 1 else "",
+                if len(user.name.split()) > 1
+                else "",
                 "phoneNumber": user.phone,
                 "phoneCode": "+234",
             },
-            "metadata": [ # TerraSwitch Constructive Structure
+            "metadata": [  # TerraSwitch Constructive Structure
                 {
                     "displayName": "Merchant Reference",
                     "variableName": "merchant_reference",
@@ -106,12 +107,12 @@ class FundWalletTerraSwitchView(GenericAPIView):
                 {
                     "displayName": "Merchant Action",
                     "variableName": "action",
-                    "value": "FUND_WALLET", # ["FUND_ESCROW", "FUND_MERCHANT_ESCROW", "FUND_WALLET"]
+                    "value": "FUND_WALLET",  # ["FUND_ESCROW", "FUND_MERCHANT_ESCROW", "FUND_WALLET"]
                 },
                 {
                     "displayName": "Merchant Platform",
                     "variableName": "platform",
-                    "value": "WEB", # ["WEB", "MERCHANT_API"]
+                    "value": "WEB",  # ["WEB", "MERCHANT_API"]
                 },
             ],
         }
@@ -136,5 +137,3 @@ class FundWalletTerraSwitchView(GenericAPIView):
             status_code=status.HTTP_200_OK,
             data=payload,
         )
-
-
