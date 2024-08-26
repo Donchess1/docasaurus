@@ -23,6 +23,7 @@ from common.views.webhook import (
     FlwWebhookView,
     StripeWebhookView,
     TerraSwitchWebhookView,
+    TestTerraSwitchAPIView,
 )
 
 urlpatterns = [
@@ -83,5 +84,10 @@ urlpatterns = [
         "terraswitch-webhook",
         TerraSwitchWebhookView.as_view(),
         name="terraswitch-webhook",
+    ),
+    path(
+        "terraswitch",
+        TestTerraSwitchAPIView.as_view(),
+        name="test-terraswitch",
     ),
 ]

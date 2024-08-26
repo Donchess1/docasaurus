@@ -6,6 +6,11 @@ class FlwWebhookSerializer(serializers.Serializer):
     data = serializers.JSONField(required=False)
 
 
+class GenericWebhookSerializer(serializers.Serializer):
+    event = serializers.CharField(required=False)
+    data = serializers.JSONField(required=False)
+
+
 class StripeWebhookSerializer(serializers.Serializer):
     event = serializers.CharField(required=False)
     data = serializers.JSONField(required=False)

@@ -5,8 +5,8 @@ from rest_framework import status
 
 from console import tasks as console_tasks
 from console.models.transaction import LockedAmount, Transaction
-from core.resources.flutterwave import FlwAPI
 from core.resources.sockets.pusher import PusherSocket
+from core.resources.terraswitch import TerraSwitchAPI
 from merchant.utils import (
     create_bulk_merchant_transactions_and_products_and_log_activity,
 )
@@ -21,7 +21,7 @@ BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
-def handle_withdrawal(data, request_meta, pusher):
+def handle_terraswitch_withdrawal_webhook(data, request_meta, pusher):
     amount_charged = data.get("amount")
     msg = data.get("complete_message")
     amount_to_debit = data["meta"].get("amount_to_debit")
@@ -137,9 +137,9 @@ def handle_withdrawal(data, request_meta, pusher):
     }
 
 
-def handle_deposit(data, request_meta, pusher):
-    tx_ref = data.get("tx_ref")
-    flw_transaction_id = data.get("id")
+def handle_terraswitch_deposit_webhook(data, request_meta, pusher):
+    tx_ref = data.get("merchant_ref")
+    terraswitch_transaction_ref = data.get("reference")
 
     try:
         txn = Transaction.objects.get(reference=tx_ref)
@@ -151,24 +151,24 @@ def handle_deposit(data, request_meta, pusher):
         }
 
     if txn.verified:
-        # Occasionally, Flutterwave might send the same webhook event more than once.
-        # This is to make this event processing idempotent.
+        # If payment gateway sends the same webhook event more than once.
+        # We need to make this event processing idempotent.
         # So calling the webhook multiple times will have the same effect.
-        # We don't want to end up debit customer multiple times.
-        # At the same time, Flutterwave acknowledges receipt of the webhook when we return 200 HTTP status code
+        # We don't want to end up crediting/debiting customer multiple times.
         return {
             "success": False,
             "message": "Transaction already verified",
             "status_code": status.HTTP_200_OK,
         }
 
-    if data["status"] != "successful":
+    if data["status"] not in ("successful", "completed"):
+        description = data.get("description", "")
         txn.status = "FAILED"
-        # txn.meta.update({"note": msg})
+        txn.meta.update({"note": description})
         txn.verified = True
         txn.save()
 
-        description = f"Payment failed."
+        description = f"Payment failed. {description}"
         log_transaction_activity(txn, description, request_meta)
 
         return {
@@ -177,19 +177,20 @@ def handle_deposit(data, request_meta, pusher):
             "status_code": status.HTTP_200_OK,
         }
 
-    obj = FlwAPI.verify_transaction(flw_transaction_id)
+    obj = TerraSwitchAPI.verify_transaction(terraswitch_transaction_ref)
     print("============================================================")
     print("============================================================")
-    print("VERIFYING FLW DEPOSIT TRANSACTION")
+    print("VERIFYING TERRASWITCH DEPOSIT TRANSACTION")
     print(obj)
     print("============================================================")
     print("============================================================")
-    if obj["status"] == "error":
-        msg = obj["message"]
-        txn.meta.update({"description": f"FLW Transaction {msg}"})
+    if obj["error"]:
+        msg = obj["errors"][0]
+        txn.meta.update({"description": f"TerraSwitch Transaction {msg}"})
+        txn.verified = True
         txn.save()
 
-        description = f"Error occurred while verifying transaction. Description: {msg}"
+        description = f"Error occurred while verifying TerraSwitch transaction. Description: {msg}"
         log_transaction_activity(txn, description, request_meta)
 
         # TODO: Log this error in observability service: Tag [FLW Err:]
@@ -199,15 +200,15 @@ def handle_deposit(data, request_meta, pusher):
             "status_code": status.HTTP_400_BAD_REQUEST,
         }
 
-    if obj["data"]["status"] == "failed":
-        msg = obj["data"]["processor_response"]
-        txn.meta.update({"description": f"FLW Transaction {msg}"})
+    if obj["data"]["status"] not in ("successful", "completed"):
+        msg = obj["data"]["description"]
+        txn.meta.update({"description": f"TerraSwitch Transaction {msg}"})
+        txn.verified = True
         txn.save()
 
-        description = f"Transaction failed. Description: {msg}"
+        description = f"TerraSwitch Transaction Verified. Status: {obj['data']['status']}. Description: {msg}"
         log_transaction_activity(txn, description, request_meta)
 
-        # TODO: Log this error in observability service: Tag ["FLW Failed:]
         return {
             "success": False,
             "message": f"{msg}",
@@ -215,38 +216,29 @@ def handle_deposit(data, request_meta, pusher):
         }
 
     if (
-        obj["data"]["tx_ref"] == txn.reference
-        and obj["data"]["status"] == "successful"
+        obj["data"]["reference"] == txn.provider_tx_reference
+        and obj["data"]["status"] in ("successful", "completed")
         and obj["data"]["currency"] == txn.currency
-        and obj["data"]["charged_amount"] >= txn.amount
+        and obj["data"]["amount"] >= txn.amount
     ):
+        # txn.reference # merchant_ref not available from payload sent when verifying terraswitch txn reference
         data = obj["data"]
-        flw_ref = data.get("flw_ref")
-        narration = data.get("narration")
+        terraswitch_transaction_ref = data.get("reference")
+        narration = data.get("description")
         txn.verified = True
         txn.status = "SUCCESSFUL"
-        txn.mode = data.get("auth_model")
-        txn.charge = data.get("app_fee")
-        txn.remitted_amount = data.get("amount_settled")
-        txn.provider_tx_reference = flw_ref
+        txn.mode = data.get("feature")
+        txn.charge = data.get("fee")
         txn.narration = narration
         payment_type = obj["data"]["payment_type"]
-        txn.meta.update(
-            {
-                "payment_method": payment_type,
-                "provider_txn_id": obj["data"]["id"],
-                "description": f"FLW Transaction {narration}_{flw_ref}",
-            }
-        )
+        txn.meta.update(data)
         txn.save()
-        amount_charged = data.get("charged_amount")
-        msg = data.get("processor_response")
-        tx_ref = data.get("tx_ref")
-        flw_transaction_id = data.get("id")
-        customer_email = data["customer"].get("email")
-        meta = data.get("meta")
 
-        description = f"Payment received via {payment_type} channel. Transaction verified via WEBHOOK."
+        amount_charged = data.get("amount")
+        customer_email = data["customer"].get("email")
+        meta = data.get("metadata", [])
+
+        description = f"Payment received via channel. Transaction verified via WEBHOOK."
         log_transaction_activity(txn, description, request_meta)
 
         try:
