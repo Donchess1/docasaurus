@@ -327,48 +327,13 @@ class TestTerraSwitchAPIView(generics.GenericAPIView):
         print("TESTING TERRA!!! --->")
         print("================================================================")
         # obj = TerraSwitchAPI.get_wallet_details()
-        checkout_data = {
-            "type": "fixed",
-            "reuseable": False,
-            "amount": 10000,
-            "reference": "1234567XDT",
-            "redirectUrl": "https://staging.mybalanceapp.com/payments/redirect",
-            "message": "Thank you for your payment",  # Success message after a successful payment.
-            "customer": {
-                "email": user.email,
-                "firstName": user.name.split(" ")[0],
-                "lastName": user.name.split(" ")[1]
-                if len(user.name.split()) > 1
-                else user.name.split(" ")[0],
-                "phoneNumber": user.phone,
-                "phoneCode": "+234",
-            },
-            "metadata": [ # TerraSwitch Constructive Structure
-                {
-                    "displayName": "Merchant Reference",
-                    "variableName": "merchant_reference",
-                    "value": "1234567XDT",
-                },
-                {
-                    "displayName": "Merchant Action",
-                    "variableName": "action",
-                    "value": "FUND_WALLET", # ["FUND_ESCROW", "FUND_MERCHANT_ESCROW", "FUND_WALLET"]
-                },
-                {
-                    "displayName": "Merchant Platform",
-                    "variableName": "platform",
-                    "value": "WEB", # ["WEB", "MERCHANT_API"]
-                },
-            ],
-        }
         payout_data = {
             "type": "account",
             "amount": 2000,
             "reference": "RVFGHYU8334OP",
             "bank": {"accountNo": "0252872743", "bankCode": "4061"},
         }
-        obj = TerraSwitchAPI.initiate_payment_link(checkout_data)
-        # obj = TerraSwitchAPI.initiate_payout(payout_data)
+        obj = TerraSwitchAPI.initiate_payout(payout_data)
         print(obj)
         print("================================================================")
         print("TESTING TERRA!!! --->")

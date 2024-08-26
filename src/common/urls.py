@@ -19,6 +19,7 @@ from common.views.wallet import (
     WalletWithdrawalFeeView,
     WalletWithdrawalView,
 )
+from common.views.terraswitch import FundWalletTerraSwitchView
 from common.views.webhook import (
     FlwWebhookView,
     StripeWebhookView,
@@ -46,6 +47,9 @@ urlpatterns = [
     path("fund-wallet", FundWalletView.as_view(), name="fund-wallet"),
     path(
         "fund-wallet-stripe", FundWalletStripeView.as_view(), name="fund-wallet-stripe"
+    ),
+    path(
+        "fund-wallet-terraswitch", FundWalletTerraSwitchView.as_view(), name="fund-wallet-terraswitch"
     ),
     path(
         "payment-redirect",
