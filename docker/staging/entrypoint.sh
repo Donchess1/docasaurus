@@ -56,6 +56,10 @@ wait_for_postgres
 echo "============================="
 echo "Initializing DB..."
 echo "============================="
+echo "============================="
+echo "Running Django Commands..."
+echo "============================="
+cd /app/src
 python manage.py migrate
 python manage.py collectstatic --noinput
 status=$?
