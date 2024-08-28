@@ -49,7 +49,7 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir deployment_package
-          cp -r docker docker-compose*.yml  nginx.conf scripts appspec.yml env.example deployment_package/
+          cp -r docker docker-compose*.yml  nginx.conf scripts appspec.yml .env.example deployment_package/
           echo "ECR_REGISTRY=$ECR_REGISTRY" > deployment_package/ecr_info.env
           echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> deployment_package/ecr_info.env
           echo "ENVIRONMENT=$ENVIRONMENT" >> deployment_package/ecr_info.env
