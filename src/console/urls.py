@@ -12,6 +12,7 @@ from console.views.dispute import DisputeDetailView, DisputeListView
 from console.views.overview import (
     DisputeOverviewView,
     EmailLogOverviewView,
+    TransactionChartView,
     TransactionOverviewView,
     UserOverviewView,
 )
@@ -29,6 +30,11 @@ urlpatterns = [
         "overview/transactions",
         TransactionOverviewView.as_view(),
         name="transactions-overview",
+    ),
+    path(
+        "chart/transactions",
+        TransactionChartView.as_view(),
+        name="transactions-chart",
     ),
     path("overview/disputes", DisputeOverviewView.as_view(), name="disputes-overview"),
     path(
