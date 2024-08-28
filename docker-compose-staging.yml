@@ -2,10 +2,7 @@ version: "3.8"
 
 services:
   api: &api
-  # api:
-    build:
-      context: .
-      dockerfile: ./docker/staging/Dockerfile
+    image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
     volumes:
       - ./src:/app
       - myb-dev-static-data:/vol/web
