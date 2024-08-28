@@ -16,7 +16,7 @@ env:
   ENVIRONMENT: staging  
   CODEDEPLOY_APPLICATION: my-balance-app
   CODEDEPLOY_DEPLOYMENT_GROUP: my-balance-dg
-  S3_BUCKET: mybalance-staging-64
+  S3_BUCKET: mybalance-api-staging-code-deploy
 
 jobs:
   build-and-deploy:
