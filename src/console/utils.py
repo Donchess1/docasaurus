@@ -38,6 +38,7 @@ VALID_PERIODS = {
 }
 DEFAULT_PERIOD = "ALL_TIME"
 DEFAULT_CURRENCY = "NGN"
+TRANSACTION_CHART_STATUS = ("SUCCESSFUL", "PENDING", "FAILED", "TOTAL")
 
 
 def get_aggregated_system_transaction_data_by_type(

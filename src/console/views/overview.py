@@ -4,7 +4,10 @@ from rest_framework import generics, permissions, status
 from console.models import Dispute, EmailLog, Transaction
 from console.permissions import IsSuperAdmin
 from console.serializers.dispute import DisputeSummarySerializer
-from console.serializers.transaction import TransactionSummarySerializer
+from console.serializers.transaction import (
+    TransactionChartSerializer,
+    TransactionSummarySerializer,
+)
 from console.serializers.user import UserSummarySerializer
 from console.services.transaction_chart import TransactionChartDataHandler
 from console.utils import (
@@ -158,7 +161,7 @@ class TransactionOverviewView(generics.GenericAPIView):
 
 class TransactionChartView(generics.GenericAPIView):
     permission_classes = (IsSuperAdmin,)
-    serializer_class = TransactionSummarySerializer
+    serializer_class = TransactionChartSerializer
 
     def get(self, request):
         period = request.query_params.get("period", DEFAULT_PERIOD).upper()
@@ -228,11 +231,12 @@ class TransactionChartView(generics.GenericAPIView):
                 "aggregate": aggregate,
                 "chart_data": transaction_data,
             }
+            serializer = self.serializer_class(data)
 
             return Response(
                 success=True,
                 message="Transaction chart data retrieved successfully",
-                data=data,
+                data=serializer.data,
                 status_code=status.HTTP_200_OK,
             )
         except Exception as e:
