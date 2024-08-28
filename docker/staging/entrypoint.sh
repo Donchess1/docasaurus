@@ -56,10 +56,13 @@ wait_for_postgres
 echo "============================="
 echo "Initializing DB..."
 echo "============================="
+echo "Current directory structure:"
+ls -R /app
+
 echo "============================="
-echo "Running Django Commands..."
+echo "Running Django commands..."
 echo "============================="
-cd /app/src
+cd /app/src  # Change to the src directory
 python manage.py migrate
 python manage.py collectstatic --noinput
 status=$?
