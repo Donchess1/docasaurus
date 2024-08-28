@@ -16,9 +16,10 @@ env:
   ENVIRONMENT: staging  
   CODEDEPLOY_APPLICATION: my-balance-app
   CODEDEPLOY_DEPLOYMENT_GROUP: my-balance-dg
+  S3_BUCKET: mybalance-staging-64
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +31,6 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActionsSession
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -41,13 +41,31 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/${ENVIRONMENT}/Dockerfile .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f docker/staging/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
 
-      # - name: Create CodeDeploy Deployment
-      #   run: |
-      #     aws deploy create-deployment \
-      #       --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
-      #       --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
-      #       --github-location repository=${{ github.repository }},commitId=${{ github.sha }} \
-      #       --ignore-application-stop-failures
+      - name: Create deployment package
+        run: |
+          mkdir deployment_package
+          cp -r docker docker-compose*.yml  nginx.conf scripts appspec.yml env.example deployment_package/
+          echo "ECR_REGISTRY=$ECR_REGISTRY" > deployment_package/ecr_info.env
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> deployment_package/ecr_info.env
+          echo "ENVIRONMENT=$ENVIRONMENT" >> deployment_package/ecr_info.env
+          ls -la deployment_package  # Debug: List contents of deployment package
+          cat deployment_package/ecr_info.env  # Debug: Display contents of ecr_info.env         
+          cd deployment_package
+          zip -r ../deployment_package.zip .
+
+      - name: Upload deployment package to S3
+        run: |
+          aws s3 cp deployment_package.zip s3://${{ env.S3_BUCKET }}/deployment_package.zip
+
+      - name: Deploy to CodeDeploy
+        run: |
+          aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --s3-location bucket=${{ env.S3_BUCKET }},bundleType=zip,key=deployment_package.zip \
+            --file-exists-behavior OVERWRITE
