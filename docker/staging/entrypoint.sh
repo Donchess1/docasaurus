@@ -16,9 +16,9 @@ echo "============================="
 echo "Waiting for postgres..."
 echo "============================="
 
-# while ! nc -z db ${POSTGRES_PORT}; do
-#   sleep 0.1
-# done
+ while ! nc -z db ${POSTGRES_PORT}; do
+   sleep 0.1
+ done
 
 if [ -z "${POSTGRES_USER}" ]; then
     base_postgres_image_default_user='postgres'
@@ -68,11 +68,6 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 status=$?
 if [ $status -eq 0 ]; then
-  echo "============================="
-  echo "Loading fixtures..."
-  echo "============================="
-  python manage.py loaddata fixtures.json
-
   echo "============================="
   echo "Starting Gunicorn..."
   echo "============================="
