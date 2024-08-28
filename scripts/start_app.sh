@@ -9,13 +9,13 @@ cd $APP_DIR
 
 # Copy .env.example to .env if it exists, otherwise create an empty .env
 echo "Copying env.example to .env"
-cp env.example .env
+cp .env.example .env
 
 
 # Fetch sensitive data from Parameter Store and append to .env
 echo "Fetching sensitive data from Parameter Store"
-echo "POSTGRES_USER=$(aws ssm get-parameter --name "/mybalance/staging/POSTGRES_USER" --with-decryption --query Parameter.Value --output text)" >> .env
-echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/mybalance/staging/POSTGRES_PASSWORD" --with-decryption --query Parameter.Value --output text)" >> .env
+# echo "POSTGRES_USER=$(aws ssm get-parameter --name "/mybalance/staging/POSTGRES_USER" --with-decryption --query Parameter.Value --output text)" >> .env
+# echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/mybalance/staging/POSTGRES_PASSWORD" --with-decryption --query Parameter.Value --output text)" >> .env
 # Add other sensitive variables as needed
 
 # Ensure correct permissions on .env file
