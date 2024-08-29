@@ -9,6 +9,7 @@ from console.views.base import (
     UserViewSet,
 )
 from console.views.dispute import DisputeDetailView, DisputeListView
+from console.views.event import EventViewSet
 from console.views.overview import (
     DisputeOverviewView,
     EmailLogOverviewView,
@@ -16,12 +17,15 @@ from console.views.overview import (
     TransactionOverviewView,
     UserOverviewView,
 )
+from console.views.product import ProductViewSet
 from console.views.provider import EmailProviderSwitchView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="users")
+router.register(r"events", EventViewSet, basename="events")
+router.register(r"products", ProductViewSet, basename="products")
 
 urlpatterns = [
     path("overview/users", UserOverviewView.as_view(), name="users-overview"),

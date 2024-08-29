@@ -26,6 +26,7 @@ from common.views.webhook import (
     TerraSwitchWebhookView,
     TestTerraSwitchAPIView,
 )
+from console.views.product import GenerateProductPaymentLinkView, ProductPaymentTransactionRedirectView
 
 urlpatterns = [
     path("banks", ListBanksView.as_view(), name="list-banks"),
@@ -46,6 +47,11 @@ urlpatterns = [
     ),
     path("fund-wallet", FundWalletView.as_view(), name="fund-wallet"),
     path(
+        "initiate-product-payment",
+        GenerateProductPaymentLinkView.as_view(),
+        name="product-payment-link",
+    ),
+    path(
         "fund-wallet-stripe", FundWalletStripeView.as_view(), name="fund-wallet-stripe"
     ),
     path(
@@ -61,6 +67,11 @@ urlpatterns = [
     path(
         "escrow-payment-redirect",
         FundEscrowTransactionRedirectView.as_view(),
+        name="fund-escrow-redirect",
+    ),
+    path(
+        "product-payment-redirect",
+        ProductPaymentTransactionRedirectView.as_view(),
         name="fund-escrow-redirect",
     ),
     path("withdrawal-fee", WalletWithdrawalFeeView.as_view(), name="withdrawal-fee"),
