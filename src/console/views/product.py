@@ -116,19 +116,23 @@ class GenerateProductPaymentLinkView(GenericAPIView):
                 errors=serializer.errors,
             )
         product = serializer.validated_data["product"]
+        quantity = serializer.validated_data["quantity"]
         charges = serializer.validated_data["charges"]
 
         tx_ref = generate_txn_reference()
         txn = create_product_purchase_transaction(
-            product, tx_ref, request.user, charges
+            product, tx_ref, request.user, charges, quantity
         )
 
         description = f"{(user.name).upper()} initiated a purchase of {product.currency} {product.price} for {product.name}. Payment Provider: {PAYMENT_GATEWAY_PROVIDER}"
         log_transaction_activity(txn, description, request_meta)
 
+        product_total = product.price * quantity
+        total_amount = product_total + charges
+
         tx_data = {
             "tx_ref": tx_ref,
-            "amount": product.price,
+            "amount": total_amount,
             "currency": product.currency,
             # "redirect_url": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
             "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/product-payment-redirect",
@@ -161,7 +165,7 @@ class GenerateProductPaymentLinkView(GenericAPIView):
             )
 
         link = obj["data"]["link"]
-        payload = {"link": link}
+        payload = {"link": link, "amount_payable": total_amount, "tx_ref": tx_ref}
 
         description = f"Payment link: {link} successfully generated for {product.name} on {PAYMENT_GATEWAY_PROVIDER}."
         log_transaction_activity(txn, description, request_meta)
