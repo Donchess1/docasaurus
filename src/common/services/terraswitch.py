@@ -227,7 +227,7 @@ def handle_terraswitch_deposit_webhook(data, request_meta, pusher):
         narration = data.get("description")
         txn.verified = True
         txn.status = "SUCCESSFUL"
-        txn.mode = data.get("feature")
+        txn.provider_mode = data.get("feature")
         txn.charge = data.get("fee")
         txn.narration = narration
         payment_type = obj["data"]["payment_type"]

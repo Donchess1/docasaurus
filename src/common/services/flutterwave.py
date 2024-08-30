@@ -241,7 +241,7 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         narration = data.get("narration")
         txn.verified = True
         txn.status = "SUCCESSFUL"
-        txn.mode = data.get("auth_model")
+        txn.provider_mode = data.get("auth_model")
         txn.charge = data.get("app_fee")
         txn.remitted_amount = data.get("amount_settled")
         txn.provider_tx_reference = flw_ref

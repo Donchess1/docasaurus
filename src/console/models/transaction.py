@@ -46,6 +46,7 @@ class Transaction(models.Model):
     status = models.CharField(max_length=255, choices=STATUS, db_index=True)
     type = models.CharField(max_length=255, choices=TYPES, db_index=True)
     mode = models.CharField(max_length=255)
+    provider_mode = models.CharField(max_length=255, null=True, blank=True)
     reference = models.CharField(max_length=255, unique=True)
     narration = models.CharField(max_length=255, null=True, blank=True)
     amount = models.IntegerField(default=0, null=True, blank=True)
