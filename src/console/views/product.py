@@ -153,6 +153,7 @@ class GenerateProductPaymentLinkView(GenericAPIView):
                 "action": "PURCHASE_PRODUCT",
                 "product_reference": product.reference,
                 "platform": "WEB",
+                "ticket_quantity": quantity,
             },
         }
 
@@ -224,7 +225,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 message="Payment already verified.",
                 data={
                     "message_header": "Thank You For Your Purchase!",
-                    "message_body": f"Your ticket to the {product_name} has already been processed. Please check your email for your e-ticket and further instructions.",
+                    "message_body": f"Your ticket to the {product_name} has already been processed. Please check your email for your ticket code and further instructions.",
                 },
             )
 
@@ -367,18 +368,13 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
 
         customer_email = obj["data"]["customer"]["email"]
         amount_charged = obj["data"]["charged_amount"]
+        meta = obj["data"].get("meta")
+        ticket_quantity = meta.get("ticket_quantity")
 
         description = f"Payment received via {payment_type} channel. Transaction verified via REDIRECT URL."
         log_transaction_activity(txn, description, request_meta)
 
-        user = User.objects.filter(email=customer_email).first()
-        wallet_exists, wallet = user.get_currency_wallet(txn.currency)
-
-        description = f"Existing User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
-        log_transaction_activity(txn, description, request_meta)
-
         product_owner = product.owner
-
         wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
 
         description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
@@ -400,8 +396,8 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
             "transaction_reference": f"{(txn.reference).upper()}",
             "event_ticket_code": event_ticket_code,
             "event_name": product.event.name,
-            "ticket_quantity": product.quantity,
-            "event_date_time": product.event.date,
+            "ticket_quantity": f"x{ticket_quantity}",
+            "event_date_time": parse_datetime(product.event.date),
             "event_ticket_type": product.name,
             "event_venue": product.event.venue,
         }
