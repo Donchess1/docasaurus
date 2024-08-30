@@ -8,7 +8,7 @@ from rest_framework.generics import GenericAPIView
 
 from common.serializers.wallet import WalletAmountSerializer
 from console import tasks as console_tasks
-from console.models import Product, Transaction
+from console.models import Product, TicketPurchase, Transaction
 from console.serializers.product import (
     GenerateProductPaymentLinkSerializer,
     ProductSerializer,
@@ -422,6 +422,13 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 txn.amount, txn.currency, ticket_details
             ).CONTENT,
             action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
+        )
+        # Create ticket purchase instance
+        TicketPurchase.objects.create(
+            user=txn.user_id,
+            ticket_product=product,
+            transaction=txn,
+            ticket_code=event_ticket_code,
         )
         return Response(
             success=True,
