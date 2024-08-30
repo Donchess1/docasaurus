@@ -422,14 +422,13 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
                 )
+
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
                 message="Transaction verified.",
+                data={
+                    "message_header": "Thank You For Your Purchase!",
+                    "message_body": f"Your payment for {product_name} was processed successfully. Please check your email for your ticket code and further instructions.",
+                },
             )
-
-        return Response(
-            success=True,
-            message="Payment successfully verified",
-            status_code=status.HTTP_200_OK,
-        )

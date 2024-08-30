@@ -220,6 +220,13 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         and obj["data"]["currency"] == txn.currency
         and obj["data"]["charged_amount"] >= txn.amount
     ):
+        data = obj["data"]
+
+        # Now we need to know if the purpose of this deposit is to fund wallet or fund escrow
+        meta = data.get("meta")
+        action = meta.get("action", None)
+        platform = meta.get("platform")
+        escrow_transaction_reference = meta.get("escrow_transaction_reference", None)
         if action == "PURCHASE_PRODUCT" and platform == "WEB":
             print("=============================================")
             print("Bypassing FLW PURCHASE_PRODUCT")
@@ -229,7 +236,7 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
                 "status_code": status.HTTP_200_OK,
                 "message": "Transaction verified.",
             }
-        data = obj["data"]
+
         flw_ref = data.get("flw_ref")
         narration = data.get("narration")
         txn.verified = True
@@ -253,7 +260,6 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         tx_ref = data.get("tx_ref")
         flw_transaction_id = data.get("id")
         customer_email = data["customer"].get("email")
-        meta = data.get("meta")
 
         description = f"Payment received via {payment_type} channel. Transaction verified via WEBHOOK."
         log_transaction_activity(txn, description, request_meta)
@@ -272,10 +278,6 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         log_transaction_activity(txn, description, request_meta)
 
         user.credit_wallet(txn.amount, txn.currency)
-        # Now we need to know if the purpose of this deposit is to fund wallet or fund escrow
-        action = meta.get("action", None)
-        platform = meta.get("platform")
-        escrow_transaction_reference = meta.get("escrow_transaction_reference", None)
         if action == "FUND_ESCROW" and platform == "WEB":
             # Fund escrow transaction initiated on web platform
             escrow_txn = Transaction.objects.filter(
