@@ -179,6 +179,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
     permission_classes = [permissions.AllowAny]
     flw_api = FlwAPI
 
+    @transaction.atomic
     def get(self, request):
         request_meta = extract_api_request_metadata(request)
         flw_status = request.query_params.get("status", None)
@@ -350,13 +351,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 user = User.objects.filter(email=customer_email).first()
                 wallet_exists, wallet = user.get_currency_wallet(txn.currency)
 
-                description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
-                log_transaction_activity(txn, description, request_meta)
-
-                user.credit_wallet(txn.amount, txn.currency)
-                wallet_exists, wallet = user.get_currency_wallet(txn.currency)
-
-                description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+                description = f"Existing User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
                 product = txn.product
