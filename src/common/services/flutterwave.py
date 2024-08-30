@@ -470,6 +470,8 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
             print("=============================================")
             print("Bypassing FLW PURCHASE_PRODUCT")
             print("=============================================")
+            txn.verified = True
+            txn.save()
         return {
             "success": False,
             "status_code": status.HTTP_200_OK,
