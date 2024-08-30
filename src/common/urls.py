@@ -26,7 +26,10 @@ from common.views.webhook import (
     TerraSwitchWebhookView,
     TestTerraSwitchAPIView,
 )
-from console.views.product import GenerateProductPaymentLinkView, ProductPaymentTransactionRedirectView
+from console.views.product import (
+    GenerateProductPaymentLinkView,
+    ProductPaymentTransactionRedirectView,
+)
 
 urlpatterns = [
     path("banks", ListBanksView.as_view(), name="list-banks"),

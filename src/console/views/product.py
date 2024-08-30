@@ -131,7 +131,7 @@ class GenerateProductPaymentLinkView(GenericAPIView):
             "amount": product.price,
             "currency": product.currency,
             # "redirect_url": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
-            "redirect_url": f"{BACKEND_BASE_URL}/buyer/payment-callback",
+            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/product-payment-redirect",
             "customer": {
                 "email": user.email,
                 "phone_number": user.phone,
@@ -185,6 +185,17 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         tx_ref = request.query_params.get("tx_ref", None)
         flw_transaction_id = request.query_params.get("transaction_id", None)
 
+        if not tx_ref:
+            return Response(
+                success=False,
+                message="Transaction reference missing",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": "Transaction reference missing",
+                },
+            )
+
         try:
             txn = Transaction.objects.get(reference=tx_ref)
         except Transaction.DoesNotExist:
@@ -192,13 +203,22 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 success=False,
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": " This transaction does not exist!",
+                },
             )
 
         if txn.verified:
+            product_name = txn.product.name
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
                 message="Payment already verified.",
+                data={
+                    "message_header": "Thank You For Your Purchase!",
+                    "message_body": f"Your ticket to the {product_name} has already been processed. Please check your email for your e-ticket and further instructions.",
+                },
             )
 
         if flw_status == "cancelled":
@@ -214,6 +234,10 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Payment was cancelled.",
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": f"Unfortunately, we are unable to process your ticket. Your payment was cancelled. Please try again.",
+                },
             )
 
         if flw_status == "failed":
@@ -229,6 +253,10 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Payment failed",
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": f"Unfortunately, we are unable to process your ticket. Your payment failed. Please try again.",
+                },
             )
 
         if flw_status not in ["completed", "successful"]:
@@ -236,9 +264,15 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Invalid payment status",
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": f"Invalid payment status. Please try again.",
+                },
             )
 
         obj = self.flw_api.verify_transaction(flw_transaction_id)
+        description = f"Attempted to verify transaction {flw_transaction_id} on Flutterwave via API."
+        log_transaction_activity(txn, description, request_meta)
 
         if obj["status"] == "error":
             msg = obj["message"]
@@ -254,6 +288,10 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=msg,
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": f"An error occurred while processing your ticket payment. Please contact support with this reference: {txn.reference}.",
+                },
             )
 
         if obj["data"]["status"] == "failed":
@@ -268,7 +306,14 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=msg,
+                data={
+                    "message_header": "Transaction Error!",
+                    "message_body": f"An error occurred while processing your ticket payment. Please contact support with this reference: {txn.reference}.",
+                },
             )
+
+        description = f"Successfully verified transaction {flw_transaction_id} on Flutterwave via API."
+        log_transaction_activity(txn, description, request_meta)
 
         if (
             obj["data"]["tx_ref"] == txn.reference
@@ -314,30 +359,64 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
                 log_transaction_activity(txn, description, request_meta)
 
+                product = txn.product
+                product_owner = product.owner
+
+                wallet_exists, owner_wallet = product_owner.get_currency_wallet(
+                    txn.currency
+                )
+
+                description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
+                product_owner.credit_wallet(txn.amount, txn.currency)
+                wallet_exists, owner_wallet = product_owner.get_currency_wallet(
+                    txn.currency
+                )
+
+                description = f"New Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
+                log_transaction_activity(txn, description, request_meta)
+
                 email = user.email
+                event_ticket_code = f"MYB{generate_txn_reference()}"
                 values = {
                     "first_name": user.name.split(" ")[0],
                     "recipient": email,
                     "date": parse_datetime(txn.created_at),
                     "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
-                    "wallet_balance": f"{txn.currency} {add_commas_to_transaction_amount(wallet.balance)}",
                     "transaction_reference": f"{(txn.reference).upper()}",
+                    "event_ticket_code": event_ticket_code,
+                    "event_name": product.event.name,
+                    "ticket_quantity": product.quantity,
+                    "event_date_time": product.event.date,
+                    "event_ticket_type": product.name,
+                    "event_venue": product.event.venue,
                 }
-                console_tasks.send_fund_wallet_email.delay(email, values)
+                console_tasks.send_product_ticket_successful_payment_email.delay(
+                    email, values
+                )
                 # Create Notification
+                ticket_details = {
+                    "event_name": product.event.name,
+                    "event_date_time": product.event.date,
+                    "event_ticket_type": product.name,
+                    "event_venue": product.event.venue,
+                    "ticket_quantity": product.quantity,
+                    "event_ticket_price": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
+                    "event_ticket_code": event_ticket_code,
+                }
                 UserNotification.objects.create(
                     user=user,
-                    category="DEPOSIT",
-                    title=notifications.WalletDepositNotification(
-                        txn.amount, txn.currency
+                    category="PRODUCT_PURCHASE_SUCCESSFUL",
+                    title=notifications.ProductTicketSuccessfulPaymentNotification(
+                        txn.amount, txn.currency, ticket_details
                     ).TITLE,
-                    content=notifications.WalletDepositNotification(
-                        txn.amount, txn.currency
+                    content=notifications.ProductTicketSuccessfulPaymentNotification(
+                        txn.amount, txn.currency, ticket_details
                     ).CONTENT,
                     action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
                 )
 
-                # TODO: Send real-time Notification
             except User.DoesNotExist:
                 return Response(
                     success=False,

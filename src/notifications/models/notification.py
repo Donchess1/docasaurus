@@ -9,6 +9,7 @@ from users.models.user import CustomUser
 class UserNotification(models.Model):
     NOTIFICATION_CATEGORIES = (
         ("DEPOSIT", "DEPOSIT"),
+        ("PRODUCT_PURCHASE_SUCCESSFUL", "PRODUCT_PURCHASE_SUCCESSFUL"),
         ("WITHDRAWAL", "WITHDRAWAL"),
         ("ESCROW_APPROVED", "ESCROW_APPROVED"),
         ("ESCROW_REJECTED", "ESCROW_REJECTED"),

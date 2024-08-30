@@ -466,6 +466,10 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
             )
+        elif action == "PURCHASE_PRODUCT" and platform == "WEB":
+            print("=============================================")
+            print("Bypassing FLW PURCHASE_PRODUCT")
+            print("=============================================")
         return {
             "success": False,
             "status_code": status.HTTP_200_OK,
