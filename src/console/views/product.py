@@ -214,8 +214,10 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 },
             )
 
+        product = txn.product
+        product_name = product.name
+
         if txn.verified:
-            product_name = txn.product.name
             return Response(
                 success=True,
                 status_code=status.HTTP_200_OK,
@@ -320,115 +322,117 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         description = f"Successfully verified transaction {flw_transaction_id} on Flutterwave via API."
         log_transaction_activity(txn, description, request_meta)
 
-        if (
-            obj["data"]["tx_ref"] == txn.reference
-            and obj["data"]["status"] == "successful"
-            and obj["data"]["currency"] == txn.currency
-            and obj["data"]["charged_amount"] >= txn.amount
+        txn_reference_match = obj["data"]["tx_ref"] == txn.reference
+        txn_currency_match = obj["data"]["currency"] == txn.currency
+        txn_success_match = obj["data"]["status"] in ("successful", "completed")
+        txn_valid_charged_amount_match = obj["data"]["charged_amount"] >= txn.amount
+
+        if not (
+            txn_reference_match
+            and txn_success_match
+            and txn_currency_match
+            and txn_valid_charged_amount_match
         ):
-            flw_ref = obj["data"]["flw_ref"]
-            narration = obj["data"]["narration"]
-            txn.verified = True
-            txn.status = "SUCCESSFUL"
-            txn.mode = obj["data"]["auth_model"]
-            txn.charge = obj["data"]["app_fee"]
-            txn.remitted_amount = obj["data"]["amount_settled"]
-            txn.provider_tx_reference = flw_ref
-            txn.narration = narration
-            payment_type = obj["data"]["payment_type"]
-            txn.meta.update(
-                {
-                    "payment_method": payment_type,
-                    "provider_txn_id": obj["data"]["id"],
-                    "description": f"FLW Transaction {narration}_{flw_ref}",
-                }
-            )
-            txn.save()
-
-            customer_email = obj["data"]["customer"]["email"]
-            amount_charged = obj["data"]["charged_amount"]
-
-            description = f"Payment received via {payment_type} channel. Transaction verified via REDIRECT URL."
+            description = f"Error occurred while verifying transaction. Mismatch with transactionReferenceMatch: {txn_reference_match}. currencyMatch: {txn_currency_match}. successMatch: {txn_success_match}. validChargedAmountMatch: {txn_valid_charged_amount_match}."
             log_transaction_activity(txn, description, request_meta)
 
-            try:
-                user = User.objects.filter(email=customer_email).first()
-                wallet_exists, wallet = user.get_currency_wallet(txn.currency)
-
-                description = f"Existing User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
-                log_transaction_activity(txn, description, request_meta)
-
-                product = txn.product
-                product_owner = product.owner
-
-                wallet_exists, owner_wallet = product_owner.get_currency_wallet(
-                    txn.currency
-                )
-
-                description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
-                log_transaction_activity(txn, description, request_meta)
-
-                product_owner.credit_wallet(txn.amount, txn.currency)
-                wallet_exists, owner_wallet = product_owner.get_currency_wallet(
-                    txn.currency
-                )
-
-                description = f"New Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
-                log_transaction_activity(txn, description, request_meta)
-
-                email = user.email
-                event_ticket_code = f"MYB{generate_txn_reference()}"
-                values = {
-                    "first_name": user.name.split(" ")[0],
-                    "recipient": email,
-                    "date": parse_datetime(txn.created_at),
-                    "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
-                    "transaction_reference": f"{(txn.reference).upper()}",
-                    "event_ticket_code": event_ticket_code,
-                    "event_name": product.event.name,
-                    "ticket_quantity": product.quantity,
-                    "event_date_time": product.event.date,
-                    "event_ticket_type": product.name,
-                    "event_venue": product.event.venue,
-                }
-                console_tasks.send_product_ticket_successful_payment_email.delay(
-                    email, values
-                )
-                # Create Notification
-                ticket_details = {
-                    "event_name": product.event.name,
-                    "event_date_time": product.event.date,
-                    "event_ticket_type": product.name,
-                    "event_venue": product.event.venue,
-                    "ticket_quantity": product.quantity,
-                    "event_ticket_price": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
-                    "event_ticket_code": event_ticket_code,
-                }
-                UserNotification.objects.create(
-                    user=user,
-                    category="PRODUCT_PURCHASE_SUCCESSFUL",
-                    title=notifications.ProductTicketSuccessfulPaymentNotification(
-                        txn.amount, txn.currency, ticket_details
-                    ).TITLE,
-                    content=notifications.ProductTicketSuccessfulPaymentNotification(
-                        txn.amount, txn.currency, ticket_details
-                    ).CONTENT,
-                    action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
-                )
-
-            except User.DoesNotExist:
-                return Response(
-                    success=False,
-                    message="User not found",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                )
-
             return Response(
-                success=True,
-                status_code=status.HTTP_200_OK,
-                message="Transaction verified.",
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Transaction Error!",
                 data={
-                    "message_header": "Thank You For Your Purchase!",
-                    "message_body": f"Your payment for {product_name} was processed successfully. Please check your email for your ticket code and further instructions.",
+                    "message_header": "Transaction Error!",
+                    "message_body": f"An error occurred while processing your ticket payment. Please contact support with this reference: {txn.reference}.",
                 },
             )
+
+        flw_ref = obj["data"]["flw_ref"]
+        narration = obj["data"]["narration"]
+        txn.verified = True
+        txn.status = "SUCCESSFUL"
+        txn.mode = obj["data"]["auth_model"]
+        txn.charge = obj["data"]["app_fee"]
+        txn.remitted_amount = obj["data"]["amount_settled"]
+        txn.provider_tx_reference = flw_ref
+        txn.narration = narration
+        payment_type = obj["data"]["payment_type"]
+        txn.meta.update(
+            {
+                "payment_method": payment_type,
+                "provider_txn_id": obj["data"]["id"],
+                "description": f"FLW Transaction {narration}_{flw_ref}",
+            }
+        )
+        txn.save()
+
+        customer_email = obj["data"]["customer"]["email"]
+        amount_charged = obj["data"]["charged_amount"]
+
+        description = f"Payment received via {payment_type} channel. Transaction verified via REDIRECT URL."
+        log_transaction_activity(txn, description, request_meta)
+
+        user = User.objects.filter(email=customer_email).first()
+        wallet_exists, wallet = user.get_currency_wallet(txn.currency)
+
+        description = f"Existing User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
+        product_owner = product.owner
+
+        wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
+
+        description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
+        product_owner.credit_wallet(txn.amount, txn.currency)
+        wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
+
+        description = f"New Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
+        email = user.email
+        event_ticket_code = f"MYB{generate_txn_reference()}"
+        values = {
+            "first_name": user.name.split(" ")[0],
+            "recipient": email,
+            "date": parse_datetime(txn.created_at),
+            "amount_funded": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
+            "transaction_reference": f"{(txn.reference).upper()}",
+            "event_ticket_code": event_ticket_code,
+            "event_name": product.event.name,
+            "ticket_quantity": product.quantity,
+            "event_date_time": product.event.date,
+            "event_ticket_type": product.name,
+            "event_venue": product.event.venue,
+        }
+        console_tasks.send_product_ticket_successful_payment_email.delay(email, values)
+        # Create Notification
+        ticket_details = {
+            "event_name": product.event.name,
+            "event_date_time": product.event.date,
+            "event_ticket_type": product.name,
+            "event_venue": product.event.venue,
+            "ticket_quantity": product.quantity,
+            "event_ticket_price": f"{txn.currency} {add_commas_to_transaction_amount(txn.amount)}",
+            "event_ticket_code": event_ticket_code,
+        }
+        UserNotification.objects.create(
+            user=user,
+            category="PRODUCT_PURCHASE_SUCCESSFUL",
+            title=notifications.ProductTicketSuccessfulPaymentNotification(
+                txn.amount, txn.currency, ticket_details
+            ).TITLE,
+            content=notifications.ProductTicketSuccessfulPaymentNotification(
+                txn.amount, txn.currency, ticket_details
+            ).CONTENT,
+            action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
+        )
+        return Response(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Transaction verified.",
+            data={
+                "message_header": "Thank You For Your Purchase!",
+                "message_body": f"Your payment for {product_name} was processed successfully. Please check your email for your ticket code and further instructions.",
+            },
+        )
