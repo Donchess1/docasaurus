@@ -220,6 +220,15 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         and obj["data"]["currency"] == txn.currency
         and obj["data"]["charged_amount"] >= txn.amount
     ):
+        if action == "PURCHASE_PRODUCT" and platform == "WEB":
+            print("=============================================")
+            print("Bypassing FLW PURCHASE_PRODUCT")
+            print("=============================================")
+            return {
+                "success": True,
+                "status_code": status.HTTP_200_OK,
+                "message": "Transaction verified.",
+            }
         data = obj["data"]
         flw_ref = data.get("flw_ref")
         narration = data.get("narration")
@@ -466,12 +475,6 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
                 ).CONTENT,
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{tx_ref}",
             )
-        elif action == "PURCHASE_PRODUCT" and platform == "WEB":
-            print("=============================================")
-            print("Bypassing FLW PURCHASE_PRODUCT")
-            print("=============================================")
-            txn.verified = True
-            txn.save()
         return {
             "success": False,
             "status_code": status.HTTP_200_OK,
