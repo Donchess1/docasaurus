@@ -228,6 +228,13 @@ class EmailClientV2:
         subject = "Escrow Transaction Disputed"
         return cls.send_email(email, subject, html_content)
 
+    @classmethod
+    def send_product_ticket_successful_payment_email(cls, email: str, context: dict):
+        template_name = "product_ticket_successful_payment.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "Ticket Payment Complete 🎉"
+        return cls.send_email(email, subject, html_content)
+
     # ENTRY POINT
     @classmethod
     def send_email(cls, email: str, subject: str, html_body: dict):

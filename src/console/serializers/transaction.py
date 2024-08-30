@@ -48,7 +48,8 @@ class TransactionChartSerializer(serializers.Serializer):
     aggregate = serializers.CharField()
     period = serializers.CharField()
     transaction_status = serializers.ChoiceField(
-        choices=TRANSACTION_CHART_STATUS, default="NGN")
+        choices=TRANSACTION_CHART_STATUS, default="NGN"
+    )
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
     chart_data = serializers.DictField(

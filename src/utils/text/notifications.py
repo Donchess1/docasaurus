@@ -46,6 +46,13 @@ class FundsUnlockedSellerNotification(BaseNotification):
         super().__init__(TITLE, CONTENT)
 
 
+class ProductTicketSuccessfulPaymentNotification(BaseNotification):
+    def __init__(self, amount, currency, ticket_details):
+        TITLE = "Ticket Payment Successful"
+        CONTENT = f"Your payment of {currency} {amount} for {ticket_details['event_name']} was successful. Ticket Code: {ticket_details['event_ticket_code']}. Kindly check your email for more information."
+        super().__init__(TITLE, CONTENT)
+
+
 ESCROW_TRANSACTION_APPROVED_TITLE = "Transaction Approved"
 ESCROW_TRANSACTION_APPROVED_CONTENT = "Your transaction has been approved. Thank you for choosing MyBalance for your financial transactions. Kindly check your email for more information."
 
