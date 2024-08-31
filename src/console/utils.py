@@ -38,6 +38,7 @@ VALID_PERIODS = {
 }
 DEFAULT_PERIOD = "ALL_TIME"
 DEFAULT_CURRENCY = "NGN"
+TRANSACTION_CHART_STATUS = ("SUCCESSFUL", "PENDING", "FAILED", "TOTAL")
 
 
 def get_aggregated_system_transaction_data_by_type(
@@ -212,7 +213,7 @@ def compute_start_end_end_date_from_filter_period(
         if timezone.is_naive(end_date):
             end_date = timezone.make_aware(end_date)
         return start_date, end_date
-    return None, None
+    return None, None  # period = ALL_TIME
 
 
 def get_time_range_from_period(period: str, params: dict):
@@ -243,6 +244,12 @@ def get_time_range_from_period(period: str, params: dict):
             return {
                 "success": False,
                 "message": "start_date and end_date must be in the format YYYY-MM-DD.",
+                "data": None,
+            }
+        if start_date_str > end_date_str:
+            return {
+                "success": False,
+                "message": "start_date cannot be later than end_date.",
                 "data": None,
             }
         start_date, end_date = compute_start_end_end_date_from_filter_period(

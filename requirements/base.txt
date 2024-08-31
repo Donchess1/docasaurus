@@ -10,6 +10,7 @@ django-filter==23.5 # https://pypi.org/project/django-filter/ # Compatible versi
 pydantic==2.7.1
 bcrypt==4.1.2
 email-validator==2.2.0 # https://pypi.org/project/email-validator/
+Faker==28.0.0 # https://pypi.org/project/Faker/
 
 python-dotenv==0.21.0
 dj-database-url==1.0.0

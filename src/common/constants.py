@@ -1,0 +1,4 @@
+TERRASWITCH_PAYIN_LINK_SUCCESS = "payin.link.success"
+TERRASWITCH_PAYIN_LINK_FAILED = "payin.link.failed"
+TERRASWITCH_PAYOUT_SUCCESS = "payout.success"
+TERRASWITCH_PAYOUT_FAILED = "payout.failed"
