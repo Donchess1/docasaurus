@@ -56,8 +56,8 @@ wait_for_postgres
 echo "============================="
 echo "Initializing DB..."
 echo "============================="
-echo "Current directory structure:"
-ls -R /app
+# echo "Current directory structure:"
+# ls -R /app
 
 echo "============================="
 echo "Running Django commands..."

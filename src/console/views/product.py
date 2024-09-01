@@ -134,8 +134,8 @@ class GenerateProductPaymentLinkView(GenericAPIView):
             "tx_ref": tx_ref,
             "amount": total_amount,
             "currency": product.currency,
-            # "redirect_url": f"{FRONTEND_BASE_URL}/buyer/payment-callback",
-            "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/product-payment-redirect",
+            "redirect_url": f"{FRONTEND_BASE_URL}/buyer/ibtx/response",
+            # "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/product-payment-redirect",
             "customer": {
                 "email": user.email,
                 "phone_number": user.phone,
