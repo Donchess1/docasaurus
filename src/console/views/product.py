@@ -386,6 +386,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         description = f"New Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
+        user = User.objects.filter(email=customer_email).first()
         email = user.email
         event_ticket_code = f"MYB{generate_txn_reference()}"
         values = {
