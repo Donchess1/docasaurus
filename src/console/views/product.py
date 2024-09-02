@@ -1,9 +1,13 @@
 import os
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.generics import GenericAPIView
 
 from common.serializers.wallet import WalletAmountSerializer
@@ -12,11 +16,15 @@ from console.models import Product, TicketPurchase, Transaction
 from console.serializers.product import (
     GenerateProductPaymentLinkSerializer,
     ProductSerializer,
+    ProductTicketPurchaseSerializer,
+    TicketPurchaseAnalyticsSerializer,
 )
 from console.services.product import create_product_purchase_transaction
 from core.resources.flutterwave import FlwAPI
 from notifications.models.notification import UserNotification
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
+from utils.models import get_instance_or_404
+from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
@@ -33,26 +41,53 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
 
 
-class ProductViewSet(viewsets.ViewSet):
+class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
+    queryset = Product.objects.all().order_by("-created_at")
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ProductSerializer
+    pagination_class = CustomPagination
     http_method_names = ["get", "post", "put", "delete"]
 
+    def get_serializer_class(self):
+        if self.action == "get_product_tickets":
+            return ProductTicketPurchaseSerializer
+        return ProductSerializer
+
     def list(self, request):
-        products = Product.objects.all()
-        serializer = self.serializer_class(products, many=True)
-        return Response(
-            success=True,
-            message="Products retrieved successfully",
-            data=serializer.data,
-            status_code=status.HTTP_200_OK,
-        )
+        try:
+            queryset = self.get_queryset()
+            filtered_queryset = self.filter_queryset(queryset)
+            qs = self.paginate_queryset(filtered_queryset)
+            serializer = self.get_serializer(qs, many=True)
+            self.pagination_class.message = "Products retrieved successfully"
+            response = self.get_paginated_response(serializer.data)
+            return response
+
+        except DjangoValidationError as e:
+            return Response(
+                success=False,
+                message=f"{str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except DRFValidationError as e:
+            return Response(
+                success=False,
+                message=f"{e.detail}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"Unexpected error occurred. {str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
     def create(self, request):
         return self._save_product(request)
 
     def retrieve(self, request, pk=None):
-        product = get_object_or_404(Product, id=pk)
+        product = get_instance_or_404(Product, pk)
         serializer = self.serializer_class(product)
         return Response(
             success=True,
@@ -62,11 +97,11 @@ class ProductViewSet(viewsets.ViewSet):
         )
 
     def update(self, request, pk=None):
-        product = get_object_or_404(Product, id=pk)
+        product = get_instance_or_404(Product, pk)
         return self._save_product(request, instance=product)
 
     def destroy(self, request, pk=None):
-        product = get_object_or_404(Product, id=pk)
+        product = get_instance_or_404(Product, pk)
         product.delete()
         return Response(
             success=True,
@@ -98,6 +133,27 @@ class ProductViewSet(viewsets.ViewSet):
             status_code=status.HTTP_400_BAD_REQUEST,
             errors=serializer.errors,
         )
+
+    @action(detail=True, methods=["get"], url_path="tickets")
+    def get_product_tickets(self, request, pk=None):
+        product = get_instance_or_404(Product, pk)
+        try:
+            queryset = TicketPurchase.objects.filter(ticket_product=product).order_by(
+                "-created_at"
+            )
+            filtered_queryset = self.filter_queryset(queryset)
+            qs = self.paginate_queryset(filtered_queryset)
+            serializer = self.get_serializer(qs, many=True)
+            self.pagination_class.message = "Ticket Purchases retrieved successfully"
+            response = self.get_paginated_response(serializer.data)
+            return response
+
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"Unexpected error occurred. {str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class GenerateProductPaymentLinkView(GenericAPIView):
@@ -439,4 +495,34 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 "message_header": "Thank You For Your Purchase!",
                 "message_body": f"Your payment for {product_name} was processed successfully. Please check your email for your ticket code and further instructions.",
             },
+        )
+
+
+class TicketPurchaseAnalyticsView(GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = TicketPurchaseAnalyticsSerializer
+
+    def get(self, request):
+        aggregated_data = TicketPurchase.objects.values(
+            "ticket_product__name",
+            "ticket_product__reference",
+            "ticket_product__event__name",
+        ).annotate(purchase_count=Count("id"))
+
+        analytics_data = [
+            {
+                "event": item["ticket_product__event__name"],
+                "ticket_name": item["ticket_product__name"],
+                "reference": item["ticket_product__reference"],
+                "count": item["purchase_count"],
+            }
+            for item in aggregated_data
+        ]
+
+        serializer = self.serializer_class(analytics_data, many=True)
+        return Response(
+            success=True,
+            data=serializer.data,
+            message=f"Ticket Purchase Metrics Retrieved Successfully",
+            status_code=status.HTTP_200_OK,
         )

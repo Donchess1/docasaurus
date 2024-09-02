@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from console.models import Product
+from console.models import Product, TicketPurchase
 from utils.utils import EVENT_PRODUCT_FEE, generate_txn_reference
 
 
@@ -87,3 +87,24 @@ class GenerateProductPaymentLinkSerializer(serializers.Serializer):
         data["product"] = self.product_instance
         data["charges"] = charges
         return data
+
+
+class ProductTicketPurchaseSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source="user.name", read_only=True)
+    ticket_quantity = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TicketPurchase
+        fields = ["id", "purchase_date", "ticket_code", "user", "ticket_quantity"]
+
+    def get_ticket_quantity(self, obj):
+        if obj.transaction and obj.transaction.meta:
+            return obj.transaction.meta.get("ticket_quantity", 1)
+        return 1
+
+
+class TicketPurchaseAnalyticsSerializer(serializers.Serializer):
+    event = serializers.CharField()
+    ticket_name = serializers.CharField()
+    reference = serializers.CharField()
+    count = serializers.IntegerField()
