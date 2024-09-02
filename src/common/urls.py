@@ -29,6 +29,7 @@ from common.views.webhook import (
 from console.views.product import (
     GenerateProductPaymentLinkView,
     ProductPaymentTransactionRedirectView,
+    TicketPurchaseAnalyticsView,
 )
 
 urlpatterns = [
@@ -53,6 +54,11 @@ urlpatterns = [
         "initiate-product-payment",
         GenerateProductPaymentLinkView.as_view(),
         name="product-payment-link",
+    ),
+    path(
+        "ticket-analytics",
+        TicketPurchaseAnalyticsView.as_view(),
+        name="product-ticket-analytics",
     ),
     path(
         "fund-wallet-stripe", FundWalletStripeView.as_view(), name="fund-wallet-stripe"
