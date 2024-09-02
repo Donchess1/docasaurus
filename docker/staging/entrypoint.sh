@@ -16,9 +16,9 @@ echo "============================="
 echo "Waiting for postgres..."
 echo "============================="
 
- while ! nc -z ${POSTGRES_HOST} ${POSTGRES_PORT}; do
-   sleep 0.1
- done
+#  while ! nc -z ${POSTGRES_HOST} ${POSTGRES_PORT}; do
+#    sleep 0.1
+#  done
 
 if [ -z "${POSTGRES_USER}" ]; then
     base_postgres_image_default_user='postgres'
