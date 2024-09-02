@@ -20,6 +20,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("", views.api_ok, name="api-ok"),
+    path("health-check", views.HealthCheckView.as_view(), name="health-check"),
     path(
         "swagger-api-docs",
         schema_view.with_ui("swagger", cache_timeout=0),
