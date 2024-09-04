@@ -9,18 +9,23 @@ from console.views.base import (
     UserViewSet,
 )
 from console.views.dispute import DisputeDetailView, DisputeListView
+from console.views.event import EventViewSet
 from console.views.overview import (
     DisputeOverviewView,
     EmailLogOverviewView,
+    TransactionChartView,
     TransactionOverviewView,
     UserOverviewView,
 )
+from console.views.product import ProductViewSet
 from console.views.provider import EmailProviderSwitchView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="users")
+router.register(r"events", EventViewSet, basename="events")
+router.register(r"products", ProductViewSet, basename="products")
 
 urlpatterns = [
     path("overview/users", UserOverviewView.as_view(), name="users-overview"),
@@ -29,6 +34,11 @@ urlpatterns = [
         "overview/transactions",
         TransactionOverviewView.as_view(),
         name="transactions-overview",
+    ),
+    path(
+        "chart/transactions",
+        TransactionChartView.as_view(),
+        name="transactions-chart",
     ),
     path("overview/disputes", DisputeOverviewView.as_view(), name="disputes-overview"),
     path(

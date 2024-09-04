@@ -77,7 +77,7 @@ class FundWalletView(GenericAPIView):
             meta={"title": "Wallet credit"},
         )
 
-        description = f"{(user.name).upper()} initiated deposit of {currency} {add_commas_to_transaction_amount(amount)} to fund wallet."
+        description = f"{(user.name).upper()} initiated deposit of {currency} {add_commas_to_transaction_amount(amount)} to fund wallet. Payment Provider: {txn.provider}"
         log_transaction_activity(txn, description, request_meta)
 
         tx_data = {
@@ -312,7 +312,7 @@ class FundWalletRedirectView(GenericAPIView):
             narration = obj["data"]["narration"]
             txn.verified = True
             txn.status = "SUCCESSFUL"
-            txn.mode = obj["data"]["auth_model"]
+            txn.provider_mode = obj["data"]["auth_model"]
             txn.charge = obj["data"]["app_fee"]
             txn.remitted_amount = obj["data"]["amount_settled"]
             txn.provider_tx_reference = flw_ref
@@ -504,7 +504,7 @@ class FundEscrowTransactionRedirectView(GenericAPIView):
             narration = obj["data"]["narration"]
             txn.verified = True
             txn.status = "SUCCESSFUL"
-            txn.mode = obj["data"]["auth_model"]
+            txn.provider_mode = obj["data"]["auth_model"]
             txn.charge = obj["data"]["app_fee"]
             txn.remitted_amount = obj["data"]["amount_settled"]
             txn.provider_tx_reference = flw_ref

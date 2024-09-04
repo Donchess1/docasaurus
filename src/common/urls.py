@@ -8,6 +8,7 @@ from common.views.merchant import TrimMerchantTokenView
 from common.views.nin import ValidateNINView
 from common.views.passport import ValidatePassportView
 from common.views.state_lga import ListLGAByStateAliasView, ListNGNStatesView
+from common.views.terraswitch import FundWalletTerraSwitchView
 from common.views.upload import UploadMediaView
 from common.views.voter_card import ValidateVoterCardView
 from common.views.wallet import (
@@ -23,6 +24,12 @@ from common.views.webhook import (
     FlwWebhookView,
     StripeWebhookView,
     TerraSwitchWebhookView,
+    TestTerraSwitchAPIView,
+)
+from console.views.product import (
+    GenerateProductPaymentLinkView,
+    ProductPaymentTransactionRedirectView,
+    TicketPurchaseAnalyticsView,
 )
 
 urlpatterns = [
@@ -44,7 +51,22 @@ urlpatterns = [
     ),
     path("fund-wallet", FundWalletView.as_view(), name="fund-wallet"),
     path(
+        "initiate-product-payment",
+        GenerateProductPaymentLinkView.as_view(),
+        name="product-payment-link",
+    ),
+    path(
+        "ticket-analytics",
+        TicketPurchaseAnalyticsView.as_view(),
+        name="product-ticket-analytics",
+    ),
+    path(
         "fund-wallet-stripe", FundWalletStripeView.as_view(), name="fund-wallet-stripe"
+    ),
+    path(
+        "fund-wallet-terraswitch",
+        FundWalletTerraSwitchView.as_view(),
+        name="fund-wallet-terraswitch",
     ),
     path(
         "payment-redirect",
@@ -54,6 +76,11 @@ urlpatterns = [
     path(
         "escrow-payment-redirect",
         FundEscrowTransactionRedirectView.as_view(),
+        name="fund-escrow-redirect",
+    ),
+    path(
+        "product-payment-redirect",
+        ProductPaymentTransactionRedirectView.as_view(),
         name="fund-escrow-redirect",
     ),
     path("withdrawal-fee", WalletWithdrawalFeeView.as_view(), name="withdrawal-fee"),
@@ -83,5 +110,10 @@ urlpatterns = [
         "terraswitch-webhook",
         TerraSwitchWebhookView.as_view(),
         name="terraswitch-webhook",
+    ),
+    path(
+        "terraswitch",
+        TestTerraSwitchAPIView.as_view(),
+        name="test-terraswitch",
     ),
 ]

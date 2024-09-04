@@ -5,6 +5,8 @@ from django.db import models
 from merchant.models import Merchant, PayoutConfig
 from users.models.user import CustomUser
 
+from .product import Product
+
 
 class Transaction(models.Model):
     STATUS = (
@@ -23,6 +25,7 @@ class Transaction(models.Model):
         ("WITHDRAW", "WITHDRAW"),
         ("ESCROW", "ESCROW"),
         ("MERCHANT_SETTLEMENT", "MERCHANT_SETTLEMENT"),
+        ("PRODUCT", "PRODUCT"),
     )
     PROVIDER = (
         ("FLUTTERWAVE", "FLUTTERWAVE"),
@@ -43,6 +46,7 @@ class Transaction(models.Model):
     status = models.CharField(max_length=255, choices=STATUS, db_index=True)
     type = models.CharField(max_length=255, choices=TYPES, db_index=True)
     mode = models.CharField(max_length=255)
+    provider_mode = models.CharField(max_length=255, null=True, blank=True)
     reference = models.CharField(max_length=255, unique=True)
     narration = models.CharField(max_length=255, null=True, blank=True)
     amount = models.IntegerField(default=0, null=True, blank=True)
@@ -57,6 +61,9 @@ class Transaction(models.Model):
     verified = models.BooleanField(default=False)
     merchant = models.ForeignKey(
         Merchant, on_delete=models.SET_NULL, null=True, blank=True, db_index=True
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True, db_index=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
