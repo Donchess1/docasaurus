@@ -1,3 +1,5 @@
+import datetime
+
 import requests
 from rest_framework import status
 
@@ -62,6 +64,7 @@ class Requests:
             response = requests.post(url)
 
         if response.status_code in [503, 500]:
+            cls.send_slack_alert(url, data, response)
             print("THIRD PARTY SERVICE NOT AVAILABLE!")
             print("THIRD PARTY STATUS CODE:", response.status_code)
             return {
@@ -81,11 +84,12 @@ class Requests:
         print("response_content==>", response.content)
         print("=====================================")
         try:
-            data = response.json()
-            data["status_code"] = response.status_code
-            return data
+            res_data = response.json()
+            res_data["status_code"] = response.status_code
+            return res_data
         except requests.exceptions.JSONDecodeError:
             # logging.error(f"Failed to decode JSON: {response.text}")
+            cls.send_slack_alert(url, data, response)
             print("================================================")
             print(f"Failed to decode JSON: {response.text}")
             print("================================================")
@@ -124,3 +128,39 @@ class Requests:
         data = response.json()
         data["status_code"] = response.status_code
         return data
+
+    @classmethod
+    def send_slack_alert(cls, url, data, response):
+        webhook_url = "https://hooks.slack.com/services/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"
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        payload = {
+            "text": "🚨 *API Alert: Third Party Service Unavailable* 🚨",
+            "attachments": [
+                {
+                    "color": "danger",
+                    "fields": [
+                        {"title": "Endpoint", "value": url, "short": False},
+                        {
+                            "title": "Status Code",
+                            "value": response.status_code,
+                            "short": True,
+                        },
+                        {"title": "Timestamp", "value": timestamp, "short": True},
+                        {
+                            "title": "Request Payload",
+                            "value": json.dumps(data, indent=2),
+                            "short": False,
+                        },
+                        {
+                            "title": "Response Content",
+                            "value": response.text,
+                            "short": False,
+                        },
+                    ],
+                }
+            ],
+        }
+
+        headers = {"Content-Type": "application/json"}
+        requests.post(webhook_url, data=json.dumps(payload), headers=headers)
