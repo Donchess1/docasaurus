@@ -75,10 +75,26 @@ class Requests:
             #     success=False,
             #     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             # )
-
-        data = response.json()
-        data["status_code"] = response.status_code
-        return data
+        print("=====================================")
+        print("status_code", response.status_code)
+        print("=====================================")
+        print("response_content==>", response.content)
+        print("=====================================")
+        try:
+            data = response.json()
+            data["status_code"] = response.status_code
+            return data
+        except requests.exceptions.JSONDecodeError:
+            # logging.error(f"Failed to decode JSON: {response.text}")
+            print("================================================")
+            print(f"Failed to decode JSON: {response.text}")
+            print("================================================")
+            return {
+                "message": "An error occurred while processing the request. Please try again later or contact support.",
+                "success": False,
+                "status": "error",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
 
     @classmethod
     def make_put_request(cls, url, data):
