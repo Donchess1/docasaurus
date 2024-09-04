@@ -1,9 +1,17 @@
 from django.contrib import admin
 
-from console.models.transaction import Transaction, EscrowMeta, LockedAmount
-from console.models.dispute import Dispute
-from console.models.identity import NINIdentity
-from console.models.providers import EmailLog, SystemConfig
+from console.models import (
+    Transaction,
+    EscrowMeta,
+    LockedAmount,
+    Dispute,
+    NINIdentity,
+    Product,
+    Event,
+    TicketPurchase,
+    EmailLog,
+    SystemConfig,
+)
 
 admin.site.register(Transaction)
 admin.site.register(EscrowMeta)
@@ -12,3 +20,6 @@ admin.site.register(Dispute)
 admin.site.register(NINIdentity)
 admin.site.register(EmailLog)
 admin.site.register(SystemConfig)
+admin.site.register(Event)
+admin.site.register(Product)
+admin.site.register(TicketPurchase)
