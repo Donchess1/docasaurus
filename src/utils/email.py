@@ -9,6 +9,10 @@ env = "live" if ENVIRONMENT == "production" else "test"
 def validate_email_address(email: str, check_deliverability=False):
     # REF: https://pypi.org/project/email-validator/
     is_valid, message, validated_response = False, "", {}
+    
+    if env == "live" and "+" in email:
+        message = "Invalid character '+' now allowed. Please enter a valid email address."
+        return is_valid, message, validated_response
 
     try:
         # this checks that the email address is valid.
