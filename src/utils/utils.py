@@ -7,6 +7,9 @@ from uuid import uuid4
 
 from django.core.validators import RegexValidator
 
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+APP_ENV = "🚀 Production" if ENVIRONMENT == "production" else "🚧 Staging"
+
 
 def parse_datetime(datetime_input):
     val = str(datetime_input)[:-6]

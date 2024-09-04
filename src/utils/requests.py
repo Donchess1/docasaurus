@@ -1,11 +1,11 @@
-from datetime import datetime
 import json
 
 import requests
+from django.utils import timezone
 from rest_framework import status
 
 from utils.response import Response
-from utils.utils import convert_to_camel
+from utils.utils import APP_ENV, convert_to_camel
 
 
 class Requests:
@@ -133,7 +133,9 @@ class Requests:
     @classmethod
     def send_slack_alert(cls, url, data, response):
         webhook_url = "https://hooks.slack.com/services/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"
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        utc_now = timezone.now()
+        wat_now = utc_now + timedelta(hours=1)  # Apply the UTC+1 offset for WAT
+        timestamp = wat_now.strftime("%Y-%m-%d %H:%M:%S %Z")
 
         payload = {
             "text": "🚨 *API Alert: Third Party Service Unavailable* 🚨",
@@ -142,6 +144,7 @@ class Requests:
                     "color": "danger",
                     "fields": [
                         {"title": "Endpoint", "value": url, "short": False},
+                        {"title": "Environment", "value": APP_ENV, "short": False},
                         {
                             "title": "Status Code",
                             "value": response.status_code,
