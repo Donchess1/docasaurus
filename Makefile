@@ -36,14 +36,14 @@ show_logs-prod:
 superuser:
 	docker compose -f docker-compose.yml run --rm api python3 manage.py createsuperuser
 superuser-staging:
-	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py createsuperuser
+	docker compose -f docker-compose-staging-original.yml run --rm api python3 manage.py createsuperuser
 superuser-prod:
 	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py createsuperuser
 
 migrate:
 	docker compose -f docker-compose.yml run --rm api python3 manage.py migrate
 migrate-staging:
-	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py migrate
+	docker compose -f docker-compose-staging-original.yml run --rm api python3 manage.py migrate
 migrate-prod:
 	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py migrate
 
@@ -57,14 +57,14 @@ makemigrations-prod:
 createwallets:
 	docker compose -f docker-compose.yml run --rm api python3 manage.py create_wallets
 createwallets-staging:
-	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py create_wallets
+	docker compose -f docker-compose-staging-original.yml run --rm api python3 manage.py create_wallets
 createwallets-prod:
 	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py create_wallets
 
 migratewallets:
 	docker compose -f docker-compose.yml run --rm api python3 manage.py migrate_wallets
 migratewallets-staging:
-	docker compose -f docker-compose-staging.yml run --rm api python3 manage.py migrate_wallets
+	docker compose -f docker-compose-staging-original.yml run --rm api python3 manage.py migrate_wallets
 migratewallets-prod:
 	docker compose -f docker-compose-prod.yml run --rm api python3 manage.py migrate_wallets
 
