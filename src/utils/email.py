@@ -4,6 +4,7 @@ from email_validator import EmailNotValidError, validate_email
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
+APP_ENV = "live" if ENVIRONMENT == "production" else "test"
 
 
 def validate_email_address(email: str, check_deliverability=False):
