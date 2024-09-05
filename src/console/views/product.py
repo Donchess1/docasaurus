@@ -54,7 +54,7 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         return ProductSerializer
 
     def get_permissions(self):
-        if self.action in ["retrieve", "list"]:
+        if self.action in ["retrieve", "list", "get_product_tickets"]:
             permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.IsAuthenticated]
