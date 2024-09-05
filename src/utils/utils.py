@@ -2,10 +2,14 @@ import os
 import random
 import re
 import string
+import time
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 from django.core.validators import RegexValidator
+
+ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
+APP_ENV = "🚀 Production" if ENVIRONMENT == "production" else "🚧 Staging"
 
 
 def parse_datetime(datetime_input):
@@ -158,6 +162,21 @@ def generate_txn_reference():
 
     txn_reference = random_text + year + month + day + hour + minute + second
 
+    return txn_reference
+
+
+def generate_txn_reference_v2():
+    """
+    Generates a unique transaction reference string in the format of
+    a 6-character random string concatenated with the Unix epoch time in
+    milliseconds.
+
+    Returns:
+        str: A unique transaction reference string.
+    """
+    random_text = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    epoch_time = int(time.time())  # Unix time in seconds
+    txn_reference = random_text + str(epoch_time)
     return txn_reference
 
 

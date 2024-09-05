@@ -32,7 +32,9 @@ def validate_email_address(email: str, check_deliverability=False):
         message = "Validation successful!"
         is_valid = True
     except EmailNotValidError as e:
+        print("====================================================")
         print("Error occurred while validating email ===>", str(e))
+        print("====================================================")
         message = f"Invalid email. {str(e)}"
 
     return is_valid, message, validated_response

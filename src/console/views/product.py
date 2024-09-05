@@ -31,6 +31,7 @@ from utils.utils import (
     PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
     generate_txn_reference,
+    generate_txn_reference_v2,
     parse_datetime,
 )
 
@@ -43,7 +44,6 @@ env = "live" if ENVIRONMENT == "production" else "test"
 
 class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = Product.objects.all().order_by("-created_at")
-    permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ProductSerializer
     pagination_class = CustomPagination
     http_method_names = ["get", "post", "put", "delete"]
@@ -52,6 +52,13 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         if self.action == "get_product_tickets":
             return ProductTicketPurchaseSerializer
         return ProductSerializer
+
+    def get_permissions(self):
+        if self.action in ["retrieve", "list"]:
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def list(self, request):
         try:
@@ -190,7 +197,7 @@ class GenerateProductPaymentLinkView(GenericAPIView):
             "tx_ref": tx_ref,
             "amount": total_amount,
             "currency": product.currency,
-            "redirect_url": f"{FRONTEND_BASE_URL}/buyer/ibtx/response",
+            "redirect_url": f"{FRONTEND_BASE_URL}/ibtx",
             # "redirect_url": f"{BACKEND_BASE_URL}/v1/shared/product-payment-redirect",
             "customer": {
                 "email": user.email,
@@ -433,6 +440,23 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         product_owner = product.owner
         wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
 
+        settlement_ref = generate_txn_reference()
+        Transaction.objects.create(
+            type="SETTLEMENT",
+            status="SUCCESSFUL",
+            user_id=product_owner,
+            reference=settlement_ref,
+            provider="MYBALANCE",
+            provider_tx_reference=settlement_ref,
+            mode="WEB",
+            currency=txn.currency,
+            amount=txn.amount,
+            charge=txn.charge,
+            product=product,
+            meta={"description": "Product Merchant Settlement"},
+            verified=True,
+        )
+
         description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
@@ -444,7 +468,10 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
 
         user = User.objects.filter(email=customer_email).first()
         email = user.email
-        event_ticket_code = f"MYB{generate_txn_reference()}"
+        tier_mapping = {"BASIC": "BSC", "VIP": "VIP", "VVIP": "VVIP"}
+        product_tier = (product.tier).split("-")[0]  # "BASIC-DEFAULT", "BASIC-TEST"
+        tier_code = tier_mapping.get(product_tier, "")
+        event_ticket_code = f"MYB{tier_code}-{generate_txn_reference_v2()}"
         values = {
             "first_name": user.name.split(" ")[0],
             "recipient": email,

@@ -26,6 +26,7 @@ class Transaction(models.Model):
         ("ESCROW", "ESCROW"),
         ("MERCHANT_SETTLEMENT", "MERCHANT_SETTLEMENT"),
         ("PRODUCT", "PRODUCT"),
+        ("SETTLEMENT", "SETTLEMENT"),
     )
     PROVIDER = (
         ("FLUTTERWAVE", "FLUTTERWAVE"),
