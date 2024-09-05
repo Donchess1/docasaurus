@@ -31,6 +31,7 @@ from utils.utils import (
     PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
     generate_txn_reference,
+    generate_txn_reference_v2,
     parse_datetime,
 )
 
@@ -470,7 +471,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         tier_mapping = {"BASIC": "BSC", "VIP": "VIP", "VVIP": "VVIP"}
         product_tier = (product.tier).split("-")[0]  # "BASIC-DEFAULT", "BASIC-TEST"
         tier_code = tier_mapping.get(product_tier, "")
-        event_ticket_code = f"MYB{tier_code}-{generate_txn_reference()}"
+        event_ticket_code = f"MYB{tier_code}-{generate_txn_reference_v2()}"
         values = {
             "first_name": user.name.split(" ")[0],
             "recipient": email,
