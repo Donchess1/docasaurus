@@ -4,7 +4,6 @@ from email_validator import EmailNotValidError, validate_email
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
-APP_ENV = "live" if ENVIRONMENT == "production" else "test"
 
 
 def validate_email_address(email: str, check_deliverability=False):
@@ -33,7 +32,9 @@ def validate_email_address(email: str, check_deliverability=False):
         message = "Validation successful!"
         is_valid = True
     except EmailNotValidError as e:
+        print("====================================================")
         print("Error occurred while validating email ===>", str(e))
+        print("====================================================")
         message = f"Invalid email. {str(e)}"
 
     return is_valid, message, validated_response

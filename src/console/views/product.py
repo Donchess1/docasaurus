@@ -462,7 +462,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         user = User.objects.filter(email=customer_email).first()
         email = user.email
         tier_mapping = {"BASIC": "BSC", "VIP": "VIP", "VVIP": "VVIP"}
-        product_tier = product.tier
+        product_tier = (product.tier).split("-")[0]  # "BASIC-DEFAULT", "BASIC-TEST"
         tier_code = tier_mapping.get(product_tier, "")
         event_ticket_code = f"MYB{tier_code}-{generate_txn_reference()}"
         values = {
