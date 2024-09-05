@@ -43,7 +43,6 @@ env = "live" if ENVIRONMENT == "production" else "test"
 
 class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = Product.objects.all().order_by("-created_at")
-    permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ProductSerializer
     pagination_class = CustomPagination
     http_method_names = ["get", "post", "put", "delete"]
@@ -52,6 +51,13 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         if self.action == "get_product_tickets":
             return ProductTicketPurchaseSerializer
         return ProductSerializer
+
+    def get_permissions(self):
+        if self.action in ["retrieve", "list"]:
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def list(self, request):
         try:
