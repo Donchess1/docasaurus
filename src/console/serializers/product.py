@@ -90,12 +90,22 @@ class GenerateProductPaymentLinkSerializer(serializers.Serializer):
 
 
 class ProductTicketPurchaseSerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source="user.name", read_only=True)
+    name = serializers.CharField(source="user.name", read_only=True)
+    email = serializers.CharField(source="user.email", read_only=True)
+    ticket_name = serializers.CharField(source="ticket_product.name", read_only=True)
     ticket_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketPurchase
-        fields = ["id", "purchase_date", "ticket_code", "user", "ticket_quantity"]
+        fields = [
+            "id",
+            "purchase_date",
+            "ticket_name",
+            "ticket_code",
+            "name",
+            "email",
+            "ticket_quantity",
+        ]
 
     def get_ticket_quantity(self, obj):
         if obj.transaction and obj.transaction.meta:
