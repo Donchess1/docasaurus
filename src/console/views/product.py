@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, permissions, status, viewsets
+from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.generics import GenericAPIView
@@ -20,6 +20,7 @@ from console.serializers.product import (
     TicketPurchaseAnalyticsSerializer,
 )
 from console.services.product import create_product_purchase_transaction
+from console.utils import IBTE2024_TICKET_TIERS
 from core.resources.flutterwave import FlwAPI
 from notifications.models.notification import UserNotification
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
@@ -47,14 +48,16 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     serializer_class = ProductSerializer
     pagination_class = CustomPagination
     http_method_names = ["get", "post", "put", "delete"]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["user__name", "user__email", "ticket_product__name"]
 
     def get_serializer_class(self):
-        if self.action == "get_product_tickets":
+        if self.action in ("get_product_tickets", "get_all_product_tickets"):
             return ProductTicketPurchaseSerializer
         return ProductSerializer
 
     def get_permissions(self):
-        if self.action in ["retrieve", "list", "get_product_tickets"]:
+        if self.action in ["retrieve", "list", "get_all_product_tickets"]:
             permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.IsAuthenticated]
@@ -148,8 +151,27 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
             queryset = TicketPurchase.objects.filter(ticket_product=product).order_by(
                 "-created_at"
             )
-            filtered_queryset = self.filter_queryset(queryset)
-            qs = self.paginate_queryset(filtered_queryset)
+            qs = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(qs, many=True)
+            self.pagination_class.message = "Ticket Purchases retrieved successfully"
+            response = self.get_paginated_response(serializer.data)
+            return response
+
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"Unexpected error occurred. {str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=False, methods=["get"], url_path="tickets")
+    def get_all_product_tickets(self, request):
+        try:
+            queryset = TicketPurchase.objects.filter(
+                ticket_product__tier__in=IBTE2024_TICKET_TIERS
+            ).order_by("-created_at")
+            queryset = self.filter_queryset(queryset)
+            qs = self.paginate_queryset(queryset)
             serializer = self.get_serializer(qs, many=True)
             self.pagination_class.message = "Ticket Purchases retrieved successfully"
             response = self.get_paginated_response(serializer.data)
