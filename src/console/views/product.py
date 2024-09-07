@@ -495,6 +495,8 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         tier_code = tier_mapping.get(product_tier, "")
         event_ticket_code = f"MYB{tier_code}-{generate_txn_reference_v2()}"
         values = {
+            "name": user.name,
+            "phone_number": user.phone,
             "first_name": user.name.split(" ")[0],
             "recipient": email,
             "date": parse_datetime(txn.created_at),
