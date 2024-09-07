@@ -24,7 +24,7 @@ def create_product_purchase_transaction(
         product=product,
         meta={
             "title": f"{product.name}",
-            "description": f"Event Name: {product.event.name}. Ticket Tier:{product.name}",
+            "description": f"Purchase of {product.name} for {product.event.name}.",
             "ticket_quantity": quantity,
         },
     )
