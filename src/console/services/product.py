@@ -23,7 +23,7 @@ def create_product_purchase_transaction(
         provider_tx_reference=tx_ref,
         product=product,
         meta={
-            "title": f"Purchase {product.name}",
+            "title": f"{product.name}",
             "description": f"Event Name: {product.event.name}. Ticket Tier:{product.name}",
             "ticket_quantity": quantity,
         },

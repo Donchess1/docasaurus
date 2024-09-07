@@ -453,7 +453,6 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
             {
                 "payment_method": payment_type,
                 "provider_txn_id": obj["data"]["id"],
-                "description": f"FLW Transaction {narration}_{flw_ref}",
             }
         )
         txn.save()
