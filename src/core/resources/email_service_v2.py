@@ -230,7 +230,8 @@ class EmailClientV2:
 
     @classmethod
     def send_product_ticket_successful_payment_email(cls, email: str, context: dict):
-        template_name = "product_ticket_successful_payment.html"
+        # template_name = "product_ticket_successful_payment.html"
+        template_name = "ibadan_tech_expo_ticket_purchase.html"
         html_content = render_to_string(template_name=template_name, context=context)
         subject = "Ticket Payment Complete 🎉"
         return cls.send_email(email, subject, html_content)
