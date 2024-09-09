@@ -449,6 +449,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         txn.provider_tx_reference = flw_ref
         txn.narration = narration
         payment_type = obj["data"]["payment_type"]
+        payment_type = payment_type.replace("_", " ").title()
         txn.meta.update(
             {
                 "payment_method": payment_type,
@@ -514,6 +515,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
             "event_date_time": parse_datetime(product.event.date),
             "event_ticket_type": product.name,
             "event_venue": product.event.venue,
+            "payment_type": payment_type,
         }
         console_tasks.send_product_ticket_successful_payment_email.delay(email, values)
         # Create Notification
