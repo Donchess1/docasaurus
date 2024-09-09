@@ -516,6 +516,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
             "event_ticket_type": product.name,
             "event_venue": product.event.venue,
             "payment_type": payment_type,
+            "product_unit_price": f"{product.currency} {add_commas_to_transaction_amount(product.price)}",
         }
         console_tasks.send_product_ticket_successful_payment_email.delay(email, values)
         # Create Notification
