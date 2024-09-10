@@ -31,8 +31,6 @@ def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
     tx_ref = data["meta"].get("tx_ref")
     user = User.objects.filter(email=customer_email).first()
 
-    description = f"Flutterwave Webhook called successfully."
-    log_transaction_activity(txn, description, request_meta)
 
     try:
         txn = Transaction.objects.get(reference=tx_ref)
@@ -42,6 +40,9 @@ def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
             "message": "Transaction does not exist",
             "status_code": status.HTTP_404_NOT_FOUND,
         }
+
+    description = f"Flutterwave Webhook called successfully."
+    log_transaction_activity(txn, description, request_meta)
 
     if txn.verified:
         # Occasionally, Flutterwave might send the same webhook event more than once.
