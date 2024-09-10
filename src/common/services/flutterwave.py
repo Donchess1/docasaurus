@@ -1,6 +1,7 @@
 import os
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import status
 
 from console import tasks as console_tasks
@@ -21,12 +22,17 @@ BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
 
 
+@transaction.atomic
 def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
     amount_charged = data.get("amount")
     msg = data.get("complete_message")
     amount_to_debit = data["meta"].get("amount_to_debit")
     customer_email = data["meta"].get("customer_email")
     tx_ref = data["meta"].get("tx_ref")
+    user = User.objects.filter(email=customer_email).first()
+
+    description = f"Flutterwave Webhook called successfully."
+    log_transaction_activity(txn, description, request_meta)
 
     try:
         txn = Transaction.objects.get(reference=tx_ref)
@@ -58,6 +64,11 @@ def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
         description = f"Withdrawal failed. Description: {msg}"
         log_transaction_activity(txn, description, request_meta)
 
+        user.credit_wallet(amount_to_debit, txn.currency)
+        _, wallet = user.get_currency_wallet(txn.currency)
+        description = f"Updated User Balance after Reversing Init Debit of {txn.currency} {add_commas_to_transaction_amount(total_amount)}: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
         pusher.trigger(
             f"WALLET_WITHDRAWAL_{tx_ref}",
             "WALLET_WITHDRAWAL_FAILURE",
@@ -78,16 +89,15 @@ def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
     description = f"Withdrawal of {txn.currency} {add_commas_to_transaction_amount(amount_to_debit)} was completed successfuly and verified via WEBHOOK."
     log_transaction_activity(txn, description, request_meta)
 
-    user = User.objects.filter(email=customer_email).first()
-    _, wallet = user.get_currency_wallet(txn.currency)
-    description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
-    log_transaction_activity(txn, description, request_meta)
+    # _, wallet = user.get_currency_wallet(txn.currency)
+    # description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    # log_transaction_activity(txn, description, request_meta)
 
-    user.debit_wallet(amount_to_debit, txn.currency)
+    # user.debit_wallet(amount_to_debit, txn.currency) #logic moved to wallet withdrawal initiation
     user.update_withdrawn_amount(amount=txn.amount, currency=txn.currency)
 
     _, wallet = user.get_currency_wallet(txn.currency)
-    description = f"New User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    description = f"Final User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
     log_transaction_activity(txn, description, request_meta)
 
     pusher.trigger(

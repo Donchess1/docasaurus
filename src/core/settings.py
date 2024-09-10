@@ -250,6 +250,12 @@ REST_FRAMEWORK = {
         "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
         "djangorestframework_camel_case.parser.CamelCaseJSONParser",
     ),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "wallet_withdrawal": "5/min",  # 5 requests per minute for wallet withdrawals
+    },
 }
 
 SWAGGER_SETTINGS = {
