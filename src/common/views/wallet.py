@@ -745,7 +745,7 @@ class WalletWithdrawalView(GenericAPIView):
         amount = data.get("amount", None)
         bank_code = data.get("bank_code", None)
         account_number = data.get("account_number", None)
-        description = data.get("description", None)
+        trf_description = data.get("description", None)
         currency = data.get("currency", "NGN")
 
         charge, total_amount = get_withdrawal_fee(int(amount))
@@ -795,7 +795,7 @@ class WalletWithdrawalView(GenericAPIView):
             "account_bank": bank_code,
             "account_number": account_number,
             "amount": int(amount),
-            "narration": description if description else "MyBalance TRF",
+            "narration": trf_description if trf_description else "MyBalance TRF",
             "reference": tx_ref,
             "currency": currency,
             "meta": {
