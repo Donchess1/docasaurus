@@ -12,11 +12,31 @@ echo "Copying env.example to .env"
 cp .env.example .env
 
 
-# Fetch sensitive data from Parameter Store and append to .env
-echo "Fetching sensitive data from Parameter Store"
-# echo "POSTGRES_USER=$(aws ssm get-parameter --name "/mybalance/staging/POSTGRES_USER" --with-decryption --query Parameter.Value --output text)" >> .env
-# echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/mybalance/staging/POSTGRES_PASSWORD" --with-decryption --query Parameter.Value --output text)" >> .env
-# Add other sensitive variables as needed
+update_env_var() {
+    local param_name=$1
+    local env_var_name=$2
+    local value=$(aws ssm get-parameter --name "$param_name" --with-decryption --query Parameter.Value --output text)
+    if grep -q "^$env_var_name=" .env; then
+        # If the variable exists, update it
+        sed -i "s|^$env_var_name=.*|$env_var_name=$value|" .env
+    else
+        # If the variable doesn't exist, add it
+
+        echo "$env_var_name=$value" >> .env
+    fi
+}
+
+# Fetch sensitive data from Parameter Store and update .env
+echo "Fetching sensitive data from Parameter Store and updating .env"
+
+echo "" >> .env
+echo "" >> .env
+
+update_env_var "/mybalance/staging/POSTGRES_HOST" "POSTGRES_HOST"
+update_env_var "/mybalance/staging/POSTGRES_USER" "POSTGRES_USER"
+# update_env_var "/mybalance/staging/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
+# update_env_var "/mybalance/staging/POSTGRES_DB" "POSTGRES_DB"
+
 
 # Ensure correct permissions on .env file
 chmod 600 .env
