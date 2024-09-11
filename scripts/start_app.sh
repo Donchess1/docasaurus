@@ -42,11 +42,11 @@ echo "Using $COMPOSE_FILE"
 
 # Pull the latest images
 echo "Pulling latest images"
-ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=$ECR_REPOSITORY docker compose -f $COMPOSE_FILE pull 2>&1 | tee pull_error.log
+ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=$ECR_REPOSITORY docker-compose -f $COMPOSE_FILE pull
 
 # Start the application
 echo "Starting the application"
-ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=$ECR_REPOSITORY docker compose -f $COMPOSE_FILE up -d
+ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=$ECR_REPOSITORY docker-compose -f $COMPOSE_FILE up -d
 
 echo "Application started successfully"
 
