@@ -117,6 +117,7 @@ class MerchantApiKeyView(generics.GenericAPIView):
 class MerchantProfileView(generics.GenericAPIView):
     serializer_class = MerchantDetailSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def get(self, request, *args, **kwargs):
@@ -133,6 +134,7 @@ class MerchantProfileView(generics.GenericAPIView):
 class MerchantWalletsView(generics.GenericAPIView):
     serializer_class = MerchantWalletSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def get(self, request, *args, **kwargs):
@@ -150,6 +152,7 @@ class MerchantWalletsView(generics.GenericAPIView):
 class MerchantCustomerView(generics.CreateAPIView):
     serializer_class = CustomerUserProfileSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     def get_serializer_class(self, *args, **kwargs):
         if self.request.method == "POST":
@@ -196,6 +199,7 @@ class MerchantCustomerView(generics.CreateAPIView):
 class MerchantCustomerDetailView(generics.GenericAPIView):
     serializer_class = CustomerUserProfileSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     def get_serializer_class(self, *args, **kwargs):
         if self.request.method == "PATCH":

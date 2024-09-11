@@ -64,6 +64,7 @@ class MerchantTransactionListView(generics.ListAPIView):
     filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
     filterset_class = TransactionFilter
     search_fields = ["reference", "provider", "type"]
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="List Merchant Transactions",
@@ -92,6 +93,7 @@ class MerchantTransactionListView(generics.ListAPIView):
 class MerchantTransactionDetailView(generics.GenericAPIView):
     serializer_class = MerchantTransactionSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
@@ -121,6 +123,7 @@ class MerchantTransactionDetailView(generics.GenericAPIView):
 class MerchantTransactionActivityLogView(generics.ListAPIView):
     serializer_class = TransactionActivityLogSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def get(self, request, id, *args, **kwargs):
@@ -158,6 +161,7 @@ class MerchantSettlementTransactionListView(generics.ListAPIView):
     filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
     filterset_class = TransactionFilter
     search_fields = ["reference", "provider", "type"]
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="List Merchant Settlements",
@@ -187,6 +191,7 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
     serializer_class = CreateMerchantEscrowTransactionSerializer
     permission_classes = (permissions.AllowAny,)
     flw_api = FlwAPI
+    throttle_scope = "merchant_api"
 
     def perform_create(self, serializer):
         instance_txn_data = serializer.save()
@@ -235,6 +240,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
     serializer_class = MerchantEscrowRedirectPayloadSerializer
     permission_classes = (permissions.AllowAny,)
     flw_api = FlwAPI
+    throttle_scope = "merchant_api"
 
     def get(self, request):
         request_meta = extract_api_request_metadata(request)
@@ -449,6 +455,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
 class MandateFundsReleaseView(generics.CreateAPIView):
     serializer_class = MandateFundsReleaseSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="Mandate release of escrow funds",
@@ -542,6 +549,7 @@ class MandateFundsReleaseView(generics.CreateAPIView):
 class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
     serializer_class = ReleaseEscrowTransactionByMerchantSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="Unlock Escrow Transaction Funds",
@@ -606,6 +614,7 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
 class UnlockEscrowFundsByBuyerView(generics.CreateAPIView):
     serializer_class = UnlockCustomerEscrowTransactionByBuyerSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = "merchant_api"
 
     def get_queryset(self):
         return Transaction.objects.all()

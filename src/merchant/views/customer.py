@@ -55,6 +55,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
     serializer_class = CustomerWidgetSessionSerializer
     permission_classes = (permissions.AllowAny,)
     jwt_client = JWTClient
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="Generate Customer Widget Session URL",
@@ -115,6 +116,7 @@ class CustomerTransactionListView(generics.ListAPIView):
     filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
     filterset_class = TransactionFilter
     search_fields = ["reference", "customer"]
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="Get Customer Transactions",
@@ -179,6 +181,7 @@ class CustomerTransactionListView(generics.ListAPIView):
 class CustomerTransactionDetailView(generics.GenericAPIView):
     serializer_class = MerchantTransactionSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = "merchant_api"
 
     def get_queryset(self):
         return Transaction.objects.all()
@@ -277,6 +280,7 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
 class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
     serializer_class = InitiateCustomerWalletWithdrawalSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="Initiate withdrawal from seller dashboard",
@@ -334,6 +338,7 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
 class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
     serializer_class = InitiateCustomerWalletWithdrawalByMerchantSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def post(self, request):
@@ -389,6 +394,7 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
 class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
     serializer_class = ConfirmMerchantWalletWithdrawalSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = "merchant_api"
 
     @swagger_auto_schema(
         operation_description="Confirm wallet withdrawal on merchant widget",
@@ -439,6 +445,7 @@ class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
 class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
     serializer_class = ConfirmMerchantWalletWithdrawalSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def post(self, request):

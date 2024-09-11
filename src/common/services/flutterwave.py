@@ -31,7 +31,6 @@ def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
     tx_ref = data["meta"].get("tx_ref")
     user = User.objects.filter(email=customer_email).first()
 
-
     try:
         txn = Transaction.objects.get(reference=tx_ref)
     except Transaction.DoesNotExist:
