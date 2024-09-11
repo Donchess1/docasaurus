@@ -45,7 +45,16 @@ services:
 
   celery:
     <<: *api
-    command: celery -A src/core worker -l INFO --logfile=celery.log
+    # command: celery -A src/core worker -l INFO --logfile=celery.log
+    command: >
+      sh -c "
+      echo 'Current directory:' &&
+      pwd &&
+      echo 'Directory contents:' &&
+      ls -la &&
+      echo 'Starting Celery worker:' &&
+      celery -A core worker -l INFO --logfile=celery.log
+      "
     depends_on:
       - api
     networks:
