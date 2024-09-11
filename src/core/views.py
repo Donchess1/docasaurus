@@ -22,7 +22,7 @@ class HealthCheckView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             success=True,
-            message="Health Check OK. Server running.",
+            message="Health Check OK. Server is running.",
             status_code=status.HTTP_200_OK,
             data={"status": "Server is running"},
         )
