@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production")  # development, staging, production
 ROOT_DIR = Path(__file__).resolve().parent.parent
 APPS_DIR = ROOT_DIR / "apps"
 
@@ -87,7 +88,6 @@ CORS_ALLOWED_ORIGINS = [
     "https://api.mybalanceapp.com",
     "http://staging-api.mybalanceapp.com",
     "https://staging-api.mybalanceapp.com",
-    "https://mybalanceapp.netlify.app",
     "https://staging-mybalance-merch-redirect.netlify.app",
     "http://localhost:5173",
     "http://localhost:5174",
@@ -103,7 +103,6 @@ CORS_ORIGIN_WHITELIST = [
     "http://localhost:5173",
     "http://mybalanceapp.com",
     "https://mybalanceapp.com",
-    "https://mybalanceapp.netlify.app",
     "https://api.mybalanceapp.com",
     "http://staging-api.mybalanceapp.com",
     "https://staging-api.mybalanceapp.com",
@@ -237,25 +236,44 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.shared.exceptions.custom_handler",
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        # 'rest_framework.authentication.TokenAuthentication',
     ),
     # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     # "PAGE_SIZE": 50,
-    "DEFAULT_RENDERER_CLASSES": (
-        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
-        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
-    ),
     "DEFAULT_PARSER_CLASSES": (
         "djangorestframework_camel_case.parser.CamelCaseFormParser",
         "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
         "djangorestframework_camel_case.parser.CamelCaseJSONParser",
     ),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "wallet_withdrawal": "5/min",
+        "merchant_api": "10/min",
+    },
 }
-
+if ENVIRONMENT == "development":
+    REST_FRAMEWORK.update(
+        {
+            "DEFAULT_RENDERER_CLASSES": (
+                "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+                "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+            ),
+        }
+    )
+else:
+    REST_FRAMEWORK.update(
+        {
+            "DEFAULT_RENDERER_CLASSES": (
+                "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+            ),
+        }
+    )
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
-        "Bearer": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}
     },
+    "USE_SESSION_AUTH": False,
 }
 
 SIMPLE_JWT = {
@@ -276,13 +294,6 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
     "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
-}
-
-SWAGGER_SETTINGS = {
-    "SECURITY_DEFINITIONS": {
-        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}
-    },
-    "USE_SESSION_AUTH": False,
 }
 
 # DRF API LOGGER SETTINGS

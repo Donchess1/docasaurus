@@ -3,10 +3,12 @@ from decimal import Decimal
 
 import stripe
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 
 from common.serializers.wallet import (
     FundWalletBankTransferPayloadSerializer,
@@ -717,11 +719,11 @@ class WalletWithdrawalFeeView(GenericAPIView):
 class WalletWithdrawalView(GenericAPIView):
     serializer_class = WalletWithdrawalAmountSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "wallet_withdrawal"
     flw_api = FlwAPI
 
-    @swagger_auto_schema(
-        operation_description="Initiate withdrawal from user wallet",
-    )
+    @transaction.atomic
     def post(self, request):
         user = request.user
         request_meta = extract_api_request_metadata(request)
@@ -730,7 +732,7 @@ class WalletWithdrawalView(GenericAPIView):
             return Response(
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
-                message="Account restricted.",
+                message="Account restricted. Kindly contact support.",
             )
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
@@ -743,11 +745,10 @@ class WalletWithdrawalView(GenericAPIView):
         amount = data.get("amount", None)
         bank_code = data.get("bank_code", None)
         account_number = data.get("account_number", None)
-        description = data.get("description", None)
+        trf_description = data.get("description", None)
         currency = data.get("currency", "NGN")
 
         charge, total_amount = get_withdrawal_fee(int(amount))
-
         valid, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not valid:
             return Response(
@@ -764,7 +765,7 @@ class WalletWithdrawalView(GenericAPIView):
         email = user.email
 
         txn = Transaction.objects.create(
-            user_id=request.user,
+            user_id=user,
             type="WITHDRAW",
             amount=amount,
             charge=charge,
@@ -778,12 +779,23 @@ class WalletWithdrawalView(GenericAPIView):
         description = f"{(user.name).upper()} initiated withdrawal of {currency} {add_commas_to_transaction_amount(amount)} from wallet."
         log_transaction_activity(txn, description, request_meta)
 
+        _, wallet = user.get_currency_wallet(txn.currency)
+        description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
+        user.debit_wallet(total_amount, txn.currency)
+        # user.update_withdrawn_amount(amount=txn.amount, currency=txn.currency)
+
+        _, wallet = user.get_currency_wallet(txn.currency)
+        description = f"Updated User Balance after Init Debit of {txn.currency} {add_commas_to_transaction_amount(total_amount)}: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        log_transaction_activity(txn, description, request_meta)
+
         # https://developer.flutterwave.com/docs/making-payments/transfers/overview/
         tx_data = {
             "account_bank": bank_code,
             "account_number": account_number,
             "amount": int(amount),
-            "narration": description if description else "MyBalance TRF",
+            "narration": trf_description if trf_description else "MyBalance TRF",
             "reference": tx_ref,
             "currency": currency,
             "meta": {
@@ -807,6 +819,12 @@ class WalletWithdrawalView(GenericAPIView):
             txn.save()
 
             description = f"Withdrawal initiation failed. Description: {msg}"
+            log_transaction_activity(txn, description, request_meta)
+
+            # reverse the money back since it failed
+            user.credit_wallet(total_amount, txn.currency)
+            _, wallet = user.get_currency_wallet(txn.currency)
+            description = f"Updated User Balance after Reversing Init Debit of {txn.currency} {add_commas_to_transaction_amount(total_amount)}: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
             log_transaction_activity(txn, description, request_meta)
 
             return Response(

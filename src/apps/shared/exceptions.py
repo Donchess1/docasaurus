@@ -8,7 +8,7 @@ from utils.response import Response as CustomResponse
 
 def custom_handler(exc, context):
     """
-    custom exception handler
+    Custom exception handler
     """
     if isinstance(exc, Http404):
         exc = exceptions.NotFound()
@@ -33,6 +33,14 @@ def custom_handler(exc, context):
                 status_code=403,
             )
 
+        if isinstance(exc, exceptions.Throttled):
+            # TODO: Log the instances where throttling happens. Do something with the timeout period: {exc.wait}
+            custom_message = f"Too many requests. Try again later!"
+            return CustomResponse(
+                message=custom_message,
+                success=False,
+                status_code=exc.status_code,
+            )
         headers = {}
         if getattr(exc, "auth_header", None):
             headers["WWW-Authenticate"] = exc.auth_header
@@ -44,7 +52,7 @@ def custom_handler(exc, context):
         else:
             data = {"detail": exc.detail}
             return CustomResponse(
-                message=data["detail"],
+                message=data.get("detail", "An error occurred."),
                 success=False,
                 status_code=exc.status_code,
             )

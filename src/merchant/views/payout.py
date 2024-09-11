@@ -13,6 +13,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
         "post",
     ]
     serializer_class = PayoutConfigSerializer
+    throttle_scope = "merchant_api"
 
     @authorized_api_call
     def create(self, request, *args, **kwargs):

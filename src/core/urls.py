@@ -22,11 +22,11 @@ urlpatterns = [
     path("", views.api_ok, name="api-ok"),
     path("health-check", views.HealthCheckView.as_view(), name="health-check"),
     path(
-        "swagger-api-docs",
+        "swaggerxyz-docs",
         schema_view.with_ui("swagger", cache_timeout=0),
         name="swagger-schema-ui",
     ),
-    path("jazzminadmin23qwe/", admin.site.urls),
+    path("ajazzinauth23qwe/", admin.site.urls),
     path("v1/auth/", include("users.urls")),
     path("v1/shared/", include("common.urls")),
     path("v1/console/", include("console.urls")),
