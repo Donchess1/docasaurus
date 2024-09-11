@@ -45,7 +45,7 @@ services:
 
   celery:
     <<: *api
-    command: cd /src && celery -A core worker -l INFO --logfile=celery.log
+    command: celery -A src/core worker -l INFO --logfile=celery.log
     depends_on:
       - api
     networks:
