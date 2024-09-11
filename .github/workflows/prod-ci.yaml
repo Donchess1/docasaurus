@@ -1,0 +1,71 @@
+name: Build, Push to ECR, and Deploy
+
+on:
+  push:
+    branches:
+      - master  
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: mybalance-prod-api
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ODIC }}  
+  ENVIRONMENT: prod  
+  CODEDEPLOY_APPLICATION: MybalanceProd
+  CODEDEPLOY_DEPLOYMENT_GROUP: mybalance-prod-dg
+  S3_BUCKET: mybalance-api-prod-code-deploy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f docker/prod/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
+
+      - name: Create deployment package
+        run: |
+          mkdir deployment_package
+          cp -r docker docker-compose*.yml  nginx.conf scripts appspec.yml .env.example deployment_package/
+          echo "ECR_REGISTRY=$ECR_REGISTRY" > deployment_package/ecr_info.env
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> deployment_package/ecr_info.env
+          echo "ENVIRONMENT=$ENVIRONMENT" >> deployment_package/ecr_info.env
+          ls -la deployment_package  # Debug: List contents of deployment package
+          cat deployment_package/ecr_info.env  # Debug: Display contents of ecr_info.env         
+          cd deployment_package
+          zip -r ../deployment_package.zip .
+
+      - name: Upload deployment package to S3
+        run: |
+          aws s3 cp deployment_package.zip s3://${{ env.S3_BUCKET }}/deployment_package.zip
+
+      - name: Deploy to CodeDeploy
+        run: |
+          aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --s3-location bucket=${{ env.S3_BUCKET }},bundleType=zip,key=deployment_package.zip \
+            --file-exists-behavior OVERWRITE
