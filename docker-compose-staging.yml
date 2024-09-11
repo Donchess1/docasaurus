@@ -50,6 +50,7 @@ services:
       sh -c "
       echo 'Current directory:' &&
       pwd &&
+      cd src &&
       echo 'Directory contents:' &&
       ls -la &&
       echo 'Starting Celery worker:' &&
