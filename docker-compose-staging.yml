@@ -45,7 +45,7 @@ services:
 
   celery:
     <<: *api
-    command: celery -A core worker -l INFO --logfile=celery.log
+    command: cd /src && celery -A core worker -l INFO --logfile=celery.log
     depends_on:
       - api
     networks:
@@ -53,9 +53,6 @@ services:
 
 volumes:
   myb-dev-static-data:
-    # external: true
-  # myb-dev-db:
-    # external: true
 
 networks:
   myb:
