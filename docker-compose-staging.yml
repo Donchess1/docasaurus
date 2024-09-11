@@ -53,9 +53,9 @@ services:
 
 volumes:
   myb-dev-static-data:
-    external: true
+    # external: true
   myb-dev-db:
-    external: true
+    # external: true
 
 networks:
   myb:
