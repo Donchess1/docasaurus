@@ -8,7 +8,7 @@ from utils.response import Response
 
 def api_ok(request):
     hostname = os.uname().nodename
-    return HttpResponse(f"<h1>Server Running</h1>")
+    return HttpResponse(f"<h1>Server is Running</h1>")
 
 
 class HealthCheckSerializer(serializers.Serializer):
@@ -22,7 +22,7 @@ class HealthCheckView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             success=True,
-            message="Health Check OK. Server running.",
+            message="Health Check OK. Server is running.",
             status_code=status.HTTP_200_OK,
             data={"status": "Server is running"},
         )
