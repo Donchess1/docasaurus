@@ -2,16 +2,22 @@ version: "3.8"
 
 services:
   api: &api
-    image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+  # api:
+    build:
+      context: .
+      dockerfile: ./docker/prod/Dockerfile
     volumes:
+      - ./src:/app
       - myb-dev-static-data:/vol/web
+    # ports:
+    #   - "80:8000"
     env_file:
       - ./.env
     depends_on:
+    #   - db
       - redis
     networks:
       - myb
-
   nginx:
     image: nginx:latest
     volumes:
@@ -23,6 +29,18 @@ services:
     networks:
       - myb
 
+  # db:
+  #   image: postgres:14.5-alpine3.16
+  #   restart: always
+  #   ports:
+  #     - "5435:5435"
+  #   volumes:
+  #     - myb-dev-db:/var/lib/postgresql/data
+  #   env_file:
+  #     - ./.env
+  #   networks:
+  #     - myb
+
   redis:
     image: redis:alpine
     networks:
@@ -31,15 +49,12 @@ services:
   celery:
     <<: *api
     command: >
-      sh -c "
-      echo 'Current directory:' &&
-      pwd &&
-      cd src &&
-      echo 'Directory contents:' &&
-      ls -la &&
-      echo 'Starting Celery worker:' &&
-      celery -A core worker -l INFO --logfile=celery.log
-      "
+      sh -c "celery -A core worker -l INFO --logfile=celery.log"
+    ports: []
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./.env
     depends_on:
       - api
     networks:
@@ -47,7 +62,7 @@ services:
 
 volumes:
   myb-dev-static-data:
-
+  myb-dev-db:
 networks:
     myb:
       driver: bridge
