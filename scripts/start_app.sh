@@ -34,9 +34,32 @@ echo "" >> .env
 
 update_env_var "/mybalance/staging/POSTGRES_HOST" "POSTGRES_HOST"
 update_env_var "/mybalance/staging/POSTGRES_USER" "POSTGRES_USER"
-# update_env_var "/mybalance/staging/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
-# update_env_var "/mybalance/staging/POSTGRES_DB" "POSTGRES_DB"
+update_env_var "/mybalance/staging/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
+update_env_var "/mybalance/staging/POSTGRES_DB" "POSTGRES_DB"
+update_env_var "/mybalance/staging/POSTGRES_PORT" "POSTGRES_PORT"
 
+update_env_var "/mybalance/staging/ENVIRONMENT" "ENVIRONMENT"
+update_env_var "/mybalance/staging/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
+update_env_var "/mybalance/staging/DJANGO_DEBUG" "DJANGO_DEBUG"
+update_env_var "/mybalance/staging/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
+
+update_env_var "/mybalance/staging/FRONTEND_BASE_URL" "FRONTEND_BASE_URL"
+update_env_var "/mybalance/staging/BACKEND_BASE_URL" "BACKEND_BASE_URL"
+
+update_env_var "/mybalance/staging/MERCHANT_REDIRECT_BASE_URL" "MERCHANT_REDIRECT_BASE_URL"
+update_env_var "/mybalance/staging/CUSTOMER_WIDGET_BUYER_BASE_URL" "CUSTOMER_WIDGET_BUYER_BASE_URL"
+update_env_var "/mybalance/staging/CUSTOMER_WIDGET_SELLER_BASE_URL" "CUSTOMER_WIDGET_SELLER_BASE_URL"
+
+update_env_var "/mybalance/staging/FLW_SECRET_KEY" "FLW_SECRET_KEY"
+update_env_var "/mybalance/staging/FLW_SECRET_HASH" "FLW_SECRET_HASH"
+
+update_env_var "/mybalance/staging/CLOUDINARY_CLOUD_NAME" "CLOUDINARY_CLOUD_NAME"
+update_env_var "/mybalance/staging/CLOUDINARY_API_KEY" "CLOUDINARY_API_KEY"
+update_env_var "/mybalance/staging/CLOUDINARY_API_SECRET" "CLOUDINARY_API_SECRET"
+
+update_env_var "/mybalance/staging/EMAIL_HOST_USER" "EMAIL_HOST_USER"
+update_env_var "/mybalance/staging/EMAIL_HOST_PASSWORD" "EMAIL_HOST_PASSWORD"
+update_env_var "/mybalance/staging/DEFAULT_FROM_EMAIL" "DEFAULT_FROM_EMAIL"
 
 # Ensure correct permissions on .env file
 chmod 600 .env
