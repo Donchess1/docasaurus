@@ -26,6 +26,9 @@ update_env_var() {
     fi
 }
 
+# Source the ecr_info.env file
+source ecr_info.env
+
 if [ "$ENVIRONMENT" = "staging" ]; then
     ENV_SUFFIX="staging"
 elif [ "$ENVIRONMENT" = "prod" ]; then
