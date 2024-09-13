@@ -52,7 +52,7 @@ update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PORT" "POSTGRES_PORT"
 update_env_var "/mybalance/${ENV_SUFFIX}/ENVIRONMENT" "ENVIRONMENT"
 update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
 update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_DEBUG" "DJANGO_DEBUG"
-update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
+# update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
 
 update_env_var "/mybalance/${ENV_SUFFIX}/FRONTEND_BASE_URL" "FRONTEND_BASE_URL"
 update_env_var "/mybalance/${ENV_SUFFIX}/BACKEND_BASE_URL" "BACKEND_BASE_URL"
