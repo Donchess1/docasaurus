@@ -16,9 +16,9 @@ echo "============================="
 echo "Waiting for postgres..."
 echo "============================="
 
-# while ! nc -z db ${POSTGRES_PORT}; do
-#   sleep 0.1
-# done
+#  while ! nc -z ${POSTGRES_HOST} ${POSTGRES_PORT}; do
+#    sleep 0.1
+#  done
 
 if [ -z "${POSTGRES_USER}" ]; then
     base_postgres_image_default_user='postgres'
@@ -56,6 +56,14 @@ wait_for_postgres
 echo "============================="
 echo "Initializing DB..."
 echo "============================="
+# echo "Current directory structure:"
+# ls -R /app
+
+echo "============================="
+echo "Running Django commands..."
+echo "============================="
+cd /app/src  # Change to the src directory
+
 python manage.py migrate
 python manage.py collectstatic --noinput
 status=$?
