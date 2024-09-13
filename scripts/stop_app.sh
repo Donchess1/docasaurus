@@ -41,15 +41,6 @@ else
     echo "No $DOCKER_COMPOSE_FILE file found. Nothing to stop."
 fi
 
-# Check for docker-compose files and stop containers
-# if [ -f "docker-compose-staging.yml" ]; then
-#     stop_containers "docker-compose-staging.yml"
-# elif [ -f "docker-compose.yml" ]; then
-#     stop_containers "docker-compose.yml"
-# else
-#     echo "No docker-compose file found. Nothing to stop."
-# fi
-
 docker system prune -af
 
 echo "Application stopped"

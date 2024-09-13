@@ -26,40 +26,48 @@ update_env_var() {
     fi
 }
 
+if [ "$ENVIRONMENT" = "staging" ]; then
+    ENV_SUFFIX="staging"
+elif [ "$ENVIRONMENT" = "prod" ]; then
+    ENV_SUFFIX="prod"
+else
+    echo "Unknown environment: $ENVIRONMENT"
+    exit 1
+fi
 # Fetch sensitive data from Parameter Store and update .env
 echo "Fetching sensitive data from Parameter Store and updating .env"
 
 echo "" >> .env
 echo "" >> .env
 
-update_env_var "/mybalance/staging/POSTGRES_HOST" "POSTGRES_HOST"
-update_env_var "/mybalance/staging/POSTGRES_USER" "POSTGRES_USER"
-update_env_var "/mybalance/staging/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
-update_env_var "/mybalance/staging/POSTGRES_DB" "POSTGRES_DB"
-update_env_var "/mybalance/staging/POSTGRES_PORT" "POSTGRES_PORT"
+update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_HOST" "POSTGRES_HOST"
+update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_USER" "POSTGRES_USER"
+update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
+update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_DB" "POSTGRES_DB"
+update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PORT" "POSTGRES_PORT"
 
-update_env_var "/mybalance/staging/ENVIRONMENT" "ENVIRONMENT"
-update_env_var "/mybalance/staging/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
-update_env_var "/mybalance/staging/DJANGO_DEBUG" "DJANGO_DEBUG"
-update_env_var "/mybalance/staging/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
+update_env_var "/mybalance/${ENV_SUFFIX}/ENVIRONMENT" "ENVIRONMENT"
+update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
+update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_DEBUG" "DJANGO_DEBUG"
+update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
 
-update_env_var "/mybalance/staging/FRONTEND_BASE_URL" "FRONTEND_BASE_URL"
-update_env_var "/mybalance/staging/BACKEND_BASE_URL" "BACKEND_BASE_URL"
+update_env_var "/mybalance/${ENV_SUFFIX}/FRONTEND_BASE_URL" "FRONTEND_BASE_URL"
+update_env_var "/mybalance/${ENV_SUFFIX}/BACKEND_BASE_URL" "BACKEND_BASE_URL"
 
-update_env_var "/mybalance/staging/MERCHANT_REDIRECT_BASE_URL" "MERCHANT_REDIRECT_BASE_URL"
-update_env_var "/mybalance/staging/CUSTOMER_WIDGET_BUYER_BASE_URL" "CUSTOMER_WIDGET_BUYER_BASE_URL"
-update_env_var "/mybalance/staging/CUSTOMER_WIDGET_SELLER_BASE_URL" "CUSTOMER_WIDGET_SELLER_BASE_URL"
+update_env_var "/mybalance/${ENV_SUFFIX}/MERCHANT_REDIRECT_BASE_URL" "MERCHANT_REDIRECT_BASE_URL"
+update_env_var "/mybalance/${ENV_SUFFIX}/CUSTOMER_WIDGET_BUYER_BASE_URL" "CUSTOMER_WIDGET_BUYER_BASE_URL"
+update_env_var "/mybalance/${ENV_SUFFIX}/CUSTOMER_WIDGET_SELLER_BASE_URL" "CUSTOMER_WIDGET_SELLER_BASE_URL"
 
-update_env_var "/mybalance/staging/FLW_SECRET_KEY" "FLW_SECRET_KEY"
-update_env_var "/mybalance/staging/FLW_SECRET_HASH" "FLW_SECRET_HASH"
+update_env_var "/mybalance/${ENV_SUFFIX}/FLW_SECRET_KEY" "FLW_SECRET_KEY"
+update_env_var "/mybalance/${ENV_SUFFIX}/FLW_SECRET_HASH" "FLW_SECRET_HASH"
 
-update_env_var "/mybalance/staging/CLOUDINARY_CLOUD_NAME" "CLOUDINARY_CLOUD_NAME"
-update_env_var "/mybalance/staging/CLOUDINARY_API_KEY" "CLOUDINARY_API_KEY"
-update_env_var "/mybalance/staging/CLOUDINARY_API_SECRET" "CLOUDINARY_API_SECRET"
+update_env_var "/mybalance/${ENV_SUFFIX}/CLOUDINARY_CLOUD_NAME" "CLOUDINARY_CLOUD_NAME"
+update_env_var "/mybalance/${ENV_SUFFIX}/CLOUDINARY_API_KEY" "CLOUDINARY_API_KEY"
+update_env_var "/mybalance/${ENV_SUFFIX}/CLOUDINARY_API_SECRET" "CLOUDINARY_API_SECRET"
 
-update_env_var "/mybalance/staging/EMAIL_HOST_USER" "EMAIL_HOST_USER"
-update_env_var "/mybalance/staging/EMAIL_HOST_PASSWORD" "EMAIL_HOST_PASSWORD"
-update_env_var "/mybalance/staging/DEFAULT_FROM_EMAIL" "DEFAULT_FROM_EMAIL"
+update_env_var "/mybalance/${ENV_SUFFIX}/EMAIL_HOST_USER" "EMAIL_HOST_USER"
+update_env_var "/mybalance/${ENV_SUFFIX}/EMAIL_HOST_PASSWORD" "EMAIL_HOST_PASSWORD"
+update_env_var "/mybalance/${ENV_SUFFIX}/DEFAULT_FROM_EMAIL" "DEFAULT_FROM_EMAIL"
 
 # Ensure correct permissions on .env file
 chmod 600 .env
@@ -73,13 +81,13 @@ else
     ECR_REGISTRY="654654197877.dkr.ecr.us-east-1.amazonaws.com"
 fi
 
-ECR_REPOSITORY="mybalance-staging-api"
+ECR_REPOSITORY="mybalance-${ENV_SUFFIX}-api"
 
 echo "Using ECR_REGISTRY: $ECR_REGISTRY"
 echo "Using ECR_REPOSITORY: $ECR_REPOSITORY"
 
-# Use docker-compose-staging.yml
-COMPOSE_FILE="docker-compose-staging.yml"
+# Use docker compose yml file
+COMPOSE_FILE="docker-compose-${ENV_SUFFIX}.yml"
 
 echo "Using $COMPOSE_FILE"
 
