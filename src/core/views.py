@@ -8,7 +8,7 @@ from utils.response import Response
 
 def api_ok(request):
     hostname = os.uname().nodename
-    return HttpResponse(f"<h1>Server is Running</h1>")
+    return HttpResponse(f"<h1>Server is Running on {hostname}</h1>")
 
 
 class HealthCheckSerializer(serializers.Serializer):
