@@ -93,6 +93,8 @@ class ProductTicketPurchaseSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="user.name", read_only=True)
     email = serializers.CharField(source="user.email", read_only=True)
     ticket_name = serializers.CharField(source="ticket_product.name", read_only=True)
+    amount_paid = serializers.CharField(source="transaction.amount", read_only=True)
+    currency = serializers.CharField(source="transaction.currency", read_only=True)
     ticket_quantity = serializers.SerializerMethodField()
 
     class Meta:
@@ -105,6 +107,8 @@ class ProductTicketPurchaseSerializer(serializers.ModelSerializer):
             "name",
             "email",
             "ticket_quantity",
+            "amount_paid",
+            "currency",
         ]
 
     def get_ticket_quantity(self, obj):
