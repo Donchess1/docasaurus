@@ -72,6 +72,11 @@ update_env_var "/mybalance/${ENV_SUFFIX}/EMAIL_HOST_USER" "EMAIL_HOST_USER"
 update_env_var "/mybalance/${ENV_SUFFIX}/EMAIL_HOST_PASSWORD" "EMAIL_HOST_PASSWORD"
 update_env_var "/mybalance/${ENV_SUFFIX}/DEFAULT_FROM_EMAIL" "DEFAULT_FROM_EMAIL"
 
+update_env_var "/mybalance/${ENV_SUFFIX}/PUSHER_APP_ID" "PUSHER_APP_ID"
+update_env_var "/mybalance/${ENV_SUFFIX}/PUSHER_KEY" "PUSHER_KEY"
+update_env_var "/mybalance/${ENV_SUFFIX}/PUSHER_SECRET" "PUSHER_SECRET"
+update_env_var "/mybalance/${ENV_SUFFIX}/PUSHER_CLUSTER" "PUSHER_CLUSTER"
+
 # Ensure correct permissions on .env file
 chmod 600 .env
 
