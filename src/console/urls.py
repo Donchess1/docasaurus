@@ -19,6 +19,7 @@ from console.views.overview import (
 )
 from console.views.product import ProductViewSet
 from console.views.provider import EmailProviderSwitchView
+from transaction.views.activity_log import TransactionActivityLogListView
 from transaction.views.transaction import TransactionListView
 from transaction.views.user import TransactionDetailView
 
@@ -51,6 +52,11 @@ urlpatterns = [
         "transactions/<str:id>",
         TransactionDetailView.as_view(),
         name="transaction-detail-view",
+    ),
+    path(
+        "transactions/<str:id>/activity-logs",
+        TransactionActivityLogListView.as_view(),
+        name="transaction-activity-logs",
     ),
     path("disputes", DisputeListView.as_view(), name="disputes"),
     path(

@@ -39,7 +39,7 @@ def get_user_profile_data(user: User) -> dict:
     del ser_data["bank_account_id"]
     del ser_data["kyc_id"]
     del ser_data["business_id"]
-    ser_data["full_name"] = user.name
+    ser_data["full_name"] = (user.name).upper()
     ser_data["phone_number"] = user.phone
     ser_data["email"] = user.email
     ser_data["pending_escrows"] = pending_escrows

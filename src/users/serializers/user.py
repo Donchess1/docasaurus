@@ -4,11 +4,12 @@ from rest_framework import serializers
 from users.models import UserProfile
 from utils.email import validate_email_address
 from utils.kyc import KYC_CHOICES
-from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN
+from utils.utils import PHONE_NUMBER_SERIALIZER_REGEX_NGN, capitalize_fields_decorator
 
 User = get_user_model()
 
 
+@capitalize_fields_decorator(fields_to_capitalize=["name"])
 class UserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(
         validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN], required=False
