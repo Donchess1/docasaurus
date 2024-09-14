@@ -29,6 +29,8 @@ from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
+    FLUTTERWAVE_CHARGE_PERCENTAGE,
+    IBTE_EVENT_SETTLEMENT_FEE,
     PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
     generate_txn_reference,
@@ -216,11 +218,11 @@ class GenerateProductPaymentLinkView(GenericAPIView):
             product, tx_ref, request.user, charges, quantity
         )
 
-        description = f"{(user.name).upper()} initiated a purchase of {product.currency} {product.price} for {product.name}. Payment Provider: {PAYMENT_GATEWAY_PROVIDER}"
-        log_transaction_activity(txn, description, request_meta)
-
         product_total = product.price * quantity
         total_amount = product_total + charges
+
+        description = f"{(user.name).upper()} initiated a purchase of {quantity} unit(s) of {product.name}. Amount Payable: {product.currency} {total_amount}. Payment Provider: {PAYMENT_GATEWAY_PROVIDER}"
+        log_transaction_activity(txn, description, request_meta)
 
         tx_data = {
             "tx_ref": tx_ref,
@@ -239,7 +241,7 @@ class GenerateProductPaymentLinkView(GenericAPIView):
             },
             "configurations": {
                 "session_duration": 10,
-                "max_retry_attempt": 3,
+                "max_retry_attempt": 1,
             },
             "meta": {
                 "action": "PURCHASE_PRODUCT",
@@ -370,9 +372,12 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
                 },
             )
 
-        obj = self.flw_api.verify_transaction(flw_transaction_id)
-        description = f"Attempted to verify transaction {flw_transaction_id} on Flutterwave via API."
+        description = f"Transaction verification process started via REDIRECT URL."
         log_transaction_activity(txn, description, request_meta)
+
+        description = f"Attempting to verify transaction {flw_transaction_id} on Flutterwave via API."
+        log_transaction_activity(txn, description, request_meta)
+        obj = self.flw_api.verify_transaction(flw_transaction_id)
 
         if obj["status"] == "error":
             msg = obj["message"]
@@ -469,6 +474,20 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         product_owner = product.owner
         wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
 
+        txn_amount = txn.amount
+        flw_charge = FLUTTERWAVE_CHARGE_PERCENTAGE * float(txn_amount)
+        mybalance_charge = IBTE_EVENT_SETTLEMENT_FEE * int(ticket_quantity)
+        total_charges = mybalance_charge + flw_charge
+        from math import floor
+
+        amount_to_settle_owner = floor(txn_amount - total_charges)
+
+        description = f"Flutterwave charge:{txn.currency} {add_commas_to_transaction_amount(flw_charge)} | MyBalance Charge:{txn.currency} {add_commas_to_transaction_amount(mybalance_charge)}."
+        log_transaction_activity(txn, description, request_meta)
+
+        description = f"Original Ticket Amount Paid:{txn.currency} {add_commas_to_transaction_amount(txn_amount)} | Total Charges: {txn.currency} {add_commas_to_transaction_amount(total_charges)} | Amount Settled: {txn.currency} {add_commas_to_transaction_amount(amount_to_settle_owner)}."
+        log_transaction_activity(txn, description, request_meta)
+
         settlement_ref = generate_txn_reference()
         Transaction.objects.create(
             type="SETTLEMENT",
@@ -479,7 +498,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
             provider_tx_reference=settlement_ref,
             mode="WEB",
             currency=txn.currency,
-            amount=txn.amount,
+            amount=amount_to_settle_owner,
             charge=txn.charge,
             product=product,
             meta={"description": "Product Merchant Settlement"},
@@ -489,7 +508,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
-        product_owner.credit_wallet(txn.amount, txn.currency)
+        product_owner.credit_wallet(amount_to_settle_owner, txn.currency)
         wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
 
         description = f"New Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
