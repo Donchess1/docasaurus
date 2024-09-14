@@ -29,6 +29,8 @@ from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.text import notifications
 from utils.utils import (
+    FLUTTERWAVE_CHARGE_PERCENTAGE,
+    IBTE_EVENT_SETTLEMENT_FEE,
     PAYMENT_GATEWAY_PROVIDER,
     add_commas_to_transaction_amount,
     generate_txn_reference,
@@ -469,6 +471,16 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         product_owner = product.owner
         wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
 
+        txn_amount = txn.amount
+        flw_charge = FLUTTERWAVE_CHARGE_PERCENTAGE * float(txn_amount)
+        total_charges = IBTE_EVENT_SETTLEMENT_FEE + flw_charge
+        from math import floor
+
+        amount_to_settle_owner = floor(txn_amount - total_charges)
+
+        description = f"Original Ticket Amount Paid: {add_commas_to_transaction_amount(txn_amount)} | Flutterwave charge: {add_commas_to_transaction_amount(flw_charge)} | Total Charges Deducted: {add_commas_to_transaction_amount(amount_to_settle_owner)}."
+        log_transaction_activity(txn, description, request_meta)
+
         settlement_ref = generate_txn_reference()
         Transaction.objects.create(
             type="SETTLEMENT",
@@ -479,7 +491,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
             provider_tx_reference=settlement_ref,
             mode="WEB",
             currency=txn.currency,
-            amount=txn.amount,
+            amount=amount_to_settle_owner,
             charge=txn.charge,
             product=product,
             meta={"description": "Product Merchant Settlement"},
@@ -489,7 +501,7 @@ class ProductPaymentTransactionRedirectView(GenericAPIView):
         description = f"Previous Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
-        product_owner.credit_wallet(txn.amount, txn.currency)
+        product_owner.credit_wallet(amount_to_settle_owner, txn.currency)
         wallet_exists, owner_wallet = product_owner.get_currency_wallet(txn.currency)
 
         description = f"New Product Merchant Balance: {txn.currency} {add_commas_to_transaction_amount(owner_wallet.balance)}"
