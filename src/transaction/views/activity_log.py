@@ -3,13 +3,13 @@ from rest_framework import generics, status
 from console.models.transaction import Transaction
 from console.permissions import IsSuperAdmin
 from transaction.models import TransactionActivityLog
-from transaction.serializers.activity_log import TransactionActivityLogSerializer
+from transaction.serializers.activity_log import TransactionActivityLogSerializer, TransactionActivityLogResponseSerializer
 from utils.response import Response
 from utils.transaction import get_transaction_instance
 
 
 class TransactionActivityLogListView(generics.ListAPIView):
-    serializer_class = TransactionActivityLogSerializer
+    serializer_class = TransactionActivityLogResponseSerializer
     permission_classes = (IsSuperAdmin,)
 
     def list(self, request, id, *args, **kwargs):
@@ -23,7 +23,7 @@ class TransactionActivityLogListView(generics.ListAPIView):
         qs = TransactionActivityLog.objects.filter(transaction=transaction).order_by(
             "created_at"
         )
-        serializer = self.get_serializer(qs, many=True)
+        serializer = TransactionActivityLogSerializer(qs, many=True)
         data = {
             "id": transaction.id,
             "reference": transaction.reference,
