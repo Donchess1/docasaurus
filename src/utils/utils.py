@@ -229,6 +229,38 @@ def format_rejected_reasons(rejected_reasons):
         return f"{formatted_reasons} & {rejected_reasons[-1].replace('_', ' ').title()}"
 
 
+def capitalize_fields_decorator(fields_to_capitalize=None):
+    """
+    Decorator to capitalize specific fields in the serialized representation.
+    Defaults to capitalizing 'name' if no fields are specified.
+
+    Args:
+    fields_to_capitalize (list): List of field names to capitalize.
+    """
+    if fields_to_capitalize is None:
+        fields_to_capitalize = ["name"]  # Default to 'name'
+
+    def decorator(serializer_class):
+        original_to_representation = serializer_class.to_representation
+
+        def new_to_representation(self, instance):
+            # Call the original method
+            representation = original_to_representation(self, instance)
+
+            # Capitalize specified fields
+            for field in fields_to_capitalize:
+                if field in representation and representation[field]:
+                    representation[field] = representation[field].upper()
+
+            return representation
+
+        # Override the serializer's to_representation method with the new one
+        serializer_class.to_representation = new_to_representation
+        return serializer_class
+
+    return decorator
+
+
 CUSTOM_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # e.g "1993-12-25"
 PHONE_NUMBER_SERIALIZER_REGEX_NGN = RegexValidator(
     regex=r"^\d{11}$", message="Phone number must be 11 digits only."
