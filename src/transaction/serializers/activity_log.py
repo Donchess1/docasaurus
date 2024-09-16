@@ -14,3 +14,12 @@ class TransactionActivityLogSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+class TransactionActivityLogResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    reference = serializers.CharField()
+    type = serializers.CharField()
+    status = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    currency = serializers.CharField()
+    logs = TransactionActivityLogSerializer(many=True)
