@@ -6,6 +6,7 @@ echo "Starting before_install.sh script"
 
 # Fetch ECR_REGISTRY from Parameter Store
 ECR_REGISTRY=$(aws ssm get-parameter --name "/mybalance/global/ECR_REGISTRY" --with-decryption --query Parameter.Value --output text)
+echo "ECR_REGISTRY fetched: $ECR_REGISTRY"
 
 # Login to ECR
 echo "Attempting to log in to ECR"
