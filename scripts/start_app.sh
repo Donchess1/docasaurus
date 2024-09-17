@@ -1,16 +1,6 @@
 #!/bin/bash
 set -e
-
 echo "Starting start_app.sh script"
-
-# Change to the application directory
-APP_DIR="/home/ec2-user/app"
-cd $APP_DIR
-
-# Copy .env.example to .env if it exists, otherwise create an empty .env
-echo "Copying env.example to .env"
-cp .env.example .env
-
 
 update_env_var() {
     local param_name=$1
@@ -21,22 +11,23 @@ update_env_var() {
         sed -i "s|^$env_var_name=.*|$env_var_name=$value|" .env
     else
         # If the variable doesn't exist, add it
-
         echo "$env_var_name=$value" >> .env
     fi
 }
+# Change to the application directory
+APP_DIR="/home/ec2-user/app"
+cd $APP_DIR
+
+# Copy .env.example to .env if it exists, otherwise create an empty .env
+echo "Copying .env.example to .env"
+cp .env.example .env
 
 # Source the ecr_info.env file
 source ecr_info.env
+ENV_SUFFIX=$ENVIRONMENT
+ECR_REGISTRY=$ECR_REGISTRY
+ECR_REPOSITORY=$ECR_REPOSITORY
 
-if [ "$ENVIRONMENT" = "staging" ]; then
-    ENV_SUFFIX="staging"
-elif [ "$ENVIRONMENT" = "prod" ]; then
-    ENV_SUFFIX="prod"
-else
-    echo "Unknown environment: $ENVIRONMENT"
-    exit 1
-fi
 # Fetch sensitive data from Parameter Store and update .env
 echo "Fetching sensitive data from Parameter Store and updating .env"
 
@@ -80,17 +71,6 @@ update_env_var "/mybalance/${ENV_SUFFIX}/PUSHER_CLUSTER" "PUSHER_CLUSTER"
 # Ensure correct permissions on .env file
 chmod 600 .env
 
-# Load ECR registry from ecr_registry.env if it exists, otherwise use hardcoded values
-if [ -f "ecr_registry.env" ]; then
-    echo "Loading ECR registry from ecr_registry.env"
-    source ecr_registry.env
-else
-    echo "Warning: ecr_registry.env not found. Using hardcoded ECR values."
-    ECR_REGISTRY="654654197877.dkr.ecr.us-east-1.amazonaws.com"
-fi
-
-ECR_REPOSITORY="mybalance-${ENV_SUFFIX}-api"
-
 echo "Using ECR_REGISTRY: $ECR_REGISTRY"
 echo "Using ECR_REPOSITORY: $ECR_REPOSITORY"
 
@@ -108,4 +88,3 @@ echo "Starting the application"
 ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=$ECR_REPOSITORY docker-compose -f $COMPOSE_FILE up -d
 
 echo "Application started successfully"
-
