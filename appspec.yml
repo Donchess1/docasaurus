@@ -20,15 +20,15 @@ hooks:
     - location: scripts/validate_service.sh
       timeout: 300
       runas: root
-  # BeforeAllowTraffic:
-  #   - location: scripts/before_allow_traffic.sh
-  #     timeout: 300
-  #     runas: root
-  # AllowTraffic:
-  #   - location: scripts/allow_traffic.sh
-  #     timeout: 300
-  #     runas: root
-  # AfterAllowTraffic:
-  #   - location: scripts/after_allow_traffic.sh
-  #     timeout: 300
-  #     runas: root
+  BeforeAllowTraffic:
+    - location: scripts/before_allow_traffic.sh
+      timeout: 300
+      runas: root
+  AllowTraffic:
+    - location: scripts/allow_traffic.sh
+      timeout: 300
+      runas: root
+  AfterAllowTraffic:
+    - location: scripts/after_allow_traffic.sh
+      timeout: 300
+      runas: root
