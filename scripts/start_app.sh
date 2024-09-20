@@ -40,6 +40,8 @@ update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_DB" "POSTGRES_DB"
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PORT" "POSTGRES_PORT"
 
+update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_HOST" "REDIS_HOST"
+
 update_env_var "/mybalance/${ENV_SUFFIX}/ENVIRONMENT" "ENVIRONMENT"
 update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
 update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_DEBUG" "DJANGO_DEBUG"
