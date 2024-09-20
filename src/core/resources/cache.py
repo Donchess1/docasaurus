@@ -6,8 +6,17 @@ from django.conf import settings
 
 class Cache:
     def __init__(self):
+        # self._redis = redis.StrictRedis(
+        #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
+        # )
         self._redis = redis.StrictRedis(
-            host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD,  # Include password if set
+            db=0,
+            ssl=True,  # Enable SSL for ElastiCache
+            ssl_cert_reqs=None,  # Disable certificate verification
+            decode_responses=True  # Automatically decode responses to Python strings
         )
         # self._redis = redis.Redis(
         #     host=settings.REDIS_HOST,
