@@ -224,7 +224,7 @@ LOGGING = {
 # REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
 # REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", 6379)
 
-REDIS_HOST = "clustercfg.mybalance-api-cluster.hwlh6k.use1.cache.amazonaws.com:6379"
+REDIS_HOST = "clustercfg.mybalance-api-cluster.hwlh6k.use1.cache.amazonaws.com"
 REDIS_PORT = 6379
 # REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", 6379)
 
