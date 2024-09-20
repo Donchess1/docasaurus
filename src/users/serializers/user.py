@@ -46,7 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
             obj.userprofile.is_deactivated if user_profile_exists else "UNDEFINED"
         )
         meta_data["avatar_url"] = (
-            obj.userprofile.avatar if user_profile_exists else "UNDEFINED"
+            obj.userprofile.avatar if user_profile_exists else None
         )
         return meta_data
 
