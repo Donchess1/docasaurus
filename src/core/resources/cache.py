@@ -9,21 +9,21 @@ class Cache:
         # self._redis = redis.StrictRedis(
         #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
         # )
-        self._redis = redis.StrictRedis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,
-            db=0,
-            ssl=True,
-            ssl_cert_reqs=None,
-            decode_responses=True
-        )
-        # self._redis = redis.Redis(
+        # self._redis = redis.StrictRedis(
         #     host=settings.REDIS_HOST,
         #     port=settings.REDIS_PORT,
         #     password=settings.REDIS_PASSWORD,
         #     db=0,
+        #     ssl=True,
+        #     ssl_cert_reqs=None,
+        #     decode_responses=True
         # )
+        self._redis = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD,
+            db=0,
+        )
 
     def set(self, key, value, ttl=3600):
         value = json.dumps(value)
