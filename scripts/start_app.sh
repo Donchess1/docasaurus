@@ -40,9 +40,10 @@ update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_DB" "POSTGRES_DB"
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PORT" "POSTGRES_PORT"
 
-# update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_HOST" "REDIS_HOST"
-# update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_PASSWORD" "REDIS_PASSWORD"
-# update_env_var "/mybalance/${ENV_SUFFIX}/CELERY_BROKER" "CELERY_BROKER"
+update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_HOST" "REDIS_HOST"
+update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_PASSWORD" "REDIS_PASSWORD"
+update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_PORT" "REDIS_PORT"
+update_env_var "/mybalance/${ENV_SUFFIX}/CELERY_BROKER_URL" "CELERY_BROKER_URL"
 
 update_env_var "/mybalance/${ENV_SUFFIX}/ENVIRONMENT" "ENVIRONMENT"
 update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"

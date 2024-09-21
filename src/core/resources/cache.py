@@ -12,11 +12,11 @@ class Cache:
         self._redis = redis.StrictRedis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,  # Include password if set
+            password=settings.REDIS_PASSWORD,
             db=0,
-            ssl=True,  # Enable SSL for ElastiCache
-            ssl_cert_reqs=None,  # Disable certificate verification
-            decode_responses=True  # Automatically decode responses to Python strings
+            ssl=True,
+            ssl_cert_reqs=None,
+            decode_responses=True
         )
         # self._redis = redis.Redis(
         #     host=settings.REDIS_HOST,
