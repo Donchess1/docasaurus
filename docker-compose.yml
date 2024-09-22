@@ -15,7 +15,7 @@ services:
       - ./.env
     depends_on:
       - db
-      - redis
+      # - redis
     networks:
       - myb
   nginx:
@@ -45,10 +45,10 @@ services:
     networks:
       - myb
 
-  redis:
-    image: redis:alpine
-    networks:
-      - myb
+  # redis:
+  #   image: redis:alpine
+  #   networks:
+  #     - myb
 
   celery:
     <<: *api
@@ -64,21 +64,21 @@ services:
     networks:
       - myb
 
-  dashboard:
-    <<: *api
-    command: celery --broker=${REDIS_URL} flower --port=5555
-    ports:
-      - "5555:5555"
-    volumes:
-      - ./src:/app
-    env_file:
-      - ./.env
-    depends_on:
-      - api
-      - redis
-      - celery
-    networks:
-      - myb
+  # dashboard:
+  #   <<: *api
+  #   command: celery --broker=${REDIS_URL} flower --port=5555
+  #   ports:
+  #     - "5555:5555"
+  #   volumes:
+  #     - ./src:/app
+  #   env_file:
+  #     - ./.env
+  #   depends_on:
+  #     - api
+  #     - redis
+  #     - celery
+  #   networks:
+  #     - myb
 
 volumes:
   myb-dev-static-data:

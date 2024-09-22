@@ -7,8 +7,8 @@ services:
       - myb-dev-static-data:/vol/web
     env_file:
       - ./.env
-    depends_on:
-      - redis
+    # depends_on:
+    #   - redis
     networks:
       - myb
 
@@ -23,10 +23,10 @@ services:
     networks:
       - myb
 
-  redis:
-    image: redis:alpine
-    networks:
-      - myb
+  # redis:
+  #   image: redis:alpine
+  #   networks:
+  #     - myb
 
   celery:
     <<: *api

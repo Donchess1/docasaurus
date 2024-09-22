@@ -5,9 +5,9 @@ services:
       - myb-dev-static-data:/vol/web
     env_file:
       - ./.env
-    depends_on:
+    # depends_on:
       # - db
-      - redis
+      # - redis
     networks:
       - myb
 
@@ -38,14 +38,13 @@ services:
   #   networks:
   #     - myb
 
-  redis:
-    image: redis:alpine
-    networks:
-      - myb
+  # redis:
+  #   image: redis:alpine
+  #   networks:
+  #     - myb
 
   celery:
     <<: *api
-    # command: celery -A src/core worker -l INFO --logfile=celery.log
     command: >
       sh -c "
       echo 'Current directory:' &&
