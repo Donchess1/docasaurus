@@ -3,7 +3,7 @@ build:
 build-staging:
 	docker compose -f docker-compose-staging-original.yml up --build --remove-orphans --scale api=1
 build-prod:
-	docker compose -f docker-compose-prod.yml up --build --remove-orphans --scale api=1
+	docker compose -f docker-compose-prod-original.yml up --build --remove-orphans --scale api=1
 
 up:
 	docker compose -f docker-compose.yml up --build --remove-orphans --scale api=1

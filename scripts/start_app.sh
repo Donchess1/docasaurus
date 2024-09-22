@@ -34,6 +34,11 @@ echo "Fetching sensitive data from Parameter Store and updating .env"
 echo "" >> .env
 echo "" >> .env
 
+update_env_var "/mybalance/${ENV_SUFFIX}/ENVIRONMENT" "ENVIRONMENT"
+update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
+update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_DEBUG" "DJANGO_DEBUG"
+# update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
+
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_HOST" "POSTGRES_HOST"
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_USER" "POSTGRES_USER"
 update_env_var "/mybalance/${ENV_SUFFIX}/POSTGRES_PASSWORD" "POSTGRES_PASSWORD"
@@ -44,11 +49,6 @@ update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_HOST" "REDIS_HOST"
 update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_PASSWORD" "REDIS_PASSWORD"
 update_env_var "/mybalance/${ENV_SUFFIX}/REDIS_PORT" "REDIS_PORT"
 update_env_var "/mybalance/${ENV_SUFFIX}/CELERY_BROKER_URL" "CELERY_BROKER_URL"
-
-update_env_var "/mybalance/${ENV_SUFFIX}/ENVIRONMENT" "ENVIRONMENT"
-update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_SECRET_KEY" "DJANGO_SECRET_KEY"
-update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_DEBUG" "DJANGO_DEBUG"
-# update_env_var "/mybalance/${ENV_SUFFIX}/DJANGO_ALLOWED_HOSTS" "DJANGO_ALLOWED_HOSTS"
 
 update_env_var "/mybalance/${ENV_SUFFIX}/FRONTEND_BASE_URL" "FRONTEND_BASE_URL"
 update_env_var "/mybalance/${ENV_SUFFIX}/BACKEND_BASE_URL" "BACKEND_BASE_URL"
