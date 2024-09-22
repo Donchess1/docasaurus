@@ -225,10 +225,10 @@ REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "PASSWORD")
 
 CELERY_BROKER_URL = os.environ.get(
-    "CELERY_BROKER_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}"
+    "CELERY_BROKER", f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 )
 CELERY_RESULT_BACKEND = os.environ.get(
-    "CELERY_BROKER_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}"
+    "CELERY_BROKER", f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 )
 
 
