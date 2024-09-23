@@ -69,7 +69,6 @@ CUSTOM_MIDDLEWARE = [
     "drf_api_logger.middleware.api_logger_middleware.APILoggerMiddleware",
 ]
 
-
 MIDDLEWARE = DEFAULT_MIDDLEWARE + CUSTOM_MIDDLEWARE
 
 CORS_ALLOWED_ORIGINS = [
