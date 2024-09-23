@@ -16,7 +16,6 @@ from utils.response import Response
 from utils.utils import EDIT_PROFILE_URL, generate_otp, generate_temp_id
 
 User = get_user_model()
-cache = Cache()
 
 
 class RegisterBuyerView(CreateAPIView):
@@ -58,7 +57,8 @@ class RegisterBuyerView(CreateAPIView):
             "name": name,
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 10)
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,

@@ -53,8 +53,9 @@ class VerifyOTPView(GenericAPIView):
 
         otp = serializer.validated_data["otp"]
         temp_id = serializer.validated_data["temp_id"]
-
-        cache_data = cache.get(temp_id)
+        cache_data = None
+        with Cache() as cache:
+            cache_data = cache.get(temp_id)
         if not cache_data or not cache_data["is_valid"]:
             return Response(
                 success=False,
@@ -70,7 +71,8 @@ class VerifyOTPView(GenericAPIView):
             )
 
         cache_data["is_valid"] = False
-        cache.delete(temp_id)
+        with Cache() as cache:
+            cache.delete(temp_id)
 
         email = cache_data["email"]
         name = cache_data["name"]
@@ -150,8 +152,8 @@ class ResendAccountVerificationOTPView(GenericAPIView):
             "name": name,
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 10)
-
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,
@@ -183,8 +185,9 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
 
         otp = serializer.validated_data["otp"]
         temp_id = serializer.validated_data["temp_id"]
-
-        cache_data = cache.get(temp_id)
+        cache_data = None
+        with Cache() as cache:
+            cache_data = cache.get(temp_id)
         if not cache_data or not cache_data["is_valid"]:
             return Response(
                 success=False,
@@ -200,7 +203,8 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
             )
 
         cache_data["is_valid"] = False
-        cache.delete(temp_id)
+        with Cache() as cache:
+            cache.delete(temp_id)
 
         email = cache_data.get("email")
         user = User.objects.filter(email=email).first()

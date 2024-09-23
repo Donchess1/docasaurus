@@ -22,7 +22,6 @@ from utils.utils import (
 )
 
 User = get_user_model()
-cache = Cache()
 
 
 class ForgotPasswordView(generics.GenericAPIView):
@@ -55,9 +54,8 @@ class ForgotPasswordView(generics.GenericAPIView):
             "email": email,
             "is_valid": True,
         }
-
-        cache.set(otp_key, value, 60 * 60 * 15)  # OTP/Token expires in 15 minutes
-
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 15)  # OTP/Token expires in 15 minutes
         dynamic_values = {
             "first_name": name.split(" ")[0],
             "recipient": email,
@@ -92,7 +90,9 @@ class ResetPasswordView(generics.GenericAPIView):
         temp_id = serializer.validated_data["hash"]
         password = serializer.validated_data["password"]
 
-        cache_data = cache.get(temp_id)
+        with Cache() as cache:
+            cache_data = cache.get(temp_id)
+
         if not cache_data or not cache_data["is_valid"]:
             return Response(
                 success=False,
@@ -102,14 +102,15 @@ class ResetPasswordView(generics.GenericAPIView):
 
         cache_data["is_valid"] = False
         email = cache_data["email"]
-        cache.delete(temp_id)
+
+        with Cache() as cache:
+            cache.delete(temp_id)
 
         user = User.objects.get(email=email)
         user.set_password(password)
         user.save()
 
         name = user.name
-
         dynamic_values = {
             "first_name": name.split(" ")[0],
             "recipient": email,

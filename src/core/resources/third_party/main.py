@@ -41,8 +41,6 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT")
 
 
 class ThirdPartyAPI(BaseThirdPartyService):
-    cache = Cache()
-
     # @classmethod
     # def validate_BVN(cls, number):
     #     if number != TEST_BVN:
@@ -190,7 +188,8 @@ class ThirdPartyAPI(BaseThirdPartyService):
         banks = {"sorted_banks": sorted_banks, "banks_map": banks_map}
 
         cache_exp = hours_to_seconds(6)
-        cls.cache.set("banks", banks, cache_exp)
+        with Cache() as cache:
+            cache.set("banks", banks, cache_exp)
         return banks
 
     @classmethod
