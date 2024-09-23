@@ -15,6 +15,7 @@ class TransactionActivityLogSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
+
 class TransactionActivityLogResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     reference = serializers.CharField()

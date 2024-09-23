@@ -3,7 +3,10 @@ from rest_framework import generics, status
 from console.models.transaction import Transaction
 from console.permissions import IsSuperAdmin
 from transaction.models import TransactionActivityLog
-from transaction.serializers.activity_log import TransactionActivityLogSerializer, TransactionActivityLogResponseSerializer
+from transaction.serializers.activity_log import (
+    TransactionActivityLogResponseSerializer,
+    TransactionActivityLogSerializer,
+)
 from utils.response import Response
 from utils.transaction import get_transaction_instance
 
