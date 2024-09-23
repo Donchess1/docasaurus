@@ -15,7 +15,7 @@ services:
       - ./.env
     depends_on:
       - db
-      # - redis
+      - redis
     networks:
       - myb
   nginx:
@@ -45,10 +45,10 @@ services:
     networks:
       - myb
 
-  # redis:
-  #   image: redis:alpine
-  #   networks:
-  #     - myb
+  redis:
+    image: redis:alpine
+    networks:
+      - myb
 
   celery:
     <<: *api

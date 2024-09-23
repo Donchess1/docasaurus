@@ -82,7 +82,7 @@ class Cache:
                 #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
                 # )
                 cls._instance._redis = redis.StrictRedis(
-                     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
+                    host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
                 )
             else:
                 print("REDIS-STAGING/PRODUCTION")
