@@ -138,6 +138,12 @@ class TransactionOverviewView(generics.GenericAPIView):
         merchant_settlement_data = get_aggregated_system_transaction_data_by_type(
             transactions, "MERCHANT_SETTLEMENT", MERCHANT_SETTLEMENT_STATES
         )
+        product_settlement_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "SETTLEMENT", MERCHANT_SETTLEMENT_STATES
+        )
+        product_data = get_aggregated_system_transaction_data_by_type(
+            transactions, "PRODUCT", MERCHANT_SETTLEMENT_STATES
+        )
 
         data = {
             "currency": currency,
@@ -149,6 +155,9 @@ class TransactionOverviewView(generics.GenericAPIView):
             "withdrawals": withdrawal_data,
             "escrows": escrow_data,
             "settlements": merchant_settlement_data,
+            "merchant_settlements": merchant_settlement_data,
+            "product_settlements": product_settlement_data,
+            "product_purchases": product_data,
         }
         serializer = self.serializer_class(data)
         return Response(

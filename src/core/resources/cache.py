@@ -76,16 +76,14 @@ class Cache:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Cache, cls).__new__(cls)
-            if ENVIRONMENT == "development":
-                print("REDIS-DEVELOPMENT")
-                # cls._instance._redis = redis.Redis(
-                #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
-                # )
-                cls._instance._redis = redis.StrictRedis(
+            if ENVIRONMENT in ("development", "staging"):
+                msg = f"REDIS-{ENVIRONMENT.upper()} INSTANTIATED"
+                print(msg)
+                cls._instance._redis = redis.Redis(
                     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
                 )
             else:
-                print("REDIS-STAGING/PRODUCTION")
+                print("REDIS-PRODUCTION INSTANTIATED")
                 cls._instance._redis = redis.Redis(
                     host=settings.REDIS_HOST,
                     port=settings.REDIS_PORT,
