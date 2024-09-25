@@ -732,7 +732,7 @@ class WalletWithdrawalView(GenericAPIView):
             return Response(
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
-                message="Account restricted. Kindly contact support.",
+                message="Contact Support to perform this action",
             )
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
