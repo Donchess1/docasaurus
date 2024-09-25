@@ -50,7 +50,9 @@ def validate_request(request):
 
 
 def verify_otp(otp, temp_id):
-    cache_data = cache.get(temp_id)
+    cache_data = None
+    with Cache() as cache:
+        cache_data = cache.get(temp_id)
     if not cache_data or not cache_data["is_valid"]:
         return False, "OTP is invalid or expired!"
 
@@ -58,13 +60,16 @@ def verify_otp(otp, temp_id):
         return False, "Invalid OTP!"
 
     cache_data["is_valid"] = False
-    cache.delete(temp_id)
+    with Cache() as cache:
+        cache.delete(temp_id)
 
     return True, cache_data
 
 
 def verify_merchant_widget_token_key(key):
-    cache_data = cache.get(key)
+    cache_data = None
+    with Cache() as cache:
+        cache_data = cache.get(key)
     if not cache_data or not cache_data["is_valid"]:
         return False, "Widget session is invalid or expired!"
 

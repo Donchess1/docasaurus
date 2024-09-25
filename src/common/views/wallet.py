@@ -99,7 +99,7 @@ class FundWalletView(GenericAPIView):
             },
             "configurations": {
                 "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
-                "max_retry_attempt": 3,  # Max retry (int)
+                "max_retry_attempt": 1,  # Max retry (int)
             },
             "meta": {
                 "action": "FUND_WALLET",

@@ -47,7 +47,6 @@ from utils.utils import (
 CUSTOMER_WIDGET_BUYER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BUYER_BASE_URL", "")
 CUSTOMER_WIDGET_SELLER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_SELLER_BASE_URL", "")
 
-cache = Cache()
 User = get_user_model()
 
 
@@ -92,7 +91,8 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             "access_key": access_key,
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 5)  # 5 minutes
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 5)  # 5 minutes
         url = (
             f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{otp_key}"
             if user_type == "BUYER"
@@ -311,8 +311,8 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
             "data": dict(data),
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 10)
-
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 10)
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
         currency = data.get("currency")
@@ -367,7 +367,8 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
             "data": dict(data),
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 10)
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 10)
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
         currency = data.get("currency")

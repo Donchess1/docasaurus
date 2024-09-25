@@ -76,34 +76,31 @@ class Cache:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Cache, cls).__new__(cls)
-            if ENVIRONMENT == "development":
-                print("REDIS-DEVELOPMENT")
-                # cls._instance._redis = redis.Redis(
-                #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
-                # )
-                cls._instance._redis = redis.StrictRedis(
-                    host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
-                )
-            else:
-                print("REDIS-STAGING/PRODUCTION")
-                cls._instance._redis = redis.Redis(
-                    host=settings.REDIS_HOST,
-                    port=settings.REDIS_PORT,
-                    password=settings.REDIS_PASSWORD,
-                    db=0,
-                )
-                # self._redis = redis.StrictRedis(
-                #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
-                # )
-                # self._redis = redis.StrictRedis(
-                #     host=settings.REDIS_HOST,
-                #     port=settings.REDIS_PORT,
-                #     password=settings.REDIS_PASSWORD,
-                #     db=0,
-                #     ssl=True,
-                #     ssl_cert_reqs=None,
-                #     decode_responses=True
-                # )
+            msg = f"REDIS-{ENVIRONMENT.upper()} INSTANTIATED"
+            print("===================================================")
+            print(msg)
+            print("===================================================")
+            cls._instance._redis = redis.Redis(
+                host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
+            )
+            # cls._instance._redis = redis.Redis(
+            #     host=settings.REDIS_HOST,
+            #     port=settings.REDIS_PORT,
+            #     password=settings.REDIS_PASSWORD,
+            #     db=0,
+            # )
+            # cls._instance._redis = redis.StrictRedis(
+            #     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
+            # )
+            # cls._instance._redis = redis.StrictRedis(
+            #     host=settings.REDIS_HOST,
+            #     port=settings.REDIS_PORT,
+            #     password=settings.REDIS_PASSWORD,
+            #     db=0,
+            #     ssl=True,
+            #     ssl_cert_reqs=None,
+            #     decode_responses=True
+            # )
         return cls._instance
 
     def set(self, key, value, ttl=3600):

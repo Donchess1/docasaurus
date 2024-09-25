@@ -18,22 +18,21 @@ class ListBanksView(GenericAPIView):
     serializer_class = BankListSerializer
     permission_classes = [AllowAny]
     third_party = ThirdPartyAPI
-    cache = Cache()
 
     @swagger_auto_schema(
         operation_description="Retrieve list of banks",
     )
     def get(self, request):
-        banks = self.cache.get("banks")
-        if banks is None:
-            banks = self.third_party.list_banks()
-            if not banks:
-                return Response(
-                    success=False,
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    message="ERR005: Error occured while listing banks",
-                )
-
+        with Cache() as cache:
+            banks = cache.get("banks")
+            if banks is None:
+                banks = self.third_party.list_banks()
+                if not banks:
+                    return Response(
+                        success=False,
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        message="ERR005: Error occured while listing banks",
+                    )
         serializer = self.serializer_class(banks["sorted_banks"], many=True)
         return Response(
             success=True,

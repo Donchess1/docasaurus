@@ -25,7 +25,6 @@ from utils.response import Response
 from utils.utils import generate_otp, generate_temp_id
 
 User = get_user_model()
-cache = Cache()
 
 
 class EditUserProfileView(generics.GenericAPIView):
@@ -275,7 +274,8 @@ class GenerateOneTimeLoginCodeView(generics.GenericAPIView):
             "name": name,
             "is_valid": True,
         }
-        cache.set(otp_key, value, 60 * 60 * 10)
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,

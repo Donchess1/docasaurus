@@ -41,6 +41,9 @@ class TransactionSummarySerializer(BaseSummarySerializer):
     withdrawals = WithdrawalStatusSerializer()
     escrows = EscrowStatusSerializer()
     settlements = SettlementStatusSerializer()
+    merchant_settlements = SettlementStatusSerializer()
+    product_settlements = SettlementStatusSerializer()
+    product_purchases = SettlementStatusSerializer()
 
 
 class TransactionChartSerializer(serializers.Serializer):
