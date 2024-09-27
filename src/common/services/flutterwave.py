@@ -66,7 +66,7 @@ def handle_flutterwave_withdrawal_webhook(data, request_meta, pusher):
 
         user.credit_wallet(amount_to_debit, txn.currency)
         _, wallet = user.get_currency_wallet(txn.currency)
-        description = f"Updated User Balance after Reversing Init Debit of {txn.currency} {add_commas_to_transaction_amount(total_amount)}: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+        description = f"Updated User Balance after Reversing Init Debit of {txn.currency} {add_commas_to_transaction_amount(amount_to_debit)}: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
         log_transaction_activity(txn, description, request_meta)
 
         pusher.trigger(
