@@ -1,8 +1,10 @@
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters, generics, status
 from rest_framework.permissions import AllowAny
 
 from console.models.transaction import Transaction
+from transaction.filters import TransactionFilter
 from transaction.serializers.user import UserTransactionSerializer
 from utils.pagination import CustomPagination
 from utils.response import Response
@@ -12,7 +14,8 @@ class TransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = (AllowAny,)
     pagination_class = CustomPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
     search_fields = ["reference", "provider", "type"]
 
     def get_queryset(self):
@@ -25,9 +28,16 @@ class TransactionListView(generics.ListAPIView):
         },
     )
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        qs = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(qs, many=True)
-        self.pagination_class.message = "Transactions retrieved successfully."
-        response = self.get_paginated_response(serializer.data)
-        return response
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            qs = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(qs, many=True)
+            self.pagination_class.message = "Transactions retrieved successfully."
+            response = self.get_paginated_response(serializer.data)
+            return response
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"{str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
