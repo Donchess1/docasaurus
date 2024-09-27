@@ -301,7 +301,7 @@ DRF_API_LOGGER_SIGNAL = True
 DRF_LOGGER_QUEUE_MAX_SIZE = 50
 DRF_LOGGER_INTERVAL = 10
 DRF_API_LOGGER_SKIP_NAMESPACE = []  # list of namespaces OR APPS to skip logging
-DRF_API_LOGGER_SKIP_URL_NAME = ["health_check"]  # list of url names to skip logging
+DRF_API_LOGGER_SKIP_URL_NAME = ["health-check"]  # list of url names to skip logging
 DRF_API_LOGGER_EXCLUDE_KEYS = [
     "password",
     "token",
