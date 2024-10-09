@@ -94,16 +94,22 @@ class MerchantSerializer(serializers.ModelSerializer):
 
 
 class MerchantDetailSerializer(serializers.ModelSerializer):
+    email = serializers.SerializerMethodField()
+
     class Meta:
         model = Merchant
         fields = (
             "id",
             "name",
+            "email",
             "description",
             "address",
             "created_at",
             "updated_at",
         )
+
+    def get_email(self, obj):
+        return obj.user_id.email
 
 
 class MerchantWalletSerializer(serializers.ModelSerializer):
