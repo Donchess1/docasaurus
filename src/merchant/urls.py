@@ -65,7 +65,7 @@ urlpatterns = [
     path(
         "transactions/<str:id>/activity-logs",
         MerchantTransactionActivityLogView.as_view(),
-        name="merchant-transaction-detail",
+        name="merchant-transaction-detail-activity-logs",
     ),
     path(
         "settlements",

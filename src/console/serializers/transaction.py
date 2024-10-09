@@ -58,3 +58,17 @@ class TransactionChartSerializer(serializers.Serializer):
     chart_data = serializers.DictField(
         child=serializers.DictField(child=serializers.IntegerField())
     )
+
+
+class TransactionEntitySchemaSerializer(serializers.Serializer):
+    entity = serializers.CharField()
+    type = serializers.ListField(child=serializers.CharField())
+    mode = serializers.ListField(child=serializers.CharField())
+    hierarchy_map = serializers.DictField()
+
+class DisputeEntitySchemaSerializer(serializers.Serializer):
+    entity = serializers.CharField()
+    source = serializers.ListField(child=serializers.CharField())
+    status = serializers.ListField(child=serializers.CharField())
+    priority = serializers.ListField(child=serializers.CharField())
+    author = serializers.ListField(child=serializers.CharField())

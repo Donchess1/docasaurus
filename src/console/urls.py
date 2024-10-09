@@ -9,6 +9,7 @@ from console.views.base import (
     UserViewSet,
 )
 from console.views.dispute import DisputeDetailView, DisputeListView
+from console.views.entity_schema import DisputeSchemaView, TransactionSchemaView
 from console.views.event import EventViewSet
 from console.views.overview import (
     DisputeOverviewView,
@@ -46,6 +47,16 @@ urlpatterns = [
         "registration-metrics",
         UserRegistrationMetricsView.as_view(),
         name="console-metrics",
+    ),
+    path(
+        "schema/transactions",
+        TransactionSchemaView.as_view(),
+        name="transactions-schema",
+    ),
+    path(
+        "schema/disputes",
+        DisputeSchemaView.as_view(),
+        name="disputes-schema",
     ),
     path("transactions", TransactionListView.as_view(), name="transactions"),
     path(

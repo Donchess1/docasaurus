@@ -19,7 +19,7 @@ from console.utils import (
     ESCROW_STATES,
     MERCHANT_SETTLEMENT_STATES,
     VALID_PERIODS,
-    WITHDRAWAL_STATES,
+    WITHDRAW_STATES,
     get_aggregated_system_dispute_data_by_type,
     get_aggregated_system_email_log_data_by_provider,
     get_aggregated_system_transaction_data_by_type,
@@ -130,7 +130,7 @@ class TransactionOverviewView(generics.GenericAPIView):
             transactions, "DEPOSIT", DEPOSIT_STATES
         )
         withdrawal_data = get_aggregated_system_transaction_data_by_type(
-            transactions, "WITHDRAW", WITHDRAWAL_STATES
+            transactions, "WITHDRAW", WITHDRAW_STATES
         )
         escrow_data = get_aggregated_system_transaction_data_by_type(
             transactions, "ESCROW", ESCROW_STATES

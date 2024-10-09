@@ -10,7 +10,7 @@ schema_view = get_schema_view(
     openapi.Info(
         title="MyBalance API",
         default_version="v1",
-        description="",
+        description="Payment Control Service API",
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
@@ -20,13 +20,13 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("", views.api_ok, name="api-ok"),
-    path("health-check", views.HealthCheckView.as_view(), name="health-check"),
     path(
         "swaggerxyz-docs",
         schema_view.with_ui("swagger", cache_timeout=0),
         name="swagger-schema-ui",
     ),
     path("ajazzinauth23qwe/", admin.site.urls),
+    path("v1/health-check", views.HealthCheckView.as_view(), name="health-check"),
     path("v1/auth/", include("users.urls")),
     path("v1/shared/", include("common.urls")),
     path("v1/console/", include("console.urls")),
