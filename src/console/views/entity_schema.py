@@ -19,8 +19,6 @@ from console.utils import (
 from utils.response import Response
 from utils.utils import SYSTEM_CURRENCIES
 
-User = get_user_model()
-
 
 class TransactionSchemaView(generics.GenericAPIView):
     permission_classes = (IsSuperAdmin,)
