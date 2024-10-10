@@ -11,6 +11,12 @@ class TransactionFilter(django_filters.FilterSet):
     currency = django_filters.CharFilter(field_name="currency", lookup_expr="iexact")
     email = django_filters.CharFilter(method="filter_by_user_email")
     # user_id = django_filters.CharFilter(method="filter_by_user_id")
+    mode = django_filters.CharFilter(field_name="mode", lookup_expr="iexact")
+    amount_lt = django_filters.NumberFilter(field_name="amount", lookup_expr="lt")
+    amount_gt = django_filters.NumberFilter(field_name="amount", lookup_expr="gt")
+    amount_lte = django_filters.NumberFilter(field_name="amount", lookup_expr="lte")
+    amount_gte = django_filters.NumberFilter(field_name="amount", lookup_expr="gte")
+    amount_exact = django_filters.NumberFilter(field_name="amount", lookup_expr="exact")
 
     class Meta:
         model = Transaction
@@ -22,6 +28,12 @@ class TransactionFilter(django_filters.FilterSet):
             "provider",
             "currency",
             "email",
+            "mode",
+            "amount_lt",
+            "amount_gt",
+            "amount_lte",
+            "amount_gte",
+            "amount_exact",
         ]
 
     def filter_by_user_email(self, queryset, name, value):

@@ -364,8 +364,13 @@ class TransactionDetailView(generics.GenericAPIView):
     def get_queryset(self):
         return Transaction.objects.all()
 
+    def get_serializer_class(self):
+        if self.request.method == "PATCH":
+            return RevokeEscrowTransactionSerializer
+        return UserTransactionSerializer
+
     @swagger_auto_schema(
-        operation_description="Console: Get a transaction detail by ID or Reference",
+        operation_description="Get a transaction detail by ID or Reference",
         responses={
             200: UserTransactionSerializer,
         },
@@ -387,6 +392,12 @@ class TransactionDetailView(generics.GenericAPIView):
             data=serializer.data,
         )
 
+    @swagger_auto_schema(
+        operation_description="Revoke an escrow transaction",
+        responses={
+            200: UserTransactionSerializer,
+        },
+    )
     def patch(self, request, id, *args, **kwargs):
         user = request.user
         request_meta = extract_api_request_metadata(request)
@@ -400,7 +411,7 @@ class TransactionDetailView(generics.GenericAPIView):
         if instance.type != "ESCROW":
             return Response(
                 success=False,
-                message=f"{instance.type} transactions cannot be revoked",
+                message=f"{(instance.type).title()} transactions cannot be revoked",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         stakeholders = get_escrow_transaction_stakeholders(instance.reference)
@@ -425,13 +436,6 @@ class TransactionDetailView(generics.GenericAPIView):
         #         status_code=status.HTTP_400_BAD_REQUEST,
         #     )
 
-        serializer = RevokeEscrowTransactionSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                success=False,
-                errors=serializer.errors,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
         if instance.status in ["PENDING", "REJECTED", "CANCELLED", "FUFILLED"]:
             return Response(
                 success=False,
@@ -439,10 +443,20 @@ class TransactionDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reason = serializer.validated_data.get("reason")
+        supporting_document = serializer.validated_data.get("supporting_document", None)
+
         # Reverse locked funds if the amount was deducted initially
         if LockedAmount.objects.filter(transaction=instance).exists():
             amount_to_return = instance.amount + instance.charge
-            reason = serializer.validated_data.get("reason")
 
             buyer = (
                 instance.user_id
@@ -483,11 +497,17 @@ class TransactionDetailView(generics.GenericAPIView):
                 action_url=f"{BACKEND_BASE_URL}/v1/transaction/link/{instance.reference}",
             )
 
-        instance.meta.update({"escrow_action": "REVOKED", "rejected_reason": reason})
+        instance.meta.update(
+            {
+                "escrow_action": "REVOKED",
+                "rejected_reason": reason,
+                "supporting_document": supporting_document,
+            }
+        )
         instance.status = "REVOKED"
         instance.save()
 
-        description = f"Escrow was successfully revoked by {(user.name).upper()} <{user.email}>. Reason: {reason}"
+        description = f"Escrow was successfully revoked by {(user.name).upper()} <{user.email}>. Reason: {reason}. Supporting Document: {supporting_document if supporting_document else 'N/A'}"
         log_transaction_activity(instance, description, request_meta)
 
         return Response(
