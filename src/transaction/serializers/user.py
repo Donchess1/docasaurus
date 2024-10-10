@@ -86,6 +86,13 @@ class UserTransactionSerializer(serializers.ModelSerializer):
             "provider",
         )
 
+    def __init__(self, *args, **kwargs):
+        super(UserTransactionSerializer, self).__init__(*args, **kwargs)
+        if self.context.get("hide_escrow_details"):
+            self.fields.pop("escrow_metadata")
+        if self.context.get("hide_locked_amount"):
+            self.fields.pop("locked_amount")
+
     def get_locked_amount(self, obj):
         instance = LockedAmount.objects.filter(transaction=obj).first()
         if not instance:
@@ -138,3 +145,4 @@ class UpdateEscrowTransactionSerializer(serializers.Serializer):
 
 class RevokeEscrowTransactionSerializer(serializers.Serializer):
     reason = serializers.CharField()
+    supporting_document = serializers.URLField(required=False)

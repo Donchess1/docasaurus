@@ -1,8 +1,7 @@
 from rest_framework import generics, status
 
-from console.models.transaction import Transaction
-from console.permissions import IsSuperAdmin
 from transaction.models import TransactionActivityLog
+from transaction.permissions import IsAdminOrReadOnly
 from transaction.serializers.activity_log import (
     TransactionActivityLogResponseSerializer,
     TransactionActivityLogSerializer,
@@ -13,7 +12,7 @@ from utils.transaction import get_transaction_instance
 
 class TransactionActivityLogListView(generics.ListAPIView):
     serializer_class = TransactionActivityLogResponseSerializer
-    permission_classes = (IsSuperAdmin,)
+    permission_classes = (IsAdminOrReadOnly,)
 
     def list(self, request, id, *args, **kwargs):
         transaction = get_transaction_instance(id)

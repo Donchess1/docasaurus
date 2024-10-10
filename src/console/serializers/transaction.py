@@ -64,7 +64,10 @@ class TransactionEntitySchemaSerializer(serializers.Serializer):
     entity = serializers.CharField()
     type = serializers.ListField(child=serializers.CharField())
     mode = serializers.ListField(child=serializers.CharField())
-    hierarchy_map = serializers.DictField()
+    currency = serializers.ListField(child=serializers.CharField())
+    schema = serializers.DictField()
+    filter_fields = serializers.DictField()
+
 
 class DisputeEntitySchemaSerializer(serializers.Serializer):
     entity = serializers.CharField()

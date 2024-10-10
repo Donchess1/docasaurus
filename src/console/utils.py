@@ -50,6 +50,74 @@ DEFAULT_CURRENCY = "NGN"
 TRANSACTION_CHART_STATUS = ("SUCCESSFUL", "PENDING", "FAILED", "TOTAL")
 IBTE2024_TICKET_TIERS = ("BASIC-DEFAULT", "VIP-DEFAULT", "VVIP-DEFAULT")
 
+TRANSACTION_FILTER_FIELDS = {
+    "status": {
+        "type": "string",
+        "description": "Filter by transaction status. Available options: 'PENDING', 'SUCCESSFUL', 'FAILED', etc.",
+        "example": "?status=SUCCESSFUL",
+    },
+    "created": {
+        "type": "date_range",
+        "description": "Filter transactions by the date range when they were created. Use 'created_after' and 'created_before' to specify the date range.",
+        "example": "?created_after=2024-01-01&created_before=2024-12-31",
+    },
+    "type": {
+        "type": "string",
+        "description": "Filter by transaction type. Available options: 'DEPOSIT', 'WITHDRAW', 'ESCROW', etc.",
+        "example": "?type=DEPOSIT",
+    },
+    "reference": {
+        "type": "string",
+        "description": "Filter by the unique transaction reference.",
+        "example": "?reference=ABC123",
+    },
+    "provider": {
+        "type": "string",
+        "description": "Filter by the payment provider. Available options: 'FLUTTERWAVE', 'PAYSTACK', 'BLUSALT', etc.",
+        "example": "?provider=FLUTTERWAVE",
+    },
+    "currency": {
+        "type": "string",
+        "description": "Filter by transaction currency. Available options: 'NGN', 'USD', etc.",
+        "example": "?currency=NGN",
+    },
+    "email": {
+        "type": "string",
+        "description": "Filter by the user's email associated with the transaction.",
+        "example": "?email=user@example.com",
+    },
+    "mode": {
+        "type": "string",
+        "description": "Filter by transaction mode. Available options: 'MERCHANT_API', 'WEB'.",
+        "example": "?mode=WEB",
+    },
+    "amount_lt": {
+        "type": "integer",
+        "description": "Filter for transactions where the amount is less than a specified value.",
+        "example": "?amount_lt=5000",
+    },
+    "amount_gt": {
+        "type": "integer",
+        "description": "Filter for transactions where the amount is greater than a specified value.",
+        "example": "?amount_gt=1000",
+    },
+    "amount_lte": {
+        "type": "integer",
+        "description": "Filter for transactions where the amount is less than or equal to a specified value.",
+        "example": "?amount_lte=3000",
+    },
+    "amount_gte": {
+        "type": "integer",
+        "description": "Filter for transactions where the amount is greater than or equal to a specified value.",
+        "example": "?amount_gte=2000",
+    },
+    "amount_exact": {
+        "type": "integer",
+        "description": "Filter for transactions where the amount is exactly a specified value.",
+        "example": "?amount_exact=10000",
+    },
+}
+
 
 def get_aggregated_system_transaction_data_by_type(
     transactions: QuerySet[Transaction], txn_type: str, statuses: List[str]
