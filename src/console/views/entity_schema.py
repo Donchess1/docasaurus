@@ -1,23 +1,20 @@
-from django.contrib.auth import get_user_model
-from rest_framework import generics, permissions, status
+from rest_framework import generics, status
 
-from console.models import Dispute, EmailLog, Transaction
+from console.models import Dispute, Transaction
 from console.permissions import IsSuperAdmin
 from console.serializers.dispute import DisputeSummarySerializer
-from console.serializers.transaction import TransactionEntitySchemaSerializer, DisputeEntitySchemaSerializer
-from console.serializers.user import UserSummarySerializer
-from console.services.transaction_chart import TransactionChartDataHandler
+from console.serializers.transaction import (
+    DisputeEntitySchemaSerializer,
+    TransactionEntitySchemaSerializer,
+)
 from console.utils import (
     DEPOSIT_STATES,
     DISPUTE_STATES,
     ESCROW_STATES,
     MERCHANT_SETTLEMENT_STATES,
+    TRANSACTION_FILTER_FIELDS,
     TRANSACTION_TYPES,
     WITHDRAW_STATES,
-    get_aggregated_system_dispute_data_by_type,
-    get_aggregated_system_email_log_data_by_provider,
-    get_aggregated_system_transaction_data_by_type,
-    get_time_range_from_period,
 )
 from utils.response import Response
 from utils.utils import SYSTEM_CURRENCIES
@@ -31,29 +28,47 @@ class TransactionSchemaView(generics.GenericAPIView):
 
     def get(self, request):
         transaction_type_map = {
-            "DEPOSIT": DEPOSIT_STATES[:-1],
-            "WITHDRAW": WITHDRAW_STATES[:-1],
-            "ESCROW": ESCROW_STATES[:-1],
-            "MERCHANT_SETTLEMENT": MERCHANT_SETTLEMENT_STATES[:-1],
-            "SETTLEMENT": MERCHANT_SETTLEMENT_STATES[:-1],
-            "PRODUCT": MERCHANT_SETTLEMENT_STATES[:-1],
+            "DEPOSIT": {
+                "status": DEPOSIT_STATES[:-1],
+                "actions": {"view": DEPOSIT_STATES[:-1], "verify": ["PENDING"]},
+            },
+            "WITHDRAW": {
+                "status": WITHDRAW_STATES[:-1],
+                "actions": {
+                    "view": WITHDRAW_STATES[:-1],
+                },
+            },
+            "ESCROW": {
+                "status": ESCROW_STATES[:-1],
+                "actions": {"view": ESCROW_STATES[:-1], "revoke": ["PENDING"]},
+            },
+            "MERCHANT_SETTLEMENT": {
+                "status": MERCHANT_SETTLEMENT_STATES[:-1],
+                "actions": {
+                    "view": MERCHANT_SETTLEMENT_STATES[:-1],
+                },
+            },
+            "SETTLEMENT": {
+                "status": MERCHANT_SETTLEMENT_STATES[:-1],
+                "actions": {
+                    "view": MERCHANT_SETTLEMENT_STATES[:-1],
+                },
+            },
+            "PRODUCT": {
+                "status": MERCHANT_SETTLEMENT_STATES[:-1],
+                "actions": {
+                    "view": MERCHANT_SETTLEMENT_STATES[:-1],
+                    "verify": ["PENDING"],
+                },
+            },
         }
         data = {
             "entity": "TRANSACTION",
-            "type": [
-                "DEPOSIT",
-                "WITHDRAW",
-                "ESCROW",
-                "MERCHANT_SETTLEMENT",
-                "SETTLEMENT",
-                "PRODUCT",
-            ],
+            "type": TRANSACTION_TYPES,
             "mode": ["MERCHANT_API", "WEB"],
-            "hierarchy_map": {
-                "parent_field": "TYPE",
-                "child_field": "STATUS",
-                "schema": transaction_type_map,
-            },
+            "currency": SYSTEM_CURRENCIES,
+            "filter_fields": TRANSACTION_FILTER_FIELDS,
+            "schema": transaction_type_map,
         }
         return Response(
             success=True,
@@ -71,9 +86,11 @@ class DisputeSchemaView(generics.GenericAPIView):
         data = {
             "entity": "DISPUTE",
             "source": ["PLATFORM", "API"],
-            "status": ["PENDING", "RESOLVED", "REJECTED", "PROGRESS"],
+            "status": DISPUTE_STATES[:-1],
             "priority": ["HIGH", "MEDIUM", "LOW"],
+            "currency": SYSTEM_CURRENCIES,
             "author": ["BUYER", "SELLER"],
+            "actions": ["VIEW", "MARK_IN_PROGRESS", "RESOLVE"],
         }
         return Response(
             success=True,
