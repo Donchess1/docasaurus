@@ -15,6 +15,7 @@ from console.utils import (
     TRANSACTION_FILTER_FIELDS,
     TRANSACTION_TYPES,
     WITHDRAW_STATES,
+    TRANSACTION_STATUS,
 )
 from utils.response import Response
 from utils.utils import SYSTEM_CURRENCIES
@@ -38,7 +39,7 @@ class TransactionSchemaView(generics.GenericAPIView):
             },
             "ESCROW": {
                 "status": ESCROW_STATES[:-1],
-                "actions": {"view": ESCROW_STATES[:-1], "revoke": ["PENDING"]},
+                "actions": {"view": ESCROW_STATES[:-1], "revoke": ["SUCCESSFUL"]},
             },
             "MERCHANT_SETTLEMENT": {
                 "status": MERCHANT_SETTLEMENT_STATES[:-1],
@@ -67,6 +68,7 @@ class TransactionSchemaView(generics.GenericAPIView):
             "currency": SYSTEM_CURRENCIES,
             "filter_fields": TRANSACTION_FILTER_FIELDS,
             "schema": transaction_type_map,
+            "obtainable_status": TRANSACTION_STATUS,
         }
         return Response(
             success=True,
