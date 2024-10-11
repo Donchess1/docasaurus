@@ -24,54 +24,34 @@ from users.views.verify import (
 )
 from users.views.wallet import UserWalletListView
 
+# fmt: off
 urlpatterns = [
+    # =================================================================
+    # USER ONBOARDING & LOGIN
+    # =================================================================
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
     path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
-    path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
-    path(
-        "resend-otp",
-        ResendAccountVerificationOTPView.as_view(),
-        name="resend-account-otp",
-    ),
-    path("verify-account", VerifyOTPView.as_view(), name="verify-email"),
-    path("register", RegisterBuyerView.as_view(), name="register-buyer"),
-    path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
-    path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
-    path(
-        "bank-accounts",
-        UserBankAccountListCreateView.as_view(),
-        name="user-bank-accounts",
-    ),
-    path(
-        "wallets",
-        UserWalletListView.as_view(),
-        name="user-wallets",
-    ),
-    path(
-        "resend-otp",
-        ResendAccountVerificationOTPView.as_view(),
-        name="resend-account-otp",
-    ),
+    path("resend-otp", ResendAccountVerificationOTPView.as_view(), name="resend-account-otp",),
     path("verify-account", VerifyOTPView.as_view(), name="verify-email"),
     path("login", LoginView.as_view(), name="login"),
-    path(
-        "send-login-otc", GenerateOneTimeLoginCodeView.as_view(), name="send-login-otc"
-    ),
-    path(
-        "verify-login-otc",
-        VerifyOneTimeLoginCodeView.as_view(),
-        name="verify-login-otc",
-    ),
+    path("send-login-otc", GenerateOneTimeLoginCodeView.as_view(), name="send-login-otc"),
+    path("verify-login-otc", VerifyOneTimeLoginCodeView.as_view(), name="verify-login-otc",),
+    # =================================================================
+    # USER PROFILE MANAGEMENT
+    # =================================================================
+    path("profile", UserProfileView.as_view(), name="user-profile"),
+    path("wallets", UserWalletListView.as_view(), name="user-wallets",),
+    path("bank-accounts", UserBankAccountListCreateView.as_view(), name="user-bank-accounts",),
+    path("end-tour-guide", EndUserTourGuideView.as_view(), name="end-tour-guide"),
+    path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
+    path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),
+    path("profile/upload", UploadAvatarView.as_view(), name="user-profile-upload"),
+    path("profile/business", EditSellerBusinessProfileView.as_view(), name="seller-business-profile-edit",),
+    # =================================================================
+    # PASSWORD RESET 
+    # =================================================================
     path("forgot-password", ForgotPasswordView.as_view(), name="forgot-password"),
     path("reset-password", ResetPasswordView.as_view(), name="reset-password"),
     path("change-password", ChangePasswordView.as_view(), name="change-password"),
-    path("profile", UserProfileView.as_view(), name="user-profile"),
-    path("end-tour-guide", EndUserTourGuideView.as_view(), name="end-tour-guide"),
-    path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),
-    path("profile/upload", UploadAvatarView.as_view(), name="user-profile-upload"),
-    path(
-        "profile/business",
-        EditSellerBusinessProfileView.as_view(),
-        name="seller-business-profile-edit",
-    ),
 ]
+# fmt: on

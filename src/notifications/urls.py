@@ -5,11 +5,9 @@ from notifications.views.user import (
     UserNotificationListView,
 )
 
+# fmt: off
 urlpatterns = [
     path("", UserNotificationListView.as_view(), name="user-notifications"),
-    path(
-        "<str:id>",
-        UserNotificationDetailView.as_view(),
-        name="user-notification-detail",
-    ),
+    path("<str:id>", UserNotificationDetailView.as_view(), name="user-notification-detail",),
 ]
+# fmt: on
