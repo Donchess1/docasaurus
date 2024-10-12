@@ -9,6 +9,7 @@ from console.serializers.transaction import (
 )
 from console.utils import (
     DEPOSIT_STATES,
+    DISPUTE_FILTER_FIELDS,
     DISPUTE_STATES,
     ESCROW_STATES,
     MERCHANT_SETTLEMENT_STATES,
@@ -90,7 +91,12 @@ class DisputeSchemaView(generics.GenericAPIView):
             "priority": ["HIGH", "MEDIUM", "LOW"],
             "currency": SYSTEM_CURRENCIES,
             "author": ["BUYER", "SELLER"],
-            "actions": ["VIEW", "MARK_IN_PROGRESS", "RESOLVE"],
+            "actions": {
+                "view": DISPUTE_STATES[:-1],
+                "mark_as_in_progress": ["PENDING"],
+                "resolve": ["PROGRESS"],
+            },
+            "filter_fields": DISPUTE_FILTER_FIELDS,
         }
         return Response(
             success=True,

@@ -14,9 +14,21 @@ class TransactionListView(generics.ListAPIView):
     serializer_class = UserTransactionSerializer
     permission_classes = (IsAdminOrReadOnly,)
     pagination_class = CustomPagination
-    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_class = TransactionFilter
     search_fields = ["reference", "provider", "type"]
+    ordering_fields = [
+        "reference",
+        "provider",
+        "type",
+        "status",
+        "amount",
+        "created_at",
+    ]
 
     def get_queryset(self):
         return Transaction.objects.all().order_by("-created_at")
