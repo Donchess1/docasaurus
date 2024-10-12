@@ -1,12 +1,12 @@
 from rest_framework import generics, permissions, status
 
 from core.resources.upload_client import FileUploadClient
-from users.serializers.user import UploadUserAvatarSerializer
+from users.serializers.user import UploadMediaSerializer
 from utils.response import Response
 
 
 class UploadMediaView(generics.GenericAPIView):
-    serializer_class = UploadUserAvatarSerializer
+    serializer_class = UploadMediaSerializer
     permission_classes = [permissions.IsAuthenticated]
     upload_client = FileUploadClient
 
@@ -20,7 +20,18 @@ class UploadMediaView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         image = serializer.validated_data.get("image")
-        obj = self.upload_client.execute(file=image, cloudinary_folder="BLOG")
+        destination = serializer.validated_data.get("destination", None)
+
+        cloudinary_folder = "MYBALANCE"
+        if destination == "BLOG":
+            cloudinary_folder = f"{cloudinary_folder}/BLOG"
+        elif destination == "DISPUTE_RESOLUTION":
+            cloudinary_folder = f"{cloudinary_folder}/DISPUTE_RESOLUTION"
+        elif destination == "AVATAR":
+            cloudinary_folder = f"{cloudinary_folder}/AVATAR"
+        obj = self.upload_client.execute(
+            file=image, cloudinary_folder=cloudinary_folder
+        )
 
         if not obj["success"]:
             return Response(**obj)

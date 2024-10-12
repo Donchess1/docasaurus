@@ -1,10 +1,11 @@
 import os
+from datetime import datetime
 
 import cloudinary
 from cloudinary.exceptions import Error as CloudinaryError
 from cloudinary.uploader import upload
 
-from utils.utils import replace_space
+from utils.utils import generate_random_text
 
 
 class FileUploadClient:
@@ -12,7 +13,7 @@ class FileUploadClient:
     CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY")
     CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET")
     MAX_IMAGE_SIZE_BYTES = 1024 * 1024 * 2  # 2MB in bytes
-    ALLOWED_IMAGE_FORMATS = ["jpg", "jpeg"]
+    ALLOWED_IMAGE_FORMATS = ["jpg", "jpeg", "png"]
 
     @classmethod
     def initialize_cloudinary(cls):
@@ -47,8 +48,11 @@ class FileUploadClient:
                 "status_code": 400,
             }
         cls.initialize_cloudinary()
+        timestamp = datetime.now().strftime("%Y%m%d")
+        file_extension = file.name.split(".")[-1]
+        new_file_name = f"{timestamp}_{generate_random_text(15)}"
         try:
-            result = upload(file, folder=cloudinary_folder)
+            result = upload(file, public_id=new_file_name, folder=cloudinary_folder)
             file_url = result["secure_url"]
             return {
                 "message": "Upload Successful",

@@ -51,8 +51,13 @@ class UserSerializer(serializers.ModelSerializer):
         return meta_data
 
 
-class UploadUserAvatarSerializer(serializers.Serializer):
+class UploadMediaSerializer(serializers.Serializer):
     image = serializers.FileField()
+    destination = serializers.ChoiceField(
+        choices=("BLOG", "DISPUTE_RESOLUTION", "AVATAR"),
+        default="AVATAR",
+        required=False,
+    )
 
 
 class CheckUserByEmailViewSerializer(serializers.Serializer):

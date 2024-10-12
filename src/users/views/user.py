@@ -17,7 +17,7 @@ from users.serializers.kyc import UserKYCSerializer
 from users.serializers.user import (
     OneTimeLoginCodeSerializer,
     UpdateKYCSerializer,
-    UploadUserAvatarSerializer,
+    UploadMediaSerializer,
     UserSerializer,
 )
 from utils.kyc import create_user_kyc, kyc_meta_map
@@ -140,7 +140,7 @@ class EditSellerBusinessProfileView(generics.GenericAPIView):
 
 
 class UploadAvatarView(generics.GenericAPIView):
-    serializer_class = UploadUserAvatarSerializer
+    serializer_class = UploadMediaSerializer
     permission_classes = [permissions.IsAuthenticated]
     upload_client = FileUploadClient
 
@@ -153,7 +153,6 @@ class UploadAvatarView(generics.GenericAPIView):
                 message=f"User does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -163,23 +162,13 @@ class UploadAvatarView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         image = serializer.validated_data.get("image")
-        obj = self.upload_client.execute(image)
-
+        obj = self.upload_client.execute(image, "MYBALANCE/AVATAR")
         if not obj["success"]:
             return Response(**obj)
-
         avatar = obj["data"]["url"]
-        try:
-            profile = UserProfile.objects.get(user_id=user)
-            profile.avatar = avatar
-            profile.save()
-
-        except UserProfile.DoesNotExist:
-            return Response(
-                success=False,
-                message="User Profile not found",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        profile = user.userprofile
+        profile.avatar = avatar
+        profile.save()
 
         return Response(
             success=True,

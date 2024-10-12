@@ -166,7 +166,7 @@ class DisputeDetailView(generics.GenericAPIView):
         destination = serializer.validated_data.get("destination")
         supporting_document = serializer.validated_data.get("supporting_document", None)
         supporting_note = serializer.validated_data.get("supporting_note", None)
-        
+
         transaction_author = instance.transaction.user_id
 
         seller, buyer = None, None
@@ -251,13 +251,15 @@ class DisputeDetailView(generics.GenericAPIView):
             )
 
         instance.status = "RESOLVED"
-        instance.meta.update({
-            "destination": destination,
-            "resolution_actor": request.user.email,
-            "resolution_timestamp": datetime.now().isoformat(),
-            "supporting_document": supporting_document,
-            "supporting_note": supporting_note,
-        })
+        instance.meta.update(
+            {
+                "destination": destination,
+                "resolution_actor": request.user.email,
+                "resolution_timestamp": datetime.now().isoformat(),
+                "supporting_document": supporting_document,
+                "supporting_note": supporting_note,
+            }
+        )
         instance.save()
 
         return Response(
