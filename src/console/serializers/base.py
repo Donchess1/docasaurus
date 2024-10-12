@@ -17,3 +17,7 @@ class ConsoleUserWalletSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+
+class EmptySerializer(serializers.Serializer):
+    pass

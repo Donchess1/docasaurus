@@ -17,14 +17,10 @@ schema_view = get_schema_view(
     url=None,
 )
 
-
+# fmt: off
 urlpatterns = [
     path("", views.api_ok, name="api-ok"),
-    path(
-        "swaggerxyz-docs",
-        schema_view.with_ui("swagger", cache_timeout=0),
-        name="swagger-schema-ui",
-    ),
+    path("swaggerxyz-docs", schema_view.with_ui("swagger", cache_timeout=0), name="swagger-schema-ui",),
     path("ajazzinauth23qwe/", admin.site.urls),
     path("v1/health-check", views.HealthCheckView.as_view(), name="health-check"),
     path("v1/auth/", include("users.urls")),
@@ -36,3 +32,4 @@ urlpatterns = [
     path("v1/merchants/", include("merchant.urls")),
     path("v1/blog/", include("blog.urls")),
 ]
+# fmt: on

@@ -24,14 +24,14 @@ TRANSACTION_TYPES = [
     "PRODUCT",
 ]
 TRANSACTION_STATUS = [
-        "PENDING",
-        "FAILED",
-        "CANCELLED",
-        "REJECTED",
-        "REVOKED",
-        "APPROVED",
-        "SUCCESSFUL",
-        "FUFILLED",
+    "PENDING",
+    "FAILED",
+    "CANCELLED",
+    "REJECTED",
+    "REVOKED",
+    "APPROVED",
+    "SUCCESSFUL",
+    "FUFILLED",
 ]
 DEPOSIT_STATES = ["PENDING", "SUCCESSFUL", "FAILED", "CANCELLED", "TOTAL"]
 WITHDRAW_STATES = ["PENDING", "SUCCESSFUL", "FAILED", "TOTAL"]
@@ -125,6 +125,29 @@ TRANSACTION_FILTER_FIELDS = {
         "type": "integer",
         "description": "Filter for transactions where the amount is exactly a specified value.",
         "example": "?amount_exact=10000",
+    },
+}
+
+DISPUTE_FILTER_FIELDS = {
+    "status": {
+        "type": "string",
+        "description": "Filter by dispute status. Available options: 'PENDING', 'RESOLVED', 'REJECTED', 'PROGRESS'.",
+        "example": "?status=PENDING",
+    },
+    "created": {
+        "type": "date_range",
+        "description": "Filter disputes by the date range when they were created. Use 'created_after' and 'created_before' to specify the date range.",
+        "example": "?created_after=2024-01-01&created_before=2024-12-31",
+    },
+    "priority": {
+        "type": "string",
+        "description": "Filter by dispute priority. Available options: 'HIGH', 'MEDIUM', 'LOW'.",
+        "example": "?priority=HIGH",
+    },
+    "email": {
+        "type": "string",
+        "description": "Filter by the user's email associated with the dispute, either as the user who raised the dispute or the user the dispute is raised against.",
+        "example": "?email=user@example.com",
     },
 }
 

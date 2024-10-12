@@ -1,16 +1,20 @@
+from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, status
+from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAuthenticated
 
 from console import tasks
 from console.models.dispute import Dispute
 from console.models.transaction import Transaction
 from console.permissions import IsSuperAdmin
+from console.serializers.base import EmptySerializer
 from dispute import tasks as dispute_tasks
+from dispute.filters import DisputeFilter
 from dispute.serializers.dispute import DisputeSerializer, ResolveDisputeSerializer
 from users.models import UserProfile
 from utils.pagination import CustomPagination
@@ -20,10 +24,18 @@ from utils.utils import parse_datetime
 User = get_user_model()
 
 
-class DisputeListView(generics.GenericAPIView):
+class DisputeListView(generics.ListAPIView):
     serializer_class = DisputeSerializer
     permission_classes = (IsSuperAdmin,)
     pagination_class = CustomPagination
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = DisputeFilter
+    search_fields = ["status", "reason", "priority", "description"]
+    ordering_fields = ["status", "priority", "buyer", "seller", "created_at"]
 
     def get_queryset(self):
         return Dispute.objects.all().order_by("-created_at")
@@ -35,14 +47,21 @@ class DisputeListView(generics.GenericAPIView):
         },
     )
     def get(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        qs = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(qs, many=True)
-        self.pagination_class.message = "Disputes retrieved successfully"
-        response = self.get_paginated_response(
-            serializer.data,
-        )
-        return response
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            qs = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(qs, many=True)
+            self.pagination_class.message = "Disputes retrieved successfully"
+            response = self.get_paginated_response(
+                serializer.data,
+            )
+            return response
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"{str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class DisputeDetailView(generics.GenericAPIView):
@@ -52,6 +71,8 @@ class DisputeDetailView(generics.GenericAPIView):
     def get_serializer_class(self, *args, **kwargs):
         if self.request.method == "PUT":
             return ResolveDisputeSerializer
+        elif self.request.method == "PATCH":
+            return EmptySerializer
         return self.serializer_class
 
     @swagger_auto_schema(
@@ -78,6 +99,37 @@ class DisputeDetailView(generics.GenericAPIView):
         )
 
     @swagger_auto_schema(
+        operation_description="Mark dispute as in progress",
+    )
+    def patch(self, request, id, *args, **kwargs):
+        user = request.user
+        instance = Dispute.objects.filter(id=id).first()
+        if not instance:
+            return Response(
+                success=False,
+                message="Dispute does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        if instance.status != "PENDING":
+            return Response(
+                success=False,
+                message=f"Dispute with '{(instance.status).title()}' status cannot be marked as in progress.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        instance.status = "PROGRESS"
+        instance.meta = {
+            "in_progress_actor": request.user.email,
+            "in_progress_timestamp": datetime.now().isoformat(),  # Convert datetime to ISO format string
+        }
+        instance.save()
+        return Response(
+            success=True,
+            message=f"Dispute marked in progress successfuly",
+            status_code=status.HTTP_200_OK,
+        )
+
+    @swagger_auto_schema(
         operation_description="Resolve dispute to either buyer or seller",
     )
     def put(self, request, id, *args, **kwargs):
@@ -90,11 +142,11 @@ class DisputeDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        if not user.is_superuser:
+        if instance.status == "PENDING":
             return Response(
                 success=False,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="You do not have permission to perform this action",
+                message="Dispute yet to be marked as in progress",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         if instance.status == "RESOLVED":
@@ -112,6 +164,9 @@ class DisputeDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         destination = serializer.validated_data.get("destination")
+        supporting_document = serializer.validated_data.get("supporting_document", None)
+        supporting_note = serializer.validated_data.get("supporting_note", None)
+
         transaction_author = instance.transaction.user_id
 
         seller, buyer = None, None
@@ -196,7 +251,15 @@ class DisputeDetailView(generics.GenericAPIView):
             )
 
         instance.status = "RESOLVED"
-        instance.meta = {"destination": destination, "admin": request.user.email}
+        instance.meta.update(
+            {
+                "destination": destination,
+                "resolution_actor": request.user.email,
+                "resolution_timestamp": datetime.now().isoformat(),
+                "supporting_document": supporting_document,
+                "supporting_note": supporting_note,
+            }
+        )
         instance.save()
 
         return Response(

@@ -97,6 +97,40 @@ class DisputeSerializer(serializers.ModelSerializer):
 
         return value
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["transaction_ref"] = instance.transaction.reference
+
+        if instance.author == "BUYER":
+            representation["raised_by"] = {
+                "user_id": instance.buyer.id,
+                "name": instance.buyer.name,
+                "email": instance.buyer.email,
+                "role": "BUYER",
+            }
+            representation["raised_against"] = {
+                "user_id": instance.seller.id,
+                "name": instance.seller.name,
+                "email": instance.seller.email,
+                "role": "SELLER",
+            }
+        elif instance.author == "SELLER":
+            representation["raised_by"] = {
+                "user_id": instance.seller.id,
+                "name": instance.seller.name,
+                "email": instance.seller.email,
+                "role": "SELLER",
+            }
+            representation["raised_against"] = {
+                "user_id": instance.buyer.id,
+                "name": instance.buyer.name,
+                "email": instance.buyer.email,
+                "role": "BUYER",
+            }
+        return representation
+
 
 class ResolveDisputeSerializer(serializers.Serializer):
     destination = serializers.ChoiceField(choices=("BUYER", "SELLER"))
+    supporting_document = serializers.URLField(required=False)
+    supporting_note = serializers.CharField(required=False)

@@ -73,7 +73,7 @@ black-check:
 black-diff:
 	docker compose -f docker-compose.yml exec api black --diff --exclude=migrations --exclude=/app/venv --exclude=/app/env --exclude=venv --exclude=env .
 black:
-	docker compose -f docker-compose.yml exec api black --exclude=migrations --exclude=__init__.py --exclude=admin.py --exclude=/app/venv --exclude=/app/env --exclude=__init__.py --exclude=venv --exclude=env .
+	docker compose -f docker-compose.yml exec api black --exclude '/migrations|__init__.py|admin.py|/app/venv|/app/env|venv|env' .
 
 isort-check:
 	docker compose -f docker-compose.yml exec api isort . --check-only --skip /app/env --skip migrations --skip /app/venv
