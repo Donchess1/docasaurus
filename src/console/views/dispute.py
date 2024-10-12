@@ -1,5 +1,5 @@
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -164,6 +164,7 @@ class DisputeDetailView(generics.GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         destination = serializer.validated_data.get("destination")
+        supporting_document = serializer.validated_data.get("supporting_document")
         transaction_author = instance.transaction.user_id
 
         seller, buyer = None, None
@@ -248,7 +249,12 @@ class DisputeDetailView(generics.GenericAPIView):
             )
 
         instance.status = "RESOLVED"
-        instance.meta = {"destination": destination, "admin": request.user.email}
+        instance.meta = {
+            "destination": destination,
+            "resolution_actor": request.user.email,
+            "resolution_timestamp": datetime.now().isoformat(),
+            "supporting_document": supporting_document,
+        }
         instance.save()
 
         return Response(
