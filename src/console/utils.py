@@ -128,6 +128,29 @@ TRANSACTION_FILTER_FIELDS = {
     },
 }
 
+DISPUTE_FILTER_FIELDS = {
+    "status": {
+        "type": "string",
+        "description": "Filter by dispute status. Available options: 'PENDING', 'RESOLVED', 'REJECTED', 'PROGRESS'.",
+        "example": "?status=PENDING",
+    },
+    "created": {
+        "type": "date_range",
+        "description": "Filter disputes by the date range when they were created. Use 'created_after' and 'created_before' to specify the date range.",
+        "example": "?created_after=2024-01-01&created_before=2024-12-31",
+    },
+    "priority": {
+        "type": "string",
+        "description": "Filter by dispute priority. Available options: 'HIGH', 'MEDIUM', 'LOW'.",
+        "example": "?priority=HIGH",
+    },
+    "email": {
+        "type": "string",
+        "description": "Filter by the user's email associated with the dispute, either as the user who raised the dispute or the user the dispute is raised against.",
+        "example": "?email=user@example.com",
+    },
+}
+
 
 def get_aggregated_system_transaction_data_by_type(
     transactions: QuerySet[Transaction], txn_type: str, statuses: List[str]
