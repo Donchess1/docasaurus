@@ -133,3 +133,4 @@ class DisputeSerializer(serializers.ModelSerializer):
 class ResolveDisputeSerializer(serializers.Serializer):
     destination = serializers.ChoiceField(choices=("BUYER", "SELLER"))
     supporting_document = serializers.URLField(required=False)
+    supporting_note = serializers.CharField(required=False)
