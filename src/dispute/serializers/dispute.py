@@ -99,34 +99,35 @@ class DisputeSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation["transaction_ref"] = instance.transaction.reference
-
-        if instance.author == "BUYER":
-            representation["raised_by"] = {
-                "user_id": instance.buyer.id,
-                "name": instance.buyer.name,
-                "email": instance.buyer.email,
-                "role": "BUYER",
-            }
-            representation["raised_against"] = {
-                "user_id": instance.seller.id,
-                "name": instance.seller.name,
-                "email": instance.seller.email,
-                "role": "SELLER",
-            }
-        elif instance.author == "SELLER":
-            representation["raised_by"] = {
-                "user_id": instance.seller.id,
-                "name": instance.seller.name,
-                "email": instance.seller.email,
-                "role": "SELLER",
-            }
-            representation["raised_against"] = {
-                "user_id": instance.buyer.id,
-                "name": instance.buyer.name,
-                "email": instance.buyer.email,
-                "role": "BUYER",
-            }
+        if isinstance(instance, Dispute):
+            transaction = instance.transaction
+            representation["transaction_ref"] = transaction.reference
+            if instance.author == "BUYER":
+                representation["raised_by"] = {
+                    "user_id": instance.buyer.id,
+                    "name": instance.buyer.name,
+                    "email": instance.buyer.email,
+                    "role": "BUYER",
+                }
+                representation["raised_against"] = {
+                    "user_id": instance.seller.id,
+                    "name": instance.seller.name,
+                    "email": instance.seller.email,
+                    "role": "SELLER",
+                }
+            elif instance.author == "SELLER":
+                representation["raised_by"] = {
+                    "user_id": instance.seller.id,
+                    "name": instance.seller.name,
+                    "email": instance.seller.email,
+                    "role": "SELLER",
+                }
+                representation["raised_against"] = {
+                    "user_id": instance.buyer.id,
+                    "name": instance.buyer.name,
+                    "email": instance.buyer.email,
+                    "role": "BUYER",
+                }
         return representation
 
 
