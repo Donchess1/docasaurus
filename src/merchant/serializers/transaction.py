@@ -172,6 +172,7 @@ class EscrowEntitySerializer(serializers.Serializer):
 
 class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     buyer = serializers.EmailField()
+    redirect_url = serializers.URLField(required=False)
     payout_configuration = serializers.PrimaryKeyRelatedField(
         queryset=PayoutConfig.objects.all(), required=False
     )
@@ -253,6 +254,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         buyer = validated_data.get("buyer")
         entities = validated_data.get("entities")
         currency = validated_data.get("currency")
+        redirect_url = validated_data.get("redirect_url", None)
         payout_config = validated_data.get("payout_configuration", None)
         total_amount = 0
         for entity in entities:
@@ -311,6 +313,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "seller_escrow_breakdown": entities,
             "merchant": str(merchant.id),
             "payout_config": str(merchant_payout_config.id),
+            "merchant_redirect_url": redirect_url,
         }
         deposit_txn = generate_deposit_transaction_for_escrow(
             payer, amount_to_charge, tx_ref, meta, currency, merchant
