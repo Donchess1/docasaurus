@@ -63,7 +63,20 @@ services:
       - api
     networks:
       - myb
-
+  
+  celery-beat:
+    <<: *api
+    command: >
+      sh -c "celery -A core beat -l INFO --logfile=celery_beat.log"
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+      - redis
+    networks:
+      - myb
   # dashboard:
   #   <<: *api
   #   command: celery --broker=${REDIS_URL} flower --port=5555

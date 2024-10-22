@@ -87,7 +87,7 @@ class FlwWebhookView(generics.GenericAPIView):
         #         status_code=status.HTTP_400_BAD_REQUEST,
         #     )
         #  =================================================================
-        # Beware that there is a currently disparity between the data sent from Flutterwave in test and live environments
+        # Beware that there is a disparity between the webhook data sent from Flutterwave in test and live environments
         # Observation date: Sunday, July 14th, 2024
         #  =================================================================
         #  =================================================================

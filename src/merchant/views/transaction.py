@@ -255,7 +255,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 success=False,
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
-                data={ 
+                data={
                     "redirect_url": f"{FRONTEND_BASE_URL}/login",
                 },
             )

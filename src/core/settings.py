@@ -1,8 +1,9 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import dj_database_url
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -200,6 +201,18 @@ MEDIA_ROOT = str(ROOT_DIR / "mediafiles")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Set base directory to the root log folder
+log_base_dir = os.path.join(ROOT_DIR, "logs") or str(ROOT_DIR / "logs")
+current_year = datetime.now().strftime("%Y")
+current_month = datetime.now().strftime("%m")
+current_day = datetime.now().strftime("%Y%m%d")
+
+# Construct the log directory based on the current date
+log_directory = os.path.join(log_base_dir, current_year, current_month)
+os.makedirs(log_directory, exist_ok=True)
+
+log_file_path = os.path.join(log_directory, f"{current_day}.log")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -207,16 +220,30 @@ LOGGING = {
         "verbose": {
             "format": "%(levelname)s %(name)-12s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
-        }
+        },
+        "custom": {
+            # Format example: [2024-10-22 03:58:03 +0100] [53] [INFO] Message here
+            "format": "[%(asctime)s] [%(process)d] [%(levelname)s] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        }
+        },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": log_file_path,
+            "when": "midnight",  # Rotate at midnight
+            "interval": 1,
+            "backupCount": 90,  # Keep logs for 30 days
+            "formatter": "custom",
+        },
     },
-    "root": {"level": "INFO", "handlers": ["console"]},
+    "root": {"level": "INFO", "handlers": ["console", "file"]},
 }
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
@@ -230,6 +257,13 @@ CELERY_RESULT_BACKEND = os.environ.get(
     "CELERY_BROKER", f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 )
 
+CELERY_BEAT_SCHEDULE = {
+    "process-pending-transactions-every-hour": {
+        "task": "transaction.background_tasks.process_pending_transactions",
+        # 'schedule': crontab(minute=0, hour='*'),  # Every hour
+        "schedule": crontab(minute="*/2"),  # Every 2 minutes
+    },
+}
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.shared.exceptions.custom_handler",
