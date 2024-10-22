@@ -9,6 +9,10 @@ from rest_framework import serializers
 
 from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
+from core.resources.flutterwave import (
+    FLW_PAYMENT_CONFIGURATION,
+    FLW_PAYMENT_CUSTOMIZATION,
+)
 from core.resources.third_party.main import ThirdPartyAPI
 from merchant.models import CustomerMerchant, Merchant, PayoutConfig
 from merchant.utils import (
@@ -333,19 +337,13 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "phone_number": payer.phone,
                 "name": payer.name,
             },
-            "customizations": {
-                "title": "MyBalance",
-                "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
-            },
             "meta": {
                 "action": "FUND_MERCHANT_ESCROW",
                 "platform": "MERCHANT_API",
                 "total_payable_amount": str(amount_to_charge),
             },
-            "configurations": {
-                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
-                "max_retry_attempt": 3,  # Max retry (int)
-            },
+            "customizations": FLW_PAYMENT_CUSTOMIZATION,
+            "configurations": FLW_PAYMENT_CONFIGURATION,
         }
         return deposit_txn, flw_txn_data, payment_breakdown
 

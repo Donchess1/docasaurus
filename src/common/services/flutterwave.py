@@ -1,3 +1,4 @@
+import logging
 import os
 
 from django.contrib.auth import get_user_model
@@ -20,6 +21,8 @@ from utils.utils import add_commas_to_transaction_amount, parse_datetime
 User = get_user_model()
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -151,6 +154,11 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
     tx_ref = data.get("tx_ref")
     flw_transaction_id = data.get("id")
 
+    logging.info("Flutterwave Webhook called successfully.")
+    logging.info(
+        f"Flutterwave Transaction ID: {flw_transaction_id} | MyBalance Transaction Reference: {tx_ref}"
+    )
+
     try:
         txn = Transaction.objects.get(reference=tx_ref)
     except Transaction.DoesNotExist:
@@ -164,26 +172,11 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         # Occasionally, Flutterwave might send the same webhook event more than once.
         # This is to make this event processing idempotent.
         # So calling the webhook multiple times will have the same effect.
-        # We don't want to end up debit customer multiple times.
-        # At the same time, Flutterwave acknowledges receipt of the webhook when we return 200 HTTP status code
+        # We don't want to end up crediting the customer multiple times.
+        # At the same time, Flutterwave will acknowledge receipt of the webhook when we return 200 HTTP status code
         return {
             "success": False,
             "message": "Transaction already verified",
-            "status_code": status.HTTP_200_OK,
-        }
-
-    if data["status"] != "successful":
-        txn.status = "FAILED"
-        # txn.meta.update({"note": msg})
-        txn.verified = True
-        txn.save()
-
-        description = f"Payment failed."
-        log_transaction_activity(txn, description, request_meta)
-
-        return {
-            "success": True,
-            "message": "Deposit webhook processed successfully.",
             "status_code": status.HTTP_200_OK,
         }
 
@@ -194,6 +187,8 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
     print(obj)
     print("============================================================")
     print("============================================================")
+    logging.info(f"Verifying FLW transaction: {obj}")
+
     if obj["status"] == "error":
         msg = obj["message"]
         txn.meta.update({"description": f"FLW Transaction {msg}"})
@@ -201,8 +196,7 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
 
         description = f"Error occurred while verifying transaction. Description: {msg}"
         log_transaction_activity(txn, description, request_meta)
-
-        # TODO: Log this error in observability service: Tag [FLW Err:]
+        logging.error(f"Error occurred while verifying transaction: {msg}")
         return {
             "success": False,
             "message": f"{msg}",
@@ -216,8 +210,24 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
 
         description = f"Transaction failed. Description: {msg}"
         log_transaction_activity(txn, description, request_meta)
+        logging.error(f"Transaction failed: {msg}")
+        return {
+            "success": False,
+            "message": f"{msg}",
+            "status_code": status.HTTP_200_OK,
+        }
 
-        # TODO: Log this error in observability service: Tag ["FLW Failed:]
+    if obj["data"]["status"] not in ("successful", "completed"):
+        msg = obj["data"]["processor_response"]
+        txn.meta.update({"description": f"FLW Transaction {msg}"})
+        txn.save()
+
+        status = obj["data"]["status"]
+        description = f"Transaction was not successful. Status: {status.upper()}. Description: {msg}"
+        log_transaction_activity(txn, description, request_meta)
+        logging.error(
+            f"Transaction was not successful: {msg}. Status: {status.upper()}"
+        )
         return {
             "success": False,
             "message": f"{msg}",

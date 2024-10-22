@@ -59,6 +59,23 @@ services:
       - api
     networks:
       - myb
+  
+  celery-beat:
+    <<: *api
+    command: >
+      sh -c "
+      echo 'Current directory:' &&
+      pwd &&
+      cd src &&
+      echo 'Directory contents:' &&
+      ls -la &&
+      echo 'Starting Celery worker:' &&
+      celery -A core beat -l INFO --logfile=celery_beat.log
+      "
+    depends_on:
+      - api
+    networks:
+      - myb
 
 volumes:
   myb-dev-static-data:

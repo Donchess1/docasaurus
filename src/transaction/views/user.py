@@ -11,7 +11,11 @@ from rest_framework import filters, generics, status, views
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 
 from console.models.transaction import LockedAmount, Transaction
-from core.resources.flutterwave import FlwAPI
+from core.resources.flutterwave import (
+    FLW_PAYMENT_CONFIGURATION,
+    FLW_PAYMENT_CUSTOMIZATION,
+    FlwAPI,
+)
 from notifications.models.notification import UserNotification
 from transaction import tasks
 from transaction.permissions import IsAdminOrReadOnly, IsBuyer, IsTransactionStakeholder
@@ -801,19 +805,13 @@ class FundEscrowTransactionView(generics.GenericAPIView):
                 "phone_number": user.phone,
                 "name": user.name,
             },
-            "customizations": {
-                "title": "MyBalance",
-                "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
-            },
             "meta": {
                 "action": "FUND_ESCROW",
                 "platform": "WEB",
                 "escrow_transaction_reference": escrow_transaction_reference,
             },
-            "configurations": {
-                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
-                "max_retry_attempt": 3,  # Max retry (int)
-            },
+            "customizations": FLW_PAYMENT_CUSTOMIZATION,
+            "configurations": FLW_PAYMENT_CONFIGURATION,
         }
 
         obj = self.flw_api.initiate_payment_link(tx_data)
