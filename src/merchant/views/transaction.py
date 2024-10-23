@@ -255,13 +255,20 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 success=False,
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
+                data={
+                    "redirect_url": f"{FRONTEND_BASE_URL}/login",
+                },
             )
 
-        buyer_redirect_url = None
-        redirect_urls = get_merchant_users_redirect_url(txn.merchant)
-        if redirect_urls:
-            buyer_redirect_url = redirect_urls.get("buyer_redirect_url")
-
+        redirect_url = txn.meta.get("merchant_redirect_url", None)
+        # if redirect url was not passed when initiating the escrow transaction
+        # then we try to fetch from the merchant configuration on API key level
+        #  if we still cannot find the redirect url then we redirect to the our website login
+        if not redirect_url:
+            redirect_urls = get_merchant_users_redirect_url(txn.merchant)
+            if redirect_urls:
+                redirect_url = redirect_urls.get("buyer_redirect_url")
+            redirect_url = f"{FRONTEND_BASE_URL}/login"
         if txn.verified:
             total_payable_amount_to_charge = txn.meta.get(
                 "total_payable_amount_to_charge"
@@ -273,9 +280,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 data={
                     "transaction_reference": txn.reference,
                     "amount": total_payable_amount_to_charge,
-                    "redirect_url": buyer_redirect_url
-                    if buyer_redirect_url
-                    else f"{FRONTEND_BASE_URL}/login",
+                    "redirect_url": f"{redirect_url}?status={(txn.status).lower()}",
                 },
             )
 
@@ -292,6 +297,10 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Payment was cancelled.",
+                data={
+                    "transaction_reference": txn.reference,
+                    "redirect_url": f"{redirect_url}?status=cancelled",
+                },
             )
 
         if flw_status == "failed":
@@ -307,12 +316,20 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Payment failed",
+                data={
+                    "transaction_reference": txn.reference,
+                    "redirect_url": f"{redirect_url}?status=failed",
+                },
             )
         if flw_status not in ["completed", "successful"]:
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Invalid payment status",
+                data={
+                    "transaction_reference": txn.reference,
+                    "redirect_url": f"{redirect_url}",
+                },
             )
 
         obj = self.flw_api.verify_transaction(flw_transaction_id)
@@ -331,6 +348,10 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=msg,
+                data={
+                    "transaction_reference": txn.reference,
+                    "redirect_url": f"{redirect_url}",
+                },
             )
 
         if obj["data"]["status"] == "failed":
@@ -345,6 +366,10 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=msg,
+                data={
+                    "transaction_reference": txn.reference,
+                    "redirect_url": f"{redirect_url}?status=failed",
+                },
             )
 
         if (
@@ -385,6 +410,10 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
                     success=False,
                     message="User not found",
                     status_code=status.HTTP_404_NOT_FOUND,
+                    data={
+                        "transaction_reference": txn.reference,
+                        "redirect_url": f"{redirect_url}",
+                    },
                 )
             _, wallet = user.get_currency_wallet(txn.currency)
 
@@ -444,9 +473,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             data={
                 "transaction_reference": txn.reference,
                 "amount": total_payable_amount_to_charge,
-                "redirect_url": buyer_redirect_url
-                if buyer_redirect_url
-                else f"{FRONTEND_BASE_URL}/login",
+                "redirect_url": f"{redirect_url}?status=successful",
             },
             message="Transaction verified.",
         )

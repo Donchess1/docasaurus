@@ -9,6 +9,10 @@ from rest_framework import serializers
 
 from console.models.dispute import Dispute
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
+from core.resources.flutterwave import (
+    FLW_PAYMENT_CONFIGURATION,
+    FLW_PAYMENT_CUSTOMIZATION,
+)
 from core.resources.third_party.main import ThirdPartyAPI
 from merchant.models import CustomerMerchant, Merchant, PayoutConfig
 from merchant.utils import (
@@ -172,6 +176,7 @@ class EscrowEntitySerializer(serializers.Serializer):
 
 class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     buyer = serializers.EmailField()
+    redirect_url = serializers.URLField(required=False)
     payout_configuration = serializers.PrimaryKeyRelatedField(
         queryset=PayoutConfig.objects.all(), required=False
     )
@@ -253,6 +258,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
         buyer = validated_data.get("buyer")
         entities = validated_data.get("entities")
         currency = validated_data.get("currency")
+        redirect_url = validated_data.get("redirect_url", None)
         payout_config = validated_data.get("payout_configuration", None)
         total_amount = 0
         for entity in entities:
@@ -311,6 +317,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
             "seller_escrow_breakdown": entities,
             "merchant": str(merchant.id),
             "payout_config": str(merchant_payout_config.id),
+            "merchant_redirect_url": redirect_url,
         }
         deposit_txn = generate_deposit_transaction_for_escrow(
             payer, amount_to_charge, tx_ref, meta, currency, merchant
@@ -330,19 +337,13 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                 "phone_number": payer.phone,
                 "name": payer.name,
             },
-            "customizations": {
-                "title": "MyBalance",
-                "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
-            },
             "meta": {
                 "action": "FUND_MERCHANT_ESCROW",
                 "platform": "MERCHANT_API",
                 "total_payable_amount": str(amount_to_charge),
             },
-            "configurations": {
-                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
-                "max_retry_attempt": 3,  # Max retry (int)
-            },
+            "customizations": FLW_PAYMENT_CUSTOMIZATION,
+            "configurations": FLW_PAYMENT_CONFIGURATION,
         }
         return deposit_txn, flw_txn_data, payment_breakdown
 

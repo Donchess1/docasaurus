@@ -19,6 +19,7 @@ class Transaction(models.Model):
         ("APPROVED", "APPROVED"),
         ("REJECTED", "REJECTED"),
         ("REVOKED", "REVOKED"),
+        ("EXPIRED", "EXPIRED"),
     )
     TYPES = (
         ("DEPOSIT", "DEPOSIT"),

@@ -18,7 +18,11 @@ from common.serializers.wallet import (
 from console import tasks as console_tasks
 from console.models.transaction import LockedAmount, Transaction
 from console.serializers.flutterwave import FlwTransferCallbackSerializer
-from core.resources.flutterwave import FlwAPI
+from core.resources.flutterwave import (
+    FLW_PAYMENT_CONFIGURATION,
+    FLW_PAYMENT_CUSTOMIZATION,
+    FlwAPI,
+)
 from core.resources.sockets.pusher import PusherSocket
 from core.resources.stripe import StripeAPI
 from notifications.models.notification import UserNotification
@@ -93,14 +97,8 @@ class FundWalletView(GenericAPIView):
                 "phone_number": user.phone,
                 "name": user.name,
             },
-            "customizations": {
-                "title": "MyBalance",
-                "logo": "https://res.cloudinary.com/devtosxn/image/upload/v1686595168/197x43_mzt3hc.png",
-            },
-            "configurations": {
-                "session_duration": 10,  # Session timeout in minutes (maxValue: 1440 minutes)
-                "max_retry_attempt": 1,  # Max retry (int)
-            },
+            "customizations": FLW_PAYMENT_CUSTOMIZATION,
+            "configurations": FLW_PAYMENT_CONFIGURATION,
             "meta": {
                 "action": "FUND_WALLET",
                 "platform": "WEB",
