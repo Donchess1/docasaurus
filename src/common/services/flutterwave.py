@@ -222,11 +222,11 @@ def handle_flutterwave_deposit_webhook(data, request_meta, pusher):
         txn.meta.update({"description": f"FLW Transaction {msg}"})
         txn.save()
 
-        status = obj["data"]["status"]
-        description = f"Transaction was not successful. Status: {status.upper()}. Description: {msg}"
+        txn_status = obj["data"]["status"]
+        description = f"Transaction was not successful. Status: {txn_status.upper()}. Description: {msg}"
         log_transaction_activity(txn, description, request_meta)
         logging.error(
-            f"Transaction was not successful: {msg}. Status: {status.upper()}"
+            f"Transaction was not successful: {msg}. Status: {txn_status.upper()}"
         )
         return {
             "success": False,

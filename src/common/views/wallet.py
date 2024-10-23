@@ -112,6 +112,7 @@ class FundWalletView(GenericAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message=obj["message"],
             )
+        print(obj["data"])
 
         link = obj["data"]["link"]
         payload = {"link": link}
