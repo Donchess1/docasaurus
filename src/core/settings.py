@@ -257,11 +257,12 @@ CELERY_RESULT_BACKEND = os.environ.get(
     "CELERY_BROKER", f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 )
 
+CELERY_IMPORTS = ("transaction.background_tasks",)
 CELERY_BEAT_SCHEDULE = {
     "process-pending-transactions-every-hour": {
         "task": "transaction.background_tasks.process_pending_transactions",
-        # 'schedule': crontab(minute=0, hour='*'),  # Every hour
-        "schedule": crontab(minute="*/2"),  # Every 2 minutes
+        'schedule': crontab(minute=0, hour='*'),  # Every hour
+        # "schedule": crontab(minute="*/2"),  # Every 2 minutes
     },
 }
 
