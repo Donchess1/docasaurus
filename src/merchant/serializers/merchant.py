@@ -84,32 +84,51 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
 
 class MerchantSerializer(serializers.ModelSerializer):
     email = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Merchant
-        fields = "__all__"
-
-    def get_email(self, obj):
-        return obj.user_id.email
-
-
-class MerchantDetailSerializer(serializers.ModelSerializer):
-    email = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
+    wallet_balance = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
+    user_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Merchant
         fields = (
             "id",
             "name",
+            "owner",
+            "user_id",
             "email",
+            "wallet_balance",
+            "is_active",
             "description",
             "address",
             "created_at",
             "updated_at",
         )
 
+    def __init__(self, *args, **kwargs):
+        super(MerchantSerializer, self).__init__(*args, **kwargs)
+        if self.context.get("hide_wallet_details"):
+            self.fields.pop("wallet_balance")
+
     def get_email(self, obj):
         return obj.user_id.email
+
+    def get_owner(self, obj):
+        return obj.user_id.name
+
+    def get_user_id(self, obj):
+        return obj.user_id.id
+
+    def get_wallet_balance(self, obj):
+        _, wallets = obj.user_id.get_wallets()
+        return MerchantWalletSerializer(wallets, many=True).data
+
+    def get_is_active(self, obj):
+        # Check if UserProfile exists and then access is_deactivated
+        user_profile = getattr(obj.user_id, "userprofile", None)
+        if user_profile:
+            return not user_profile.is_deactivated
+        return True
 
 
 class MerchantWalletSerializer(serializers.ModelSerializer):
@@ -141,20 +160,20 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     phone_number = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
-    # user_type = serializers.SerializerMethodField()
-    # merchant_name = serializers.SerializerMethodField()
+    user_type = serializers.SerializerMethodField()
+    user_id = serializers.SerializerMethodField()
     wallets = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
         fields = (
             "id",
-            # "user_type",
+            "user_type",
+            "user_id",
             "created_at",
             "updated_at",
             "full_name",
             "phone_number",
-            # "merchant_name",
             "email",
             "wallets",
         )
@@ -164,47 +183,40 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
         if self.context.get("hide_wallet_details"):
             self.fields.pop("wallets")
 
-    def get_merchant(self, *args, **kwargs):
-        self.merchant = self.context.get("merchant", None)
-        return self.merchant
-
-    def get_merchant_customer_instance(self, obj, *args, **kwargs):
-        merchant = self.get_merchant()
-        return CustomerMerchant.objects.filter(customer=obj, merchant=merchant).first()
+    def get_customermerchant(self, obj):
+        if hasattr(obj, "custom_customermerchant") and obj.custom_customermerchant:
+            return obj.custom_customermerchant[
+                0
+            ]  # Get the first customermerchant instance
 
     def get_full_name(self, obj):
-        customer_merchant_instance = self.get_merchant_customer_instance(obj)
-        if customer_merchant_instance:
-            return customer_merchant_instance.alternate_name
-        return None
+        customermerchant = self.get_customermerchant(obj)
+        if customermerchant:
+            return customermerchant.alternate_name
+        return obj.user.name
 
     def get_phone_number(self, obj):
-        customer_merchant_instance = self.get_merchant_customer_instance(obj)
-        if customer_merchant_instance:
-            return customer_merchant_instance.alternate_phone_number
-        return None
+        customermerchant = self.get_customermerchant(obj)
+        if customermerchant:
+            return customermerchant.alternate_phone_number
+        return obj.user.phone
 
     def get_email(self, obj):
         return obj.user.email
 
-    # def get_user_type(self, obj):
-    #     customer_merchant_instance = self.get_merchant_customer_instance(obj)
-    #     if customer_merchant_instance:
-    #         return customer_merchant_instance.user_type
-    #     return None
-
-    def get_merchant_name(self, obj):
-        customer_merchant_instance = self.get_merchant_customer_instance(obj)
-        if customer_merchant_instance:
-            return customer_merchant_instance.merchant.name
+    def get_user_type(self, obj):
+        customermerchant = self.get_customermerchant(obj)
+        if customermerchant:
+            return customermerchant.user_type
         return None
 
+    def get_user_id(self, obj):
+        return obj.user.id
+
     def get_wallets(self, obj):
-        customer_merchant_instance = self.get_merchant_customer_instance(obj)
-        if customer_merchant_instance:
-            wallets = Wallet.objects.filter(
-                user=customer_merchant_instance.customer.user
-            )
+        customermerchant = self.get_customermerchant(obj)
+        if customermerchant:
+            wallets = Wallet.objects.filter(user=customermerchant.customer.user)
             return MerchantCustomerWalletSerializer(wallets, many=True).data
         return []
 
