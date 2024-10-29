@@ -3,10 +3,8 @@ from rest_framework.routers import DefaultRouter
 
 from merchant.views.base import (
     MerchantApiKeyView,
-    MerchantCreateView,
     MerchantCustomerDetailView,
     MerchantCustomerView,
-    MerchantListView,
     MerchantProfileView,
     MerchantWalletsView,
 )
@@ -36,8 +34,6 @@ from merchant.views.transaction import (
 router = DefaultRouter()
 router.register(r"payout-config", PayoutConfigViewSet)
 urlpatterns = [
-    path("list", MerchantListView.as_view(), name="list-merchants"),
-    path("create", MerchantCreateView.as_view(), name="create-merchants"),
     path("api-key", MerchantApiKeyView.as_view(), name="merchant-api-key"),
     # =================================================================
     # MERCHANT AUTHORIZED CALLS VIA API KEY

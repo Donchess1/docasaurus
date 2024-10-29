@@ -1,21 +1,26 @@
 import os
 
+from django.db.models import Prefetch
+from django_filters import rest_framework as django_filters
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 
+from console.permissions import IsSuperAdmin
 from merchant.decorators import authorized_api_call
+from merchant.filters import MerchantFilter
 from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
 from merchant.serializers.merchant import (
     ApiKeySerializer,
     CustomerUserProfileSerializer,
     MerchantCreateSerializer,
-    MerchantDetailSerializer,
     MerchantSerializer,
     MerchantWalletSerializer,
     RegisterCustomerSerializer,
     UpdateCustomerSerializer,
 )
 from merchant.utils import generate_api_key
+from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.utils import custom_flatten_uuid, generate_random_text
 
@@ -26,7 +31,7 @@ env = "live" if ENVIRONMENT == "production" else "test"
 class MerchantCreateView(generics.CreateAPIView):
     serializer_class = MerchantCreateSerializer
     queryset = Merchant.objects.all()
-    permission_classes = ()
+    permission_classes = (IsSuperAdmin,)
 
     def perform_create(self, serializer):
         instance_txn_data = serializer.save()
@@ -52,23 +57,146 @@ class MerchantCreateView(generics.CreateAPIView):
 class MerchantListView(generics.ListAPIView):
     serializer_class = MerchantSerializer
     queryset = Merchant.objects.all()
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsSuperAdmin,)
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = MerchantFilter
+    search_fields = ["name", "user_id__email", "user_id__name"]
+    ordering_fields = ["name", "created_at", "user_id__email", "user_id__name"]
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        return (
+            Merchant.objects.select_related("user_id__userprofile")
+            .all()
+            .order_by("-created_at")
+        )
+
+    def get_ordering(self):
+        custom_ordering_map = {
+            "email": "user_id__email",  # Frontend uses 'email', we map it to 'user_id__email'
+            "owner": "user_id__name",  # Frontend uses 'user_name', we map to 'user_id__name'
+        }
+        ordering_param = self.request.query_params.get("ordering", None)
+        if ordering_param:
+            ordering_fields = []
+            for field in ordering_param.split(","):
+                stripped_field = field.lstrip("-")  # Remove '-' to check field name
+                prefix = "-" if field.startswith("-") else ""
+                mapped_field = custom_ordering_map.get(stripped_field, stripped_field)
+                ordering_fields.append(f"{prefix}{mapped_field}")
+            return ordering_fields
+        return ["-created_at"]
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            ordering = self.get_ordering()
+            if ordering:
+                queryset = queryset.order_by(*ordering)
+            qs = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(
+                qs,
+                context={"hide_wallet_details": True},
+                many=True,
+            )
+            self.pagination_class.message = "Merchants retrieved successfully."
+            response = self.get_paginated_response(serializer.data)
+            return response
+        except Exception as e:
+            return Response(
+                success=False,
+                message=f"{str(e)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class MerchantDetailView(generics.GenericAPIView):
+    serializer_class = MerchantSerializer
+    permission_classes = (IsSuperAdmin,)
+
+    def get(self, request, id, *args, **kwargs):
+        instance = Merchant.objects.filter(id=id).first()
+        if not instance:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(instance)
         return Response(
             success=True,
-            message="Merchants retrieved successfully",
+            message="Merchant retrieved successfully.",
             data=serializer.data,
             status_code=status.HTTP_200_OK,
-            meta={"count": len(serializer.data)},
         )
+
+
+class ConsoleMerchantCustomerView(generics.ListAPIView):
+    serializer_class = CustomerUserProfileSerializer
+    permission_classes = (IsSuperAdmin,)
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    # filterset_class = MerchantFilter
+    search_fields = [
+        "user__name",  # Search by User's name
+        "user__email",  # Search by User's email
+        "customermerchant__alternate_name",  # Search by CustomerMerchant alternate_name
+        "customermerchant__alternate_email",  # Search by CustomerMerchant alternate_email
+        "customermerchant__user_type",  # Search by CustomerMerchant user_type
+    ]
+    # ordering_fields = ["created_at", "user__email", "user__name"]
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        merchant_id = self.kwargs.get("id")
+        merchant = Merchant.objects.filter(id=merchant_id).first()
+        if not merchant:
+            raise NotFound(detail="Merchant does not exist")
+
+        # Prefetch related CustomerMerchant and select related User profile
+        queryset = (
+            Customer.objects.filter(merchants=merchant)
+            .select_related("user")
+            .prefetch_related(
+                Prefetch(
+                    "customermerchant_set",
+                    queryset=CustomerMerchant.objects.filter(merchant=merchant),
+                    to_attr="custom_customermerchant",
+                )
+            )
+        )
+        return queryset
+
+    def get(self, request, id, *args, **kwargs):
+        merchant = Merchant.objects.filter(id=id).first()
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        queryset = self.filter_queryset(self.get_queryset())
+        qs = self.paginate_queryset(queryset)
+        serialized_customers = self.get_serializer(
+            qs,
+            context={"merchant": merchant, "hide_wallet_details": True},
+            many=True,
+        )
+        self.pagination_class.message = "Customers retrieved successfully."
+        response = self.get_paginated_response(serialized_customers.data)
+        return response
 
 
 class MerchantApiKeyView(generics.GenericAPIView):
     serializer_class = ApiKeySerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsSuperAdmin,)
 
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -115,14 +243,16 @@ class MerchantApiKeyView(generics.GenericAPIView):
 
 
 class MerchantProfileView(generics.GenericAPIView):
-    serializer_class = MerchantDetailSerializer
+    serializer_class = MerchantSerializer
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
     @authorized_api_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
-        serializer = self.get_serializer(merchant)
+        serializer = self.get_serializer(
+            merchant, context={"hide_wallet_details": True}
+        )
         return Response(
             success=True,
             status_code=status.HTTP_200_OK,
