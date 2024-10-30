@@ -60,6 +60,20 @@ services:
     networks:
       - myb
 
+  celery-beat:
+    <<: *api
+    command: >
+      sh -c "celery -A core beat -l INFO --logfile=celery_beat.log"
+    ports: []
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+    networks:
+      - myb
+
 volumes:
   myb-dev-static-data:
   myb-dev-db:
