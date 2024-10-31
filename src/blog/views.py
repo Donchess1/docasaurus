@@ -16,7 +16,7 @@ class BlogPostViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = CustomPagination
     filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
-    search_fields = ["title", "content"]
+    search_fields = ["title", "content", "tags"]
     filterset_class = BlogFilter
 
 
