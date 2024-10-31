@@ -66,10 +66,20 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    
     @swagger_auto_schema(
-        operation_description="permanently delete post",
-        responses={204: "No content"}
-        )
+    operation_description="permanently delete multiple posts",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'post_ids': openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_INTEGER)
+            )
+        },
+        required=['post_ids']
+    ),
+    responses={204: "Selected posts permanently deleted."})
     @action(detail=False, methods=['delete'])
     def permanent_delete(self, request):
         post_ids = request.data.get('post_ids', [])
@@ -89,24 +99,9 @@ class BlogPostViewSet(viewsets.ModelViewSet):
                 },
         status=status.HTTP_204_NO_CONTENT
     )
-
-    @swagger_auto_schema(
-        operation_description="Delete a Blog Post",
-        responses={204: "No content"}
-        )
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.perform_destroy(instance)
-        return Response(
-            {
-                "success": True,
-                "message": "Blog Post Deleted",
-            },
-            status=status.HTTP_200_OK
-            )
     
     @swagger_auto_schema(
-    operation_description="temporarily delete post",
+    operation_description="temporarily delete multiple posts",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
