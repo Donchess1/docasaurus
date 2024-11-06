@@ -3,7 +3,7 @@ import uuid
 from cloudinary.models import CloudinaryField
 from django.db import models
 from users.models.user import CustomUser as User
-from taggit.managers import TaggableManager
+
 
 
 
@@ -13,7 +13,7 @@ class BlogPost(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField(null=True, blank=True)
     reading_time = models.PositiveIntegerField(blank=True, null=True)  # in minutes
-    cover_image= CloudinaryField('image', folder='cover_images', default="https://res.cloudinary.com/dvw89fvtm/image/upload/v1730395134/greenhouse/w4s8sbtkddkf9ulwfklh.svg")
+    cover_image_url = models.URLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

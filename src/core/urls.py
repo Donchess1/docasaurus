@@ -21,6 +21,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("", views.api_ok, name="api-ok"),
     path("swaggerxyz-docs", schema_view.with_ui("swagger", cache_timeout=0), name="swagger-schema-ui",),
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path("ajazzinauth23qwe/", admin.site.urls),
     path("v1/health-check", views.HealthCheckView.as_view(), name="health-check"),
     path("v1/auth/", include("users.urls")),

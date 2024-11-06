@@ -1,4 +1,4 @@
-from .models import *
+from .models import BlogPost
 from utils.response import Response
 from rest_framework import status, viewsets, filters, permissions
 from .serializers import *
@@ -22,6 +22,31 @@ class BlogPostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
      serializer.save(author=self.request.user)
+
+    @swagger_auto_schema(
+        operation_description="Add a new Blog Post",
+        request_body=BlogPostSerializer,
+        responses={
+            201: BlogPostSerializer,
+        },
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data,
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_create(serializer)
+        return Response(
+            success=True,
+            message="Blog Post Created",
+            status_code=status.HTTP_201_CREATED,
+            data=serializer.data,
+        )
      
     def get_queryset(self):
         if self.request.user.is_authenticated:
@@ -43,12 +68,10 @@ class BlogPostViewSet(viewsets.ModelViewSet):
            return self.get_paginated_response(serializer.data)
         serializer=self.get_serializer(queryset, many=True)
         return Response(
-        {
-            "success": True,
-            "message": "Blog Posts retrieved successfully",
-            "data": serializer.data,
-        },
-        status=status.HTTP_200_OK
+            success= True,
+            message= "Blog Posts retrieved successfully",
+            status=status.HTTP_200_OK,
+            data= serializer.data,
         )
     
     @swagger_auto_schema(
@@ -58,12 +81,11 @@ class BlogPostViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        return Response({
-                "success": True,
-                "message": "Blog Post retrieved",
-                "data": serializer.data,
-            },
-            status=status.HTTP_200_OK
+        return Response(
+            success= True,
+            message= "Blog Post retrieved",
+            status_code=status.HTTP_200_OK,
+            data= serializer.data,
         )
 
     
@@ -85,20 +107,16 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         post_ids = request.data.get('post_ids', [])
         if not post_ids:
             return Response(
-                {
-                    "success": True, 
-                    "message": "No post IDs provided."
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
+                    success= True, 
+                    message= "No post IDs provided.",
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         BlogPost.objects.filter(id__in=post_ids).delete()
         return Response(
-            {
-                "success": True,
-                "message": "Selected posts permanently deleted."
-                },
-        status=status.HTTP_204_NO_CONTENT
-    )
+                success= True,
+                message= "Selected posts permanently deleted.",
+                status=status.HTTP_204_NO_CONTENT
+                )
     
     @swagger_auto_schema(
     operation_description="temporarily delete multiple posts",
@@ -120,24 +138,22 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         
         if not post_ids:
             return Response(
-                {
-                    "success": False,
-                    "message": "No post IDs provided.",
-                },
+                    success= False,
+                    message= "No post IDs provided.",
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             deleted_post.update(deleted_at=timezone.now(),is_archived=True)
             return Response(
-                {
-                    "success": True,
-                    "message": "Selected posts deleted successfully."},
-                status=status.HTTP_204_NO_CONTENT
+                    success= True,
+                    message= "Selected posts deleted successfully.",
+                    status=status.HTTP_204_NO_CONTENT
             )
         except Exception as e:
             return Response(
-                {"error": str(e)},
+                success= False,
+                error= str(e),
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -159,18 +175,15 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         post_ids = request.data.get('post_ids', [])
         if not post_ids:
             return Response(
-                {
-                    "error": "No post IDs provided."
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                    )
+                success= False,
+                error= "No post IDs provided.",
+                status=status.HTTP_400_BAD_REQUEST
+                )
         BlogPost.objects.filter(id__in=post_ids).update(deleted_at=None)
         return Response(
-            {
-                "success": True,
-                "message": "Selected posts successfully restored."
-                },
-                status=status.HTTP_200_OK
+                success= True,
+                message= "Selected posts successfully restored.",
+                status=status.HTTP_200_OK,
                 ) 
 
     @swagger_auto_schema(
@@ -185,9 +198,8 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         deleted_titles_str = ", ".join(deleted_blog_titles)
         
         return Response(
-            {
-                "success": True, 
-                "message": f"{deleted_titles_str} was deleted successfully."
-            },
-            status=status.HTTP_200_OK
-            )
+                success= True, 
+                message= f"{deleted_titles_str} was deleted successfully.",
+                status=status.HTTP_200_OK,
+                data=serializer.data,
+                )

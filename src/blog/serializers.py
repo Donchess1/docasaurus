@@ -7,15 +7,12 @@ class BlogPostSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source="author.name")
     reading_time = serializers.ReadOnlyField()
     markdown_file = serializers.FileField(write_only=True, required=True)
-    cover_image_url=serializers.SerializerMethodField()
 
     class Meta:
         model = BlogPost
         fields = ["tags","id","title","content","reading_time", "cover_image_url", "author", "markdown_file",
                   "created_at", "updated_at", "deleted_at", "is_archived","is_draft"]
         
-    def get_cover_image_url(self, blogpost):
-        return blogpost.cover_image.url if blogpost.cover_image else None
     
     @transaction.atomic
     def create(self, validated_data):
