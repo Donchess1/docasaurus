@@ -11,15 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='blogpost',
-            name='cover_image_url',
-        ),
-        migrations.AddField(
-            model_name='blogpost',
-            name='cover_image',
-            field=cloudinary.models.CloudinaryField(default='https://res.cloudinary.com/dvw89fvtm/image/upload/v1730395134/greenhouse/w4s8sbtkddkf9ulwfklh.svg', max_length=255, verbose_name='image'),
-        ),
         migrations.AddField(
             model_name='blogpost',
             name='deleted_at',
@@ -33,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='blogpost',
             name='is_draft',
-            field=models.BooleanField(default=True),
+            field=models.BooleanField(default=False),
         ),
         migrations.AddField(
             model_name='blogpost',
