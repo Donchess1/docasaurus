@@ -45,7 +45,7 @@ class BlogPostSerializer(serializers.ModelSerializer):
         markdown_content = markdown_file.read().decode("utf-8")
         validated_data["content"] = markdown_content
 
-        is_draft = validated_data.pop("is_draft", False)
+        is_draft = validated_data.get("is_draft", False)
         if not is_draft:
             validated_data["published_at"] = timezone.now()
 
