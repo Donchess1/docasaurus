@@ -49,7 +49,7 @@ class BlogPostSerializer(serializers.ModelSerializer):
         cover_image_url = obj["data"]["url"]
         
 
-        is_draft = validated_data.pop("is_draft", False)
+        is_draft = validated_data.get("is_draft", False)
         if not is_draft:
             validated_data["published_at"] = timezone.now()
 
