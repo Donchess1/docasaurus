@@ -7,8 +7,8 @@ from utils.response import Response
 
 
 def api_ok(request):
-    #hostname = os.uname().nodename
-    hostname = os.getenv('HOSTNAME')
+    # hostname = os.uname().nodename
+    hostname = os.getenv("HOSTNAME")
     return HttpResponse(f"<h1>Server is Now Running on {hostname}</h1>")
 
 

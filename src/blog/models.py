@@ -1,11 +1,21 @@
 import math
 import uuid
-from cloudinary.models import CloudinaryField
+
 from django.db import models
+
 from users.models.user import CustomUser as User
-from taggit.managers import TaggableManager
 
 
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        # Ensure name is stored in uppercase for case-insensitivity
+        self.name = self.name.upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
 
 
 class BlogPost(models.Model):
@@ -13,14 +23,15 @@ class BlogPost(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField(null=True, blank=True)
     reading_time = models.PositiveIntegerField(blank=True, null=True)  # in minutes
-    cover_image= CloudinaryField('image', folder='cover_images', default="https://res.cloudinary.com/dvw89fvtm/image/upload/v1730395134/greenhouse/w4s8sbtkddkf9ulwfklh.svg")
+    cover_image_url = models.URLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    is_draft = models.BooleanField(default=True)
+    is_draft = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)
-    tags = models.JSONField(default=list)
+    published_at = models.DateTimeField(null=True, blank=True)
+    tags = models.ManyToManyField(Tag, related_name="blog_posts", blank=True)
 
     def __str__(self):
         return self.title
@@ -30,3 +41,18 @@ class BlogPost(models.Model):
         total_words = len(self.content.split())
         self.reading_time = math.ceil(total_words / words_per_minute)
         super().save(*args, **kwargs)
+
+    def publish(self):
+        self.is_draft = False
+        self.published_at = timezone.now()
+        self.save()
+
+    def archive(self):
+        self.is_archived = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        self.is_archived = False
+        self.deleted_at = None
+        self.save()
