@@ -26,10 +26,15 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
     def get_permissions(self):
-        if self.action in ["create", "add_tags", "remove_tags"]:
+        if self.action in ["create", "update","add_tags", "remove_tags"]:
             self.permission_classes = [IsAuthorOrAdmin]
         return super().get_permissions()
 
+    def manage_tags(self, tags_string):
+        tag_names = [tag.strip() for tag in tags_string.split(",") if tag.strip()]
+        tags = [Tag.objects.get_or_create(name=tag_name.upper())[0] for tag_name in tag_names]
+        return tags
+    
     @swagger_auto_schema(
         operation_description="Add a new Blog Post",
         request_body=BlogPostSerializer,
@@ -38,16 +43,8 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         },
     )
     def create(self, request, *args, **kwargs):
-        data = request.data
-        tag_names = data.get("tags", "")
-        tag_names = [tag.strip() for tag in tag_names.split(",") if tag.strip()]
-
-        # Check if any tags need to be created or associated
-        tags = []
-        for tag_name in tag_names:
-            tag, created = Tag.objects.get_or_create(name=tag_name.upper())
-            tags.append(tag)
-
+        tag_names = request.data.get("tags", "")
+        tags = self.manage_tags(tag_names)
         serializer = self.get_serializer(data=request.data, context={"tags": tags})
         if not serializer.is_valid():
             return Response(
@@ -63,6 +60,41 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             data=serializer.data,
         )
 
+    @swagger_auto_schema(
+        operation_description="Update Blog Post",
+        request_body=BlogPostSerializer,
+        responses={
+            201: BlogPostSerializer,
+        },
+    )
+    def update(self, request, *args, **kwargs):
+        instance=self.get_object()
+        tag_names = request.data.get("tags", "")
+        tags = self.manage_tags(tag_names)
+        current_tags = instance.tags.all()
+        updated_tags = list(set(current_tags) | set(tags))
+        serializer = self.get_serializer(instance, data = request.data, partial=True, context={"tags": updated_tags})
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        is_draft = serializer.validated_data.get("is_draft", False)
+        if not is_draft:
+            serializer.validated_data["published_at"] = timezone.now()
+        
+        self.perform_update(serializer)
+        instance.tags.set(updated_tags)
+        return Response(
+            success=True,
+            message="Blog Post Updated",
+            status_code=status.HTTP_200_OK,
+            data=serializer.data,
+        )
+        instance.tags.set(updated_tags)
+    
+    
     @swagger_auto_schema(
         operation_description="List all Blog post by filter",
         responses={
@@ -141,12 +173,11 @@ class BlogPostViewSet(viewsets.ModelViewSet):
     def delete_multiple(self, request, *args, **kwargs):
         post_ids = request.data.get("post_ids", [])
         deleted_post = BlogPost.objects.filter(id__in=post_ids)
-
         if not post_ids:
             return Response(
                 success=False,
                 message="No post IDs provided.",
-                status=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -154,11 +185,13 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             return Response(
                 success=True,
                 message="Selected posts deleted successfully.",
-                status=status.HTTP_204_NO_CONTENT,
+                status_code=status.HTTP_204_NO_CONTENT,
             )
         except Exception as e:
             return Response(
-                success=False, error=str(e), status=status.HTTP_400_BAD_REQUEST
+                success=False,
+                error=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
             )
 
     @swagger_auto_schema(
@@ -184,11 +217,11 @@ class BlogPostViewSet(viewsets.ModelViewSet):
                 error="No post IDs provided.",
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        BlogPost.objects.filter(id__in=post_ids).update(deleted_at=None)
+        BlogPost.objects.filter(id__in=post_ids).update(deleted_at=None, is_archived=False)
         return Response(
             success=True,
             message="Selected posts successfully restored.",
-            status=status.HTTP_200_OK,
+            status_code=status.HTTP_200_OK,
         )
 
     @swagger_auto_schema(
