@@ -41,10 +41,9 @@ class BlogPostSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        markdown_file = validated_data.pop("markdown_file")
+        markdown_file = validated_data.pop("markdown_file", None)
         markdown_content = markdown_file.read().decode("utf-8")
         validated_data["content"] = markdown_content
-
         is_draft = validated_data.get("is_draft", False)
         if not is_draft:
             validated_data["published_at"] = timezone.now()
@@ -63,7 +62,7 @@ class BlogPostSerializer(serializers.ModelSerializer):
             markdown_content = markdown_file.read().decode("utf-8")
             validated_data["content"] = markdown_content
         instance = super().update(instance, validated_data)
-        tags = validated_data.get("tags", None)
+        tags = self.context.get("tags", None)
         if tags is not None:
-            instance.tags = tags
+            instance.tags.set(tags)
         return instance

@@ -26,9 +26,24 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
     def get_permissions(self):
-        if self.action in ["create", "add_tags", "remove_tags"]:
+        if self.action in ["create", "update", "add_tags", "remove_tags"]:
             self.permission_classes = [IsAuthorOrAdmin]
         return super().get_permissions()
+
+    def manage_tags(self, tags_string):
+        tag_names = [tag.strip() for tag in tags_string.split(",") if tag.strip()]
+        tags = [
+            Tag.objects.get_or_create(name=tag_name.upper())[0]
+            for tag_name in tag_names
+        ]
+        return tags
+
+    def destroy(self, request, *args, **kwargs):
+        return Response(
+            success=False,
+            message="Action not permitted!",
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
     @swagger_auto_schema(
         operation_description="Add a new Blog Post",
@@ -38,16 +53,8 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         },
     )
     def create(self, request, *args, **kwargs):
-        data = request.data
-        tag_names = data.get("tags", "")
-        tag_names = [tag.strip() for tag in tag_names.split(",") if tag.strip()]
-
-        # Check if any tags need to be created or associated
-        tags = []
-        for tag_name in tag_names:
-            tag, created = Tag.objects.get_or_create(name=tag_name.upper())
-            tags.append(tag)
-
+        tag_names = request.data.get("tags", "")
+        tags = self.manage_tags(tag_names)
         serializer = self.get_serializer(data=request.data, context={"tags": tags})
         if not serializer.is_valid():
             return Response(
@@ -60,6 +67,41 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             success=True,
             message="Blog Post Created",
             status_code=status.HTTP_201_CREATED,
+            data=serializer.data,
+        )
+
+    @swagger_auto_schema(
+        operation_description="Update Blog Post",
+        request_body=BlogPostSerializer,
+        responses={
+            201: BlogPostSerializer,
+        },
+    )
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        tag_names = request.data.get("tags", "")
+        tags = self.manage_tags(tag_names)
+        current_tags = instance.tags.all()
+        updated_tags = list(set(current_tags) | set(tags))
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=True, context={"tags": updated_tags}
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        is_draft = serializer.validated_data.get("is_draft", False)
+        if not is_draft:
+            serializer.validated_data["published_at"] = timezone.now()
+
+        self.perform_update(serializer)
+        instance.tags.set(updated_tags)
+        return Response(
+            success=True,
+            message="Blog Post Updated",
+            status_code=status.HTTP_200_OK,
             data=serializer.data,
         )
 
@@ -94,36 +136,6 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         )
 
     @swagger_auto_schema(
-        operation_description="permanently delete multiple posts",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "post_ids": openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_INTEGER),
-                )
-            },
-            required=["post_ids"],
-        ),
-        responses={204: "Selected posts permanently deleted."},
-    )
-    @action(detail=False, methods=["delete"])
-    def permanent_delete(self, request):
-        post_ids = request.data.get("post_ids", [])
-        if not post_ids:
-            return Response(
-                success=True,
-                message="No post IDs provided.",
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        BlogPost.objects.filter(id__in=post_ids).delete()
-        return Response(
-            success=True,
-            message="Selected posts permanently deleted.",
-            status=status.HTTP_204_NO_CONTENT,
-        )
-
-    @swagger_auto_schema(
         operation_description="temporarily delete multiple posts",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -137,28 +149,26 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         ),
         responses={204: "Selected posts deleted successfully."},
     )
-    @action(detail=False, methods=["delete"])
-    def delete_multiple(self, request, *args, **kwargs):
+    @action(detail=False, methods=["delete"], url_path="archive")
+    def temporary_delete_posts(self, request, *args, **kwargs):
         post_ids = request.data.get("post_ids", [])
-        deleted_post = BlogPost.objects.filter(id__in=post_ids)
-
         if not post_ids:
             return Response(
                 success=False,
                 message="No post IDs provided.",
-                status=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-
+        deleted_post = BlogPost.objects.filter(id__in=post_ids)
         try:
             deleted_post.update(deleted_at=timezone.now(), is_archived=True)
             return Response(
                 success=True,
                 message="Selected posts deleted successfully.",
-                status=status.HTTP_204_NO_CONTENT,
+                status_code=status.HTTP_204_NO_CONTENT,
             )
         except Exception as e:
             return Response(
-                success=False, error=str(e), status=status.HTTP_400_BAD_REQUEST
+                success=False, error=str(e), status_code=status.HTTP_400_BAD_REQUEST
             )
 
     @swagger_auto_schema(
@@ -175,8 +185,8 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         ),
         responses={200: "Selected posts successfully restored."},
     )
-    @action(detail=False, methods=["post"])
-    def restore(self, request):
+    @action(detail=False, methods=["put"], url_path="restore")
+    def restore_posts(self, request):
         post_ids = request.data.get("post_ids", [])
         if not post_ids:
             return Response(
@@ -184,11 +194,43 @@ class BlogPostViewSet(viewsets.ModelViewSet):
                 error="No post IDs provided.",
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        BlogPost.objects.filter(id__in=post_ids).update(deleted_at=None)
+        BlogPost.objects.filter(id__in=post_ids).update(
+            deleted_at=None, is_archived=False
+        )
         return Response(
             success=True,
             message="Selected posts successfully restored.",
-            status=status.HTTP_200_OK,
+            status_code=status.HTTP_200_OK,
+        )
+
+    @swagger_auto_schema(
+        operation_description="permanently delete multiple posts",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "post_ids": openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(type=openapi.TYPE_INTEGER),
+                )
+            },
+            required=["post_ids"],
+        ),
+        responses={204: "Selected posts permanently deleted."},
+    )
+    @action(detail=False, methods=["delete"], url_path="delete")
+    def permanent_delete_posts(self, request):
+        post_ids = request.data.get("post_ids", [])
+        if not post_ids:
+            return Response(
+                success=True,
+                message="No post IDs provided.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        BlogPost.objects.filter(id__in=post_ids).delete()
+        return Response(
+            success=True,
+            message="Selected posts permanently deleted.",
+            status=status.HTTP_204_NO_CONTENT,
         )
 
     @swagger_auto_schema(
