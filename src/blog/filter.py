@@ -9,6 +9,7 @@ class BlogFilter(django_filters.FilterSet):
     tags = django_filters.CharFilter(method="filter_tags")
     created = django_filters.DateFromToRangeFilter(field_name="created_at")
     is_draft = django_filters.BooleanFilter(field_name="is_draft")
+
     class Meta:
         model = BlogPost
         fields = ["is_archived", "created", "is_draft"]
