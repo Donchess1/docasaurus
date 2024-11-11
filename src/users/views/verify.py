@@ -211,7 +211,7 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
         if not user:
             return Response(
                 success=False,
-                message="User not found!",
+                message="User information not found!",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 

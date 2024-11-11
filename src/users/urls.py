@@ -14,6 +14,7 @@ from users.views.user import (
     EditSellerBusinessProfileView,
     EditUserProfileView,
     GenerateOneTimeLoginCodeView,
+    GenerateOneTimeVerificationCodeView,
     UpdateKYCView,
     UploadAvatarView,
 )
@@ -36,6 +37,8 @@ urlpatterns = [
     path("login", LoginView.as_view(), name="login"),
     path("send-login-otc", GenerateOneTimeLoginCodeView.as_view(), name="send-login-otc"),
     path("verify-login-otc", VerifyOneTimeLoginCodeView.as_view(), name="verify-login-otc",),
+    path("generate-otc", GenerateOneTimeVerificationCodeView.as_view(), name="send-login-otc"),
+    path("verify-otc", VerifyOneTimeLoginCodeView.as_view(), name="verify-login-otc",),
     # =================================================================
     # USER PROFILE MANAGEMENT
     # =================================================================

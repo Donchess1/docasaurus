@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 
 from console.permissions import IsSuperAdmin
+from console.serializers.base import EmptySerializer
 from merchant.decorators import authorized_api_call
 from merchant.filters import MerchantFilter
 from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
@@ -192,6 +193,44 @@ class ConsoleMerchantCustomerView(generics.ListAPIView):
         self.pagination_class.message = "Customers retrieved successfully."
         response = self.get_paginated_response(serialized_customers.data)
         return response
+
+
+class ConsoleGenerateMerchantApiKeyView(generics.GenericAPIView):
+    serializer_class = EmptySerializer
+    permission_classes = (IsSuperAdmin,)
+
+    def post(self, request, id, *args, **kwargs):
+        merchant = Merchant.objects.filter(id=id).first()
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        raw_api_key, hashed_api_key = generate_api_key(str(merchant.id))
+        name = generate_random_text(10)
+        key_identifier = None
+
+        existing_api_key = ApiKey.objects.filter(merchant=merchant).first()
+        if existing_api_key:
+            existing_api_key.key = hashed_api_key
+            existing_api_key.save()
+            key_identifier = str(existing_api_key.id)
+        else:
+            obj = ApiKey.objects.create(
+                key=hashed_api_key, merchant=merchant, name=name
+            )
+            key_identifier = str(obj.id)
+
+        suffix = f"{generate_random_text(3)}{custom_flatten_uuid(key_identifier)}{raw_api_key}"
+        api_key = f"MYBTSTSECK-{suffix}" if env == "test" else f"MYBLIVSECK-{suffix}"
+
+        return Response(
+            success=True,
+            message="API Key generated successfully. You can only view once.",
+            status_code=status.HTTP_200_OK,
+            data={"api_key": api_key},
+        )
 
 
 class MerchantApiKeyView(generics.GenericAPIView):
