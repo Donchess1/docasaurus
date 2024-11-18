@@ -50,6 +50,8 @@ class FlwWebhookView(generics.GenericAPIView):
         verif_hash = request.headers.get("verif-hash", None)
 
         if not verif_hash or verif_hash != secret_hash:
+            print("verif-hash: ", verif_hash)
+            print("secret_hash: ", secret_hash)
             return Response(
                 success=False,
                 message="Invalid authorization token.",
