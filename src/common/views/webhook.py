@@ -50,7 +50,7 @@ class FlwWebhookView(generics.GenericAPIView):
         verif_hash = request.headers.get("verif-hash", None)
         print("verif-hash: ", verif_hash)
         print("secret_hash: ", secret_hash)
-        print("verif-hash == secret_hash: ===>", verif_hash == secret_hash)
+        print("verif-hash == secret_hash: ====>", verif_hash == secret_hash)
 
         if not verif_hash or verif_hash != secret_hash:
             return Response(
