@@ -48,9 +48,6 @@ class FlwWebhookView(generics.GenericAPIView):
         request_meta = extract_api_request_metadata(request)
         secret_hash = os.environ.get("FLW_SECRET_HASH")
         verif_hash = request.headers.get("verif-hash", None)
-        print("verif-hash: ", verif_hash)
-        print("secret_hash: ", secret_hash)
-        print("verif-hash == secret_hash: ====>", verif_hash == secret_hash)
 
         if not verif_hash or verif_hash != secret_hash:
             return Response(
