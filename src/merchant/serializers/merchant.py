@@ -64,6 +64,7 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
             "is_verified": True,
         }
         user = User.objects.create_user(**user_data)
+        user.create_wallet()
 
         profile_data = UserProfile.objects.create(
             user_id=user,
