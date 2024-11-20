@@ -309,7 +309,6 @@ class MerchantWalletsView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         _, wallets = merchant.user_id.get_wallets()
-        print("Wallets retrieved for merchant ==>", wallets)
         serializer = self.get_serializer(wallets, many=True)
         return Response(
             success=True,
