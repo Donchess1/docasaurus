@@ -327,6 +327,10 @@ class MerchantCustomerView(generics.CreateAPIView):
         if self.request.method == "POST":
             return RegisterCustomerSerializer
         return self.serializer_class
+    
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        return instance
 
     @authorized_api_call
     def post(self, request, *args, **kwargs):
@@ -340,11 +344,15 @@ class MerchantCustomerView(generics.CreateAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
-        self.perform_create(serializer)
+        instance = self.perform_create(serializer)
+        serializer = CustomerUserProfileSerializer(instance.customer, context={
+            "hide_user_id": True, "merchant": merchant
+        })
         return Response(
             success=True,
             message="Customer created successfully",
             status_code=status.HTTP_200_OK,
+            data=serializer.data,
         )
 
     @authorized_api_call
