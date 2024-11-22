@@ -183,12 +183,17 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
         super(CustomerUserProfileSerializer, self).__init__(*args, **kwargs)
         if self.context.get("hide_wallet_details"):
             self.fields.pop("wallets")
+        if self.context.get("hide_user_id"):
+            self.fields.pop("user_id")
 
     def get_customermerchant(self, obj):
-        if hasattr(obj, "custom_customermerchant") and obj.custom_customermerchant:
-            return obj.custom_customermerchant[
-                0
-            ]  # Get the first customermerchant instance
+        merchant = self.context.get("merchant")
+        if merchant:
+            try:
+                return obj.customermerchant_set.get(merchant=merchant)
+            except CustomerMerchant.DoesNotExist:
+                return None
+        return None
 
     def get_full_name(self, obj):
         customermerchant = self.get_customermerchant(obj)

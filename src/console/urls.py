@@ -21,8 +21,8 @@ from console.views.overview import (
 from console.views.product import ProductViewSet
 from console.views.provider import EmailProviderSwitchView
 from merchant.views.base import (
-    ConsoleMerchantCustomerView,
     ConsoleGenerateMerchantApiKeyView,
+    ConsoleMerchantCustomerView,
     MerchantCreateView,
     MerchantDetailView,
     MerchantListView,

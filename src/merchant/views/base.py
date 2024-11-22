@@ -354,7 +354,11 @@ class MerchantCustomerView(generics.CreateAPIView):
         serialized_customers = self.get_serializer(
             customers,
             many=True,
-            context={"merchant": merchant, "hide_wallet_details": True},
+            context={
+                "merchant": merchant,
+                "hide_wallet_details": True,
+                "hide_user_id": True,
+            },
         )
         return Response(
             success=True,
@@ -389,7 +393,17 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
                 message="Customer does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        serializer = self.get_serializer(instance, context={"merchant": merchant})
+        try:
+            merchant_customer = instance.customermerchant_set.get(merchant=merchant)
+        except CustomerMerchant.DoesNotExist:
+            return Response(
+                success=False,
+                message="Customer does not exist for merchant",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = self.get_serializer(
+            instance, context={"merchant": merchant, "hide_user_id": True}
+        )
         return Response(
             success=True,
             message="Customer information retrieved successfully.",
