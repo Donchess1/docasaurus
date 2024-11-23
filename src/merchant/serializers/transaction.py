@@ -251,6 +251,21 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
                     raise serializers.ValidationError(message)
         return entities
 
+    def validate(self, data):
+        buyer = data.get("buyer")
+        entities = data.get("entities", [])
+
+        # Check if any seller email matches the buyer email
+        for entity in entities:
+            if entity.get("seller") == buyer:
+                raise serializers.ValidationError(
+                    {
+                        "user": f"Buyer ({buyer}) and Seller ({entity['seller']}) cannot be the same."
+                    }
+                )
+
+        return data
+
     @transaction.atomic
     def create(self, validated_data):
         merchant = self.context.get("merchant")

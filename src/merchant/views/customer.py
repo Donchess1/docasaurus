@@ -99,7 +99,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{otp_key}"
         )
 
-        payload = {"session_lifetime": "120MINS", "url": url}
+        payload = {"url": url}
         return Response(
             success=True,
             message="Widget session created successfully",

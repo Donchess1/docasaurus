@@ -327,7 +327,7 @@ class MerchantCustomerView(generics.CreateAPIView):
         if self.request.method == "POST":
             return RegisterCustomerSerializer
         return self.serializer_class
-    
+
     def perform_create(self, serializer):
         instance = serializer.save()
         return instance
@@ -345,9 +345,9 @@ class MerchantCustomerView(generics.CreateAPIView):
                 errors=serializer.errors,
             )
         instance = self.perform_create(serializer)
-        serializer = CustomerUserProfileSerializer(instance.customer, context={
-            "hide_user_id": True, "merchant": merchant
-        })
+        serializer = CustomerUserProfileSerializer(
+            instance.customer, context={"hide_user_id": True, "merchant": merchant}
+        )
         return Response(
             success=True,
             message="Customer created successfully",
