@@ -29,7 +29,7 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
 
 
-class MerchantCreateView(generics.CreateAPIView):
+class ConsoleMerchantCreateView(generics.CreateAPIView):
     serializer_class = MerchantCreateSerializer
     queryset = Merchant.objects.all()
     permission_classes = (IsSuperAdmin,)
