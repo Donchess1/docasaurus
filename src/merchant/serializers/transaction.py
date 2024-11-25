@@ -176,7 +176,7 @@ class EscrowEntitySerializer(serializers.Serializer):
 
 class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     buyer = serializers.EmailField()
-    redirect_url = serializers.URLField(required=False)
+    redirect_url = serializers.URLField()
     payout_configuration = serializers.PrimaryKeyRelatedField(
         queryset=PayoutConfig.objects.all(), required=False
     )

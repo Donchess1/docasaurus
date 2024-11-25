@@ -3,6 +3,7 @@ from django.urls import path
 from users.views.bank import UserBankAccountListCreateView
 from users.views.buyer import RegisterBuyerView
 from users.views.login import LoginView
+from users.views.merchant import RegisterMerchantView
 from users.views.password import (
     ChangePasswordView,
     ForgotPasswordView,
@@ -32,6 +33,7 @@ urlpatterns = [
     # =================================================================
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
     path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
+    path("register/merchant", RegisterMerchantView.as_view(), name="register-merchant"),
     path("resend-otp", ResendAccountVerificationOTPView.as_view(), name="resend-account-otp",),
     path("verify-account", VerifyOTPView.as_view(), name="verify-email"),
     path("login", LoginView.as_view(), name="login"),
