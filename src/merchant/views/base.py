@@ -235,7 +235,7 @@ class ConsoleGenerateMerchantApiKeyView(generics.GenericAPIView):
 
 class MerchantApiKeyView(generics.GenericAPIView):
     serializer_class = ApiKeySerializer
-    permission_classes = (IsSuperAdmin,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -243,7 +243,7 @@ class MerchantApiKeyView(generics.GenericAPIView):
         if not merchant:
             return Response(
                 success=False,
-                message="Merchant does not exist",
+                message="Merchant account does not exist!",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
         serializer = self.get_serializer(
