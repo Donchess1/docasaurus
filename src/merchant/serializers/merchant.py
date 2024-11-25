@@ -228,9 +228,9 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
 
 
 class RegisterCustomerSerializer(serializers.Serializer):
-    # customer_type = serializers.ChoiceField(
-    #     choices=("BUYER", "SELLER", "CUSTOM"),
-    # )
+    customer_type = serializers.ChoiceField(
+        choices=("BUYER", "SELLER", "CUSTOM"), required=False
+    )
     email = serializers.EmailField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
