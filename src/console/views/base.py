@@ -199,7 +199,7 @@ class UserViewSet(
     @action(
         detail=True,
         methods=["get"],
-        permission_classes=[IsSuperAdmin],
+        permission_classes=[permissions.IsAuthenticated],
         url_path="wallets",
         serializer_class=ConsoleUserWalletSerializer,
     )
