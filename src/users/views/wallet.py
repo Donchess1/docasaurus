@@ -5,7 +5,7 @@ from users.serializers.wallet import UserWalletSerializer
 from utils.response import Response
 
 
-class UserWalletListView(generics.CreateAPIView):
+class UserWalletListView(generics.ListAPIView):
     serializer_class = UserWalletSerializer
     permission_classes = [permissions.IsAuthenticated]
 
