@@ -153,7 +153,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
             )
 
         if instance.status == "ESCROW":
-            stakeholders = get_escrow_transaction_stakeholders(id)
+            stakeholders = get_escrow_transaction_stakeholders(instance)
             if request.user.email not in stakeholders.values():
                 return Response(
                     success=False,
@@ -211,7 +211,7 @@ class UserTransactionDetailView(generics.GenericAPIView):
             )
         new_status = serializer.validated_data.get("status")
         # The seller should not be able to approve a transaction that has not been paid for
-        stakeholders = get_escrow_transaction_stakeholders(instance.reference)
+        stakeholders = get_escrow_transaction_stakeholders(instance)
         if (
             user.email == stakeholders["SELLER"]
             and new_status == "APPROVED"
@@ -418,7 +418,7 @@ class TransactionDetailView(generics.GenericAPIView):
                 message=f"{(instance.type).title()} transactions cannot be revoked",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        stakeholders = get_escrow_transaction_stakeholders(instance.reference)
+        stakeholders = get_escrow_transaction_stakeholders(instance)
         if user.email in stakeholders.values():
             return Response(
                 success=False,
@@ -583,16 +583,15 @@ class LockEscrowFundsView(generics.CreateAPIView):
                 errors=serializer.errors,
             )
         reference = serializer.validated_data.get("transaction_reference")
+        txn = get_transaction_instance(reference)
         # Only the associated buyer can lock funds
-        stakeholders = get_escrow_transaction_stakeholders(reference)
+        stakeholders = get_escrow_transaction_stakeholders(txn)
         if request.user.email != stakeholders["BUYER"]:
             return Response(
                 success=False,
                 status_code=status.HTTP_403_FORBIDDEN,
                 message="Only buyer can lock funds",
             )
-
-        txn = Transaction.objects.filter(reference=reference).first()
         # Evaluating free escrow transactions
         buyer_free_escrow_credits = int(profile.free_escrow_transactions)
         amount_payable = txn.amount + txn.charge
@@ -752,8 +751,7 @@ class FundEscrowTransactionView(generics.GenericAPIView):
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
-        stakeholders = get_escrow_transaction_stakeholders(ref)
+        stakeholders = get_escrow_transaction_stakeholders(instance)
         if request.user.email != stakeholders["BUYER"]:
             return Response(
                 success=False,
@@ -860,8 +858,7 @@ class UnlockEscrowFundsView(generics.CreateAPIView):
                 message="Transaction does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
-        stakeholders = get_escrow_transaction_stakeholders(ref)
+        stakeholders = get_escrow_transaction_stakeholders(instance)
         if request.user.email != stakeholders["BUYER"]:
             return Response(
                 success=False,

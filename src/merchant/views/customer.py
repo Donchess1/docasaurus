@@ -169,7 +169,9 @@ class CustomerTransactionListView(generics.ListAPIView):
         )
         qs = self.paginate_queryset(filtered_queryset)
         serializer = self.get_serializer(
-            qs, context={"hide_escrow_details": True}, many=True
+            qs,
+            context={"hide_escrow_details": True, "customer_email": customer_email},
+            many=True,
         )
         self.pagination_class.message = "Transactions retrieved successfully"
         response = self.get_paginated_response(

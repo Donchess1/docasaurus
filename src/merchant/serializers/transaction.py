@@ -34,7 +34,11 @@ from merchant.utils import (
 from transaction.serializers.locked_amount import LockedAmountSerializer
 from transaction.services import get_escrow_transaction_parties_info
 from utils.activity_log import extract_api_request_metadata, log_transaction_activity
-from utils.transaction import get_merchant_escrow_transaction_stakeholders
+from utils.transaction import (
+    get_escrow_transaction_stakeholders,
+    get_merchant_escrow_transaction_stakeholders,
+    invert_escrow_transaction_stakeholders,
+)
 from utils.utils import (
     SYSTEM_CURRENCIES,
     add_commas_to_transaction_amount,
@@ -91,6 +95,7 @@ class EscrowTransactionMetaSerializer(serializers.ModelSerializer):
 class MerchantTransactionSerializer(serializers.ModelSerializer):
     # locked_amount = serializers.SerializerMethodField()
     escrow = serializers.SerializerMethodField()
+    customer_role = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -109,6 +114,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             # "provider",
             # "provider_tx_reference",
             "meta",
+            "customer_role",
             # "merchant",
             "verified",
             # "locked_amount",
@@ -158,6 +164,14 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         dispute = Dispute.objects.filter(transaction=obj).first()
         data["dispute_raised"] = True if dispute else False
         return data
+
+    def get_customer_role(self, obj):
+        customer_email = self.context.get("customer_email")
+        if not customer_email:
+            return None
+        stakeholders = get_escrow_transaction_stakeholders(obj)
+        stakeholders_map = invert_escrow_transaction_stakeholders(stakeholders)
+        return stakeholders_map.get(customer_email)
 
 
 class EscrowItemSerializer(serializers.Serializer):
