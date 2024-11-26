@@ -61,8 +61,8 @@ urlpatterns = [
     # =================================================================
     path("generate-widget-session", CustomerWidgetSessionView.as_view(), name="customer-widget-session",),
     path("customer-transactions", CustomerTransactionListView.as_view(), name="customer-transactions",),
-    path("customers/unlock-funds", UnlockEscrowFundsByBuyerView.as_view(), name="unlock-customer-escrow-funds-buyer",),
     path("customer-transactions/<uuid:id>", CustomerTransactionDetailView.as_view(), name="customer-transaction-detail-view",),
+    path("customers/unlock-funds", UnlockEscrowFundsByBuyerView.as_view(), name="unlock-customer-escrow-funds-buyer",),
     path("customers/initiate-withdrawal", InitiateMerchantWalletWithdrawalView.as_view(), name="initiate-wallet-withdrawal",),
     path("customers/confirm-withdrawal", ConfirmMerchantWalletWithdrawalView.as_view(), name="confirm-wallet-withdrawal",
     ),
