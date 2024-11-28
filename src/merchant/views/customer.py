@@ -44,8 +44,7 @@ from utils.utils import (
     get_withdrawal_fee,
 )
 
-CUSTOMER_WIDGET_BUYER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BUYER_BASE_URL", "")
-CUSTOMER_WIDGET_SELLER_BASE_URL = os.environ.get("CUSTOMER_WIDGET_SELLER_BASE_URL", "")
+CUSTOMER_WIDGET_BASE_URL = os.environ.get("CUSTOMER_WIDGET_BASE_URL", "")
 
 User = get_user_model()
 
@@ -80,7 +79,6 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
         res = serializer.validated_data
         obj = res.get("customer_instance")
         user = obj.customer.user
-        user_type = obj.user_type
         token = self.jwt_client.sign(user.id)
         access_key = token["access_token"]
         merchant_id = str(merchant.id)
@@ -93,12 +91,8 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
         }
         with Cache() as cache:
             cache.set(otp_key, value, 60 * 60 * 5)  # 5 minutes
-        url = (
-            f"{CUSTOMER_WIDGET_BUYER_BASE_URL}/{otp_key}"
-            if user_type == "BUYER"
-            else f"{CUSTOMER_WIDGET_SELLER_BASE_URL}/{otp_key}"
-        )
 
+        url = f"{CUSTOMER_WIDGET_BASE_URL}/{otp_key}"
         payload = {"url": url}
         return Response(
             success=True,
