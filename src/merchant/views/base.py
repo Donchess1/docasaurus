@@ -283,6 +283,31 @@ class MerchantApiKeyView(generics.GenericAPIView):
 
 class MerchantProfileView(generics.GenericAPIView):
     serializer_class = MerchantSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        merchant = Merchant.objects.filter(user_id=user).first()
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant account does not exist!",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(
+            merchant,
+            context={"show_complete_wallet_info": True, "show_system_metrics": True},
+        )
+        return Response(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Merchant profile retrieved successfully",
+            data=serializer.data,
+        )
+
+
+class MerchantProfileByAPIKeyView(generics.GenericAPIView):
+    serializer_class = MerchantSerializer
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
