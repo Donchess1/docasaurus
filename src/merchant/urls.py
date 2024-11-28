@@ -5,6 +5,7 @@ from merchant.views.base import (
     MerchantApiKeyView,
     MerchantCustomerDetailView,
     MerchantCustomerView,
+    MerchantProfileByAPIKeyView,
     MerchantProfileView,
     MerchantWalletsView,
 )
@@ -35,11 +36,12 @@ router = DefaultRouter()
 router.register(r"payout-config", PayoutConfigViewSet)
 urlpatterns = [
     path("api-key", MerchantApiKeyView.as_view(), name="merchant-api-key"),
+    path("profile-info", MerchantProfileView.as_view(), name="merchant-profile"),
     # =================================================================
     # MERCHANT AUTHORIZED CALLS VIA API KEY
     # =================================================================
     path("", include(router.urls)),  # payout config
-    path("profile", MerchantProfileView.as_view(), name="merchant-profile"),
+    path("profile", MerchantProfileByAPIKeyView.as_view(), name="merchant-profile-by-api-key"),
     path("wallets", MerchantWalletsView.as_view(), name="merchant-wallets"),
     path("customers", MerchantCustomerView.as_view(), name="register-merchant-customer"),
     path("customers/<int:id>", MerchantCustomerDetailView.as_view(), name="merchant-customer-user-detail",),
