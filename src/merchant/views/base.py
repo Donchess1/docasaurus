@@ -138,7 +138,7 @@ class MerchantDetailView(generics.GenericAPIView):
 
 class ConsoleMerchantCustomerView(generics.ListAPIView):
     serializer_class = CustomerUserProfileSerializer
-    permission_classes = (IsSuperAdmin,)
+    permission_classes = (permissions.IsAuthenticated,)
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
