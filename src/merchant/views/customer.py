@@ -30,6 +30,7 @@ from merchant.utils import (
     initiate_gateway_withdrawal_transaction,
     validate_request,
     verify_otp,
+    MINIMUM_WITHDRAWAL_AMOUNT,
 )
 from transaction.filters import TransactionFilter
 from utils.pagination import CustomPagination
@@ -90,7 +91,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 5)  # 5 mins
+            cache.set(otp_key, value, 60 * 5)  # 5 mins
 
         url = f"{CUSTOMER_WIDGET_BASE_URL}/{otp_key}"
         payload = {"url": url}
@@ -308,10 +309,16 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 10)
+            cache.set(otp_key, value, 60 * 10)
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
         currency = data.get("currency")
+        if amount < MINIMUM_WITHDRAWAL_AMOUNT:
+            return Response(
+            success=False,
+            message=f"Lowest withdrawable amount is {currency}100",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
 
         dynamic_values = {
             "otp": otp,
@@ -364,11 +371,17 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 10)
+            cache.set(otp_key, value, 60 * 10)
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
         currency = data.get("currency")
         email = data.get("email")
+        if amount < MINIMUM_WITHDRAWAL_AMOUNT:
+            return Response(
+            success=False,
+            message=f"Lowest withdrawable amount is {currency}100",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
 
         dynamic_values = {
             "otp": otp,

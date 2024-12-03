@@ -36,6 +36,7 @@ cache = Cache()
 flw_api = FlwAPI
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "")
+MINIMUM_WITHDRAWAL_AMOUNT = 100
 
 
 def validate_request(request):
