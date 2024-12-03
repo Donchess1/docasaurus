@@ -33,7 +33,9 @@ def get_user_owned_transaction_queryset(
     user: User, currency: str = "NGN"
 ) -> QuerySet[Transaction]:
     # Transactions where user is the main user or user is involved in escrow
-    # this includes all deposits, withdrawals and escrow transactions
+    # this includes all deposits, withdrawals and escrow transactions --> DEPOSIT, WITHDRAW, ESCROW
+    # product purchases and settlement transactions --> PRODUCT, SETTLEMENT
+    # merchant API settlement transactions --> MERCHANT_SETTLEMENT
     # where the user was a stakeholder
     queryset = (
         Transaction.objects.filter(

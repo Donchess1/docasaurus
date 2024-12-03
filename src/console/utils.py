@@ -387,11 +387,17 @@ def get_user_system_metrics(user: User, currency: str = "NGN") -> dict:
     deposits = transactions.filter(type="DEPOSIT").count()
     withdrawals = transactions.filter(type="WITHDRAW").count()
     escrows = transactions.filter(type="ESCROW").count()
+    product_purchases = transactions.filter(type="PRODUCT").count()
+    product_settlements = transactions.filter(type="SETTLEMENT").count()
+    merchant_settlements = transactions.filter(type="MERCHANT_SETTLEMENT").count()
     disputes = disputes.count()
     return {
         "total_transactions": total,
         "deposits": deposits,
         "withdrawals": withdrawals,
         "escrows": escrows,
+        "product_purchases": product_purchases,
+        "product_settlements": product_settlements,
+        "merchant_settlements": merchant_settlements,
         "disputes": disputes,
     }

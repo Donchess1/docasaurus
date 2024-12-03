@@ -121,6 +121,7 @@ def authorized_api_call(view_func):
 
         logger.debug("Setting merchant attribute in request: %s", merchant.id)
         setattr(req, "merchant", merchant)
+        setattr(req, "authorization_channel", "API_KEY" if api_key_or_token.startswith("MYB") else "AUTH_TOKEN")
 
         logger.info("Authorization successful. Proceeding to view function.")
         return view_func(request, *args, **kwargs)

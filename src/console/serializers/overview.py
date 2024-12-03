@@ -22,4 +22,7 @@ class UserSystemMetricsSerializer(serializers.Serializer):
     deposits = serializers.IntegerField()
     withdrawals = serializers.IntegerField()
     escrows = serializers.IntegerField()
+    product_purchases = serializers.IntegerField()
+    product_settlements = serializers.IntegerField()
+    merchant_settlements = serializers.IntegerField()
     disputes = serializers.IntegerField()

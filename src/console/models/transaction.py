@@ -27,7 +27,10 @@ class Transaction(models.Model):
         ("ESCROW", "ESCROW"),
         ("MERCHANT_SETTLEMENT", "MERCHANT_SETTLEMENT"),
         ("PRODUCT", "PRODUCT"),
-        ("SETTLEMENT", "SETTLEMENT"),
+        (
+            "SETTLEMENT",
+            "SETTLEMENT",
+        ),  # Product purchases are eventually resolved as settlements into product owner's wallet
     )
     PROVIDER = (
         ("FLUTTERWAVE", "FLUTTERWAVE"),

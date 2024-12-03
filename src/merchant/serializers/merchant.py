@@ -141,7 +141,9 @@ class MerchantSerializer(serializers.ModelSerializer):
         user = obj.user_id
         metrics_data = get_user_system_metrics(user)
         serializer = UserSystemMetricsSerializer(metrics_data)
-        return serializer.data
+        data = serializer.data
+        data["payout_configurations"] = PayoutConfig.objects.filter(merchant=obj).count()
+        return data
 
     def get_is_active(self, obj):
         # Check if UserProfile exists and then access is_deactivated
