@@ -264,7 +264,7 @@ class GenerateOneTimeLoginCodeView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 10)
+            cache.set(otp_key, value, 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,
@@ -311,7 +311,7 @@ class GenerateOneTimeVerificationCodeView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 10)
+            cache.set(otp_key, value, 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,

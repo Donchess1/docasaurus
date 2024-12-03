@@ -55,7 +55,7 @@ class ForgotPasswordView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 15)  # OTP/Token expires in 15 minutes
+            cache.set(otp_key, value, 60 * 15)  # OTP/Token expires in 15 minutes
         dynamic_values = {
             "first_name": name.split(" ")[0],
             "recipient": email,
