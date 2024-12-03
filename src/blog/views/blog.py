@@ -224,13 +224,13 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             return Response(
                 success=True,
                 message="No post IDs provided.",
-                status=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         BlogPost.objects.filter(id__in=post_ids).delete()
         return Response(
             success=True,
             message="Selected posts permanently deleted.",
-            status=status.HTTP_204_NO_CONTENT,
+            status_code=status.HTTP_204_NO_CONTENT,
         )
 
     @swagger_auto_schema(
