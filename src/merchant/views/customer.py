@@ -30,6 +30,7 @@ from merchant.utils import (
     initiate_gateway_withdrawal_transaction,
     validate_request,
     verify_otp,
+    MINIMUM_WITHDRAWAL_AMOUNT,
 )
 from transaction.filters import TransactionFilter
 from utils.pagination import CustomPagination
@@ -312,10 +313,10 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
         merchant_platform = data.get("merchant_platform")
         amount = data.get("amount")
         currency = data.get("currency")
-        if amount < 100:
+        if amount < MINIMUM_WITHDRAWAL_AMOUNT:
             return Response(
             success=False,
-            message="Lowest withdrawable amount is 100",
+            message=f"Lowest withdrawable amount is {currency}100",
             status_code=status.HTTP_400_BAD_REQUEST
         )
 
@@ -375,10 +376,10 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
         amount = data.get("amount")
         currency = data.get("currency")
         email = data.get("email")
-        if amount < 100:
+        if amount < MINIMUM_WITHDRAWAL_AMOUNT:
             return Response(
             success=False,
-            message="Lowest withdrawable amount is 100",
+            message=f"Lowest withdrawable amount is {currency}100",
             status_code=status.HTTP_400_BAD_REQUEST
         )
 
