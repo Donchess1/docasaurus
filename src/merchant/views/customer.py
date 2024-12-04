@@ -25,12 +25,12 @@ from merchant.serializers.transaction import (
     MerchantTransactionSerializer,
 )
 from merchant.utils import (
+    MINIMUM_WITHDRAWAL_AMOUNT,
     get_customer_merchant_instance,
     get_merchant_by_id,
     initiate_gateway_withdrawal_transaction,
     validate_request,
     verify_otp,
-    MINIMUM_WITHDRAWAL_AMOUNT,
 )
 from transaction.filters import TransactionFilter
 from utils.pagination import CustomPagination
@@ -315,10 +315,10 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
         currency = data.get("currency")
         if amount < MINIMUM_WITHDRAWAL_AMOUNT:
             return Response(
-            success=False,
-            message=f"Lowest withdrawable amount is {currency}100",
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+                success=False,
+                message=f"Lowest withdrawable amount is {currency}{MINIMUM_WITHDRAWAL_AMOUNT}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         dynamic_values = {
             "otp": otp,
@@ -378,10 +378,10 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
         email = data.get("email")
         if amount < MINIMUM_WITHDRAWAL_AMOUNT:
             return Response(
-            success=False,
-            message=f"Lowest withdrawable amount is {currency}100",
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+                success=False,
+                message=f"Lowest withdrawable amount is {currency}{MINIMUM_WITHDRAWAL_AMOUNT}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         dynamic_values = {
             "otp": otp,

@@ -142,7 +142,9 @@ class MerchantSerializer(serializers.ModelSerializer):
         metrics_data = get_user_system_metrics(user)
         serializer = UserSystemMetricsSerializer(metrics_data)
         data = serializer.data
-        data["payout_configurations"] = PayoutConfig.objects.filter(merchant=obj).count()
+        data["payout_configurations"] = PayoutConfig.objects.filter(
+            merchant=obj
+        ).count()
         return data
 
     def get_is_active(self, obj):
