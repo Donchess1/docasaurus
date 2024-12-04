@@ -232,19 +232,3 @@ class BlogPostViewSet(viewsets.ModelViewSet):
             message="Selected posts permanently deleted.",
             status_code=status.HTTP_204_NO_CONTENT,
         )
-
-    @swagger_auto_schema(
-        operation_description="Get deleted post's title", responses={204: "No content"}
-    )
-    @action(detail=False, methods=["get"])
-    def show_deleted(self, request):
-        deleted_blogs = BlogPost.objects.filter(deleted_at__isnull=False)
-        serializer = BlogPostSerializer(deleted_blogs, many=True)
-        deleted_blog_titles = [post["title"] for post in serializer.data]
-        deleted_titles_str = ", ".join(deleted_blog_titles)
-        return Response(
-            success=True,
-            message=f"{deleted_titles_str} was deleted successfully.",
-            status=status.HTTP_200_OK,
-            data=serializer.data,
-        )
