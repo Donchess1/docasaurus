@@ -15,7 +15,7 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def authorized_api_call(view_func):
+def authorized_merchant_apikey_or_token_call(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         req = request.request

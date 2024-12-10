@@ -8,7 +8,7 @@ from rest_framework.exceptions import NotFound
 
 from console.permissions import IsSuperAdmin
 from console.serializers.base import EmptySerializer
-from merchant.decorators import authorized_api_call
+from merchant.decorators import authorized_merchant_apikey_or_token_call
 from merchant.filters import MerchantFilter
 from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
 from merchant.serializers.merchant import (
@@ -311,7 +311,7 @@ class MerchantProfileByAPIKeyView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         serializer = self.get_serializer(
@@ -330,7 +330,7 @@ class MerchantWalletsView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         _, wallets = merchant.user_id.get_wallets()
@@ -357,7 +357,7 @@ class MerchantCustomerView(generics.CreateAPIView):
         instance = serializer.save()
         return instance
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def post(self, request, *args, **kwargs):
         merchant = request.merchant
         serializer = self.get_serializer(
@@ -380,7 +380,7 @@ class MerchantCustomerView(generics.CreateAPIView):
             data=serializer.data,
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         customers = merchant.customer_set.all()
@@ -416,7 +416,7 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
         instance = serializer.save()
         return instance
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = Customer.objects.filter(id=id).first()
@@ -444,7 +444,7 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
             data=serializer.data,
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def patch(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = Customer.objects.filter(id=id).first()

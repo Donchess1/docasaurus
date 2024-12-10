@@ -17,6 +17,8 @@ from merchant.views.customer import (
     CustomerWidgetSessionView,
     InitiateMerchantWalletWithdrawalByMerchantView,
     InitiateMerchantWalletWithdrawalView,
+    MerchantDashboardCustomerTransactionDetailView,
+    MerchantDashboardCustomerTransactionListByUserIdView,
 )
 from merchant.views.payout import PayoutConfigViewSet
 from merchant.views.transaction import (
@@ -38,7 +40,7 @@ urlpatterns = [
     path("api-key", MerchantApiKeyView.as_view(), name="merchant-api-key"),
     path("profile-info", MerchantProfileView.as_view(), name="merchant-profile"),
     # =================================================================
-    # MERCHANT AUTHORIZED CALLS VIA API KEY
+    # MERCHANT AUTHORIZED CALLS VIA API KEY or JWT TOKEN
     # =================================================================
     path("", include(router.urls)),  # payout config
     path("profile", MerchantProfileByAPIKeyView.as_view(), name="merchant-profile-by-api-key"),
@@ -53,6 +55,10 @@ urlpatterns = [
     path("customer-transactions/<str:id>/release-funds", ReleaseEscrowFundsByMerchantView.as_view(), name="unlock-customer-escrow-funds-merchant",),
     path("initiate-customer-withdrawal", InitiateMerchantWalletWithdrawalByMerchantView.as_view(), name="initiate-customer-wallet-withdrawal",),
     path("confirm-customer-withdrawal", ConfirmMerchantWalletWithdrawalByMerchantView.as_view(), name="confirm-customer-wallet-withdrawal",),
+    # CUSTOMER MANAGEMENT
+    path("dashboard/customer-transactions", MerchantDashboardCustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
+    path("dashboard/customer-transactions/<uuid:id>", MerchantDashboardCustomerTransactionDetailView.as_view(), name="dasboard-customer-transaction-detail",),
+    # path("dashboard/disputes", CustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
     # =================================================================
     # ESCROW INITIALIZATION & VERIFICATION
     # =================================================================

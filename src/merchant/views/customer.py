@@ -11,7 +11,7 @@ from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.cache import Cache
 from core.resources.jwt_client import JWTClient
 from merchant import tasks
-from merchant.decorators import authorized_api_call
+from merchant.decorators import authorized_merchant_apikey_or_token_call
 from merchant.models import Merchant
 from merchant.serializers.dispute import MerchantEscrowDisputeSerializer
 from merchant.serializers.merchant import (
@@ -62,7 +62,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             201: CustomerWidgetSessionPayloadSerializer,
         },
     )
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def post(self, request, *args, **kwargs):
         merchant = request.merchant
         serializer = self.serializer_class(
@@ -274,6 +274,124 @@ class CustomerTransactionDetailView(generics.GenericAPIView):
         )
 
 
+class MerchantDashboardCustomerTransactionListByUserIdView(generics.ListAPIView):
+    serializer_class = MerchantTransactionSerializer
+    queryset = Transaction.objects.filter().order_by("-created_at")
+    permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = CustomPagination
+    filter_backends = [django_filters.DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = TransactionFilter
+    search_fields = ["reference", "customer"]
+    throttle_scope = "merchant_api"
+
+    @authorized_merchant_apikey_or_token_call
+    def list(self, request, *args, **kwargs):
+        merchant = request.merchant
+        customer_email = request.query_params.get("customer_email")
+        if not customer_email:
+            return Response(
+                success=False,
+                message="Customer email is required. Pass 'customer_email' in query parameters",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        merchant_customer = get_customer_merchant_instance(customer_email, merchant)
+        if not merchant_customer:
+            return Response(
+                success=False,
+                message="Customer does not exist for merchant",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = self.get_filtered_queryset(request, merchant, customer_email)
+        # Pagination and response serialization
+        qs = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(
+            qs,
+            context={"hide_escrow_details": True, "customer_email": customer_email},
+            many=True,
+        )
+        self.pagination_class.message = "Transactions retrieved successfully"
+        return self.get_paginated_response(serializer.data)
+
+    def get_filtered_queryset(self, request, merchant, customer_email):
+        """
+        Get filtered queryset based on the type of transaction and other filters.
+        """
+        queryset = self.get_queryset().filter(merchant=merchant)
+        transaction_type = request.query_params.get("type", "").upper()
+
+        if transaction_type == "ESCROW":
+            queryset = self.filter_escrow_transactions(queryset, customer_email)
+        elif transaction_type in ["DEPOSIT", "WITHDRAW"]:
+            queryset = queryset.filter(
+                type=transaction_type, user_id__email=customer_email
+            )
+        else:
+            queryset = self.filter_queryset(queryset)
+        return queryset
+
+    def filter_escrow_transactions(self, queryset, customer_email):
+        """
+        Apply additional filters for ESCROW transactions.
+        """
+        queryset = queryset.filter(type="ESCROW")
+        queryset = queryset.filter(
+            Q(escrowmeta__partner_email=customer_email)
+            | Q(escrowmeta__meta__parties__buyer=customer_email)
+            | Q(escrowmeta__meta__parties__seller=customer_email)
+        ).distinct()
+
+        # Subquery to get the related LockedAmount for each transaction.
+        locked_amount_subquery = LockedAmount.objects.filter(
+            transaction=OuterRef("pk")
+        ).values("transaction")
+        escrow_queryset = queryset.annotate(
+            has_locked_amount=Subquery(locked_amount_subquery)
+        ).filter(has_locked_amount__isnull=False)
+
+        return self.filter_queryset(escrow_queryset.filter(status="SUCCESSFUL"))
+
+
+class MerchantDashboardCustomerTransactionDetailView(generics.GenericAPIView):
+    serializer_class = MerchantTransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = "merchant_api"
+
+    def get_queryset(self):
+        return Transaction.objects.all()
+
+    @swagger_auto_schema(
+        operation_description="Get A Customer transaction detail by ID on Merchant Dashboard",
+        responses={
+            200: None,
+        },
+    )
+    @authorized_merchant_apikey_or_token_call
+    def get(self, request, id, *args, **kwargs):
+        merchant = request.merchant
+        instance = self.get_queryset().filter(id=id).first()
+        if not instance:
+            return Response(
+                success=False,
+                message="Transaction does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if instance.merchant != merchant:
+            return Response(
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to view this transaction",
+            )
+
+        serializer = self.get_serializer(instance)
+        return Response(
+            success=True,
+            message="Transaction detail retrieved successfully.",
+            status_code=status.HTTP_200_OK,
+            data=serializer.data,
+        )
+
+
 class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
     serializer_class = InitiateCustomerWalletWithdrawalSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -343,7 +461,7 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def post(self, request):
         merchant = request.merchant
         serializer = self.serializer_class(
@@ -457,7 +575,7 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def post(self, request):
         merchant = request.merchant
         serializer = self.serializer_class(

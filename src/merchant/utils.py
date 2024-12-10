@@ -85,6 +85,8 @@ def initiate_gateway_withdrawal_transaction(user, data):
     bank_code = data.get("bank_code")
     account_number = data.get("account_number")
     merchant_platform = data.get("merchant_platform_name")
+    merchant_id = data.get("merchant_id")
+    merchant = get_merchant_by_id(merchant_id)
     currency = data.get("currency", "NGN")
     tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
     description = "MyBalance TRF-API"
@@ -97,6 +99,7 @@ def initiate_gateway_withdrawal_transaction(user, data):
         mode="MERCHANT_API",
         status="PENDING",
         reference=tx_ref,
+        merchant=merchant,
         currency=currency,
         provider="FLUTTERWAVE",
         meta={"title": "Wallet debit"},

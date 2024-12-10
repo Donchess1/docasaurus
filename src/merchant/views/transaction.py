@@ -11,7 +11,7 @@ from rest_framework.decorators import action
 
 from console.models.transaction import EscrowMeta, LockedAmount, Transaction
 from core.resources.flutterwave import FlwAPI
-from merchant.decorators import authorized_api_call
+from merchant.decorators import authorized_merchant_apikey_or_token_call
 from merchant.models import CustomerMerchant, Merchant, PayoutConfig
 from merchant.serializers.transaction import (
     CreateMerchantEscrowTransactionSerializer,
@@ -72,7 +72,7 @@ class MerchantTransactionListView(generics.ListAPIView):
             200: None,
         },
     )
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def list(self, request, *args, **kwargs):
         merchant = request.merchant
         queryset = Transaction.objects.filter(
@@ -95,7 +95,7 @@ class MerchantTransactionDetailView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = get_transaction_instance(id)
@@ -125,7 +125,7 @@ class MerchantTransactionActivityLogView(generics.ListAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = get_transaction_instance(id)
@@ -169,7 +169,7 @@ class MerchantSettlementTransactionListView(generics.ListAPIView):
             200: None,
         },
     )
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def list(self, request, *args, **kwargs):
         merchant = request.merchant
         queryset = self.get_queryset().filter(
@@ -197,7 +197,7 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
         instance_txn_data = serializer.save()
         return instance_txn_data
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def post(self, request, *args, **kwargs):
         request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
@@ -490,7 +490,7 @@ class MandateFundsReleaseView(generics.CreateAPIView):
             200: None,
         },
     )
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def post(self, request, id, *args, **kwargs):
         request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
@@ -584,7 +584,7 @@ class ReleaseEscrowFundsByMerchantView(generics.GenericAPIView):
             200: None,
         },
     )
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, id, *args, **kwargs):
         request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
