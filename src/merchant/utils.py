@@ -612,6 +612,7 @@ def settle_merchant_escrow_charges(
         merchant=merchant,
         amount=int(merchant_settlement),
         status="SUCCESSFUL",
+        mode="MERCHANT_API",
         reference=tx_ref,
         currency=currency,
         provider="MYBALANCE",
