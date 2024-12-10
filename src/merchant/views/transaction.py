@@ -567,7 +567,7 @@ class MandateFundsReleaseView(generics.CreateAPIView):
         # TODO: Send out email notification to buyer, seller and merchant
 
         return Response(
-            status=True,
+            success=True,
             message="Funds release mandated successfully",
             status_code=status.HTTP_200_OK,
         )
