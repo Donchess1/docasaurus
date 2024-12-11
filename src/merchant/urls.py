@@ -20,6 +20,12 @@ from merchant.views.customer import (
     MerchantDashboardCustomerTransactionDetailView,
     MerchantDashboardCustomerTransactionListByUserIdView,
 )
+from merchant.views.dispute import (
+    MerchantDashboardCustomerDisputeDetailView,
+    MerchantDashboardCustomerDisputeListView,
+    MerchantDisputeDetailView,
+    MerchantDisputeListView,
+)
 from merchant.views.payout import PayoutConfigViewSet
 from merchant.views.transaction import (
     InitiateMerchantEscrowTransactionView,
@@ -51,6 +57,8 @@ urlpatterns = [
     path("transactions/<str:id>", MerchantTransactionDetailView.as_view(), name="merchant-transaction-detail",),
     path("transactions/<str:id>/activity-logs", MerchantTransactionActivityLogView.as_view(), name="merchant-transaction-detail-activity-logs",),
     path("settlements", MerchantSettlementTransactionListView.as_view(), name="merchant-settlement-transactions",),
+    path("disputes", MerchantDisputeListView.as_view(), name="merchant-disputes",),
+    path("disputes/<uuid:id>", MerchantDisputeDetailView.as_view(), name="merchant-dispute-detail",),
     path("customer-transactions/<str:id>/mandate-release", MandateFundsReleaseView.as_view(), name="consent-funds-release",),
     path("customer-transactions/<str:id>/release-funds", ReleaseEscrowFundsByMerchantView.as_view(), name="unlock-customer-escrow-funds-merchant",),
     path("initiate-customer-withdrawal", InitiateMerchantWalletWithdrawalByMerchantView.as_view(), name="initiate-customer-wallet-withdrawal",),
@@ -58,6 +66,8 @@ urlpatterns = [
     # CUSTOMER MANAGEMENT
     path("dashboard/customer-transactions", MerchantDashboardCustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
     path("dashboard/customer-transactions/<uuid:id>", MerchantDashboardCustomerTransactionDetailView.as_view(), name="dasboard-customer-transaction-detail",),
+    path("dashboard/customer-disputes", MerchantDashboardCustomerDisputeListView.as_view(), name="dasboard-customer-disputes",),
+    path("dashboard/customer-disputes/<uuid:id>", MerchantDashboardCustomerDisputeDetailView.as_view(), name="dasboard-customer-dispute-detail",),
     # path("dashboard/disputes", CustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
     # =================================================================
     # ESCROW INITIALIZATION & VERIFICATION

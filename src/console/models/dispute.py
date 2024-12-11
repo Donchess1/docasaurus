@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 
 from console.models.transaction import Transaction
+from merchant.models import Merchant
 from users.models.user import CustomUser
 
 
@@ -41,6 +42,9 @@ class Dispute(models.Model):
     source = models.CharField(max_length=255, choices=SOURCE, default="PLATFORM")
     priority = models.CharField(max_length=255, choices=PRIORITY)
     reason = models.CharField(max_length=255)
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.SET_NULL, null=True, blank=True, db_index=True
+    )
     description = models.TextField()
     meta = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -48,3 +52,8 @@ class Dispute(models.Model):
 
     def __str__(self):
         return f"Dispute - Transaction ID: {self.transaction}"
+
+    def save(self, *args, **kwargs):
+        if self.transaction and not self.merchant:
+            self.merchant = self.transaction.merchant
+        super().save(*args, **kwargs)
