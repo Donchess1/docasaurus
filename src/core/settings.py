@@ -361,8 +361,8 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")
 FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"MyBalance <mybalance@oinvent.com>")
 
-
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+"""EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_BACKENDS = {
     "SENDGRID": {
         "BACKEND": EMAIL_BACKEND,
@@ -380,7 +380,7 @@ EMAIL_BACKENDS = {
         "PASSWORD": EMAIL_HOST_PASSWORD,
         "USE_TLS": EMAIL_USE_TLS,
     },
-}
+}"""
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.environ.get("STRIPE_PUBLIC_KEY")

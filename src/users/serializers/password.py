@@ -21,6 +21,26 @@ class ForgotPasswordSerializer(serializers.Serializer):
         if not user:
             raise serializers.ValidationError("User with this email does not exist.")
         return validated_response["normalized_email"].lower()
+    
+class MerchantForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        is_valid, message, validated_response = validate_email_address(
+            value, check_deliverability=True
+        )
+        
+        if not is_valid:
+            raise serializers.ValidationError(message)
+        user = User.objects.filter(
+            email=validated_response["normalized_email"].lower()
+        ).first()
+        
+        if not user:
+            raise serializers.ValidationError("User with this email does not exist.")
+        if not user.is_merchant:
+            raise serializers.ValidationError("User must be a merchant to perform this action")
+        return validated_response["normalized_email"].lower()
 
 
 class ResetPasswordSerializer(serializers.Serializer):

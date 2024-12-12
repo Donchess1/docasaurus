@@ -8,6 +8,7 @@ from users.views.password import (
     ChangePasswordView,
     ForgotPasswordView,
     ResetPasswordView,
+    MerchantForgotPasswordView,
 )
 from users.views.profile import EndUserTourGuideView, UserProfileView
 from users.views.seller import RegisterSellerView
@@ -58,5 +59,6 @@ urlpatterns = [
     path("forgot-password", ForgotPasswordView.as_view(), name="forgot-password"),
     path("reset-password", ResetPasswordView.as_view(), name="reset-password"),
     path("change-password", ChangePasswordView.as_view(), name="change-password"),
+    path("merchant/forgot-password", MerchantForgotPasswordView.as_view(), name="merchant-forgot-password"),
 ]
 # fmt: on
