@@ -34,6 +34,7 @@ class UserSystemMetricsSerializer(BaseSystemMetricsSerializer):
 class MerchantSystemMetricsSerializer(BaseSystemMetricsSerializer):
     payout_configurations = serializers.IntegerField()
     merchant_settlements = serializers.IntegerField()
+    customers = serializers.IntegerField()
 
 
 class CustomerSystemMetricsSerializer(BaseSystemMetricsSerializer):
