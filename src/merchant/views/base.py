@@ -187,7 +187,11 @@ class ConsoleMerchantCustomerView(generics.ListAPIView):
         qs = self.paginate_queryset(queryset)
         serialized_customers = self.get_serializer(
             qs,
-            context={"merchant": merchant, "hide_wallet_details": True},
+            context={
+                "merchant": merchant,
+                "hide_wallet_details": True,
+                "hide_system_metrics": True,
+            },
             many=True,
         )
         self.pagination_class.message = "Customers retrieved successfully."
@@ -346,6 +350,7 @@ class MerchantWalletsView(generics.GenericAPIView):
 class MerchantCustomerView(generics.CreateAPIView):
     serializer_class = CustomerUserProfileSerializer
     permission_classes = (permissions.AllowAny,)
+    pagination_class = CustomPagination
     throttle_scope = "merchant_api"
 
     def get_serializer_class(self, *args, **kwargs):
@@ -384,22 +389,20 @@ class MerchantCustomerView(generics.CreateAPIView):
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         customers = merchant.customer_set.all()
-        serialized_customers = self.get_serializer(
-            customers,
+        qs = self.paginate_queryset(customers)
+        serializer = self.get_serializer(
+            qs,
             many=True,
             context={
                 "merchant": merchant,
                 "hide_wallet_details": True,
                 "hide_user_id": True,
+                "hide_system_metrics": True,
             },
         )
-        return Response(
-            success=True,
-            data=serialized_customers.data,
-            message="Customers retrieved successfully",
-            status_code=status.HTTP_200_OK,
-            meta={"count": len(serialized_customers.data)},
-        )
+        self.pagination_class.message = "Customers retrieved successfully."
+        response = self.get_paginated_response(serializer.data)
+        return response
 
 
 class MerchantCustomerDetailView(generics.GenericAPIView):

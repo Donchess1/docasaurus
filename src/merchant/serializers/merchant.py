@@ -3,8 +3,14 @@ from django.db import models, transaction
 from rest_framework import serializers
 
 from business.models.business import Business
-from console.serializers.overview import UserSystemMetricsSerializer
-from console.utils import get_user_system_metrics
+from console.serializers.overview import (
+    CustomerSystemMetricsSerializer,
+    MerchantSystemMetricsSerializer,
+)
+from console.utils import (
+    get_merchant_customer_system_metrics,
+    get_merchant_system_metrics,
+)
 from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant, PayoutConfig
 from merchant.utils import (
     create_or_update_customer_user,
@@ -138,14 +144,8 @@ class MerchantSerializer(serializers.ModelSerializer):
         return serializer(wallets, many=True).data
 
     def get_system_metrics(self, obj):
-        user = obj.user_id
-        metrics_data = get_user_system_metrics(user)
-        serializer = UserSystemMetricsSerializer(metrics_data)
-        data = serializer.data
-        data["payout_configurations"] = PayoutConfig.objects.filter(
-            merchant=obj
-        ).count()
-        return data
+        metrics_data = get_merchant_system_metrics(obj)
+        return MerchantSystemMetricsSerializer(metrics_data).data
 
     def get_is_active(self, obj):
         # Check if UserProfile exists and then access is_deactivated
@@ -187,6 +187,7 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
     user_type = serializers.SerializerMethodField()
     user_id = serializers.SerializerMethodField()
     wallets = serializers.SerializerMethodField()
+    system_metrics = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
@@ -200,6 +201,7 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
             "phone_number",
             "email",
             "wallets",
+            "system_metrics",
         )
 
     def __init__(self, *args, **kwargs):
@@ -208,6 +210,8 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
             self.fields.pop("wallets")
         if self.context.get("hide_user_id"):
             self.fields.pop("user_id")
+        if self.context.get("hide_system_metrics"):
+            self.fields.pop("system_metrics")
 
     def get_customermerchant(self, obj):
         merchant = self.context.get("merchant")
@@ -248,6 +252,12 @@ class CustomerUserProfileSerializer(serializers.ModelSerializer):
             wallets = Wallet.objects.filter(user=customermerchant.customer.user)
             return MerchantCustomerWalletSerializer(wallets, many=True).data
         return []
+
+    def get_system_metrics(self, obj):
+        merchant = self.context.get("merchant")
+        customer_email = obj.user.email
+        metrics_data = get_merchant_customer_system_metrics(merchant, customer_email)
+        return CustomerSystemMetricsSerializer(metrics_data).data
 
 
 class RegisterCustomerSerializer(serializers.Serializer):

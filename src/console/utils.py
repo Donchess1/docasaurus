@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
+from django.db.models import Q
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, QuerySet, Sum
@@ -8,6 +9,7 @@ from django.utils import timezone
 
 from console.models import Dispute, EmailLog, Transaction
 from dispute.services import get_user_owned_dispute_queryset
+from merchant.models import Merchant, PayoutConfig
 from transaction.services import get_user_owned_transaction_queryset
 
 User = get_user_model()
@@ -399,5 +401,62 @@ def get_user_system_metrics(user: User, currency: str = "NGN") -> dict:
         "product_purchases": product_purchases,
         "product_settlements": product_settlements,
         "merchant_settlements": merchant_settlements,
+        "disputes": disputes,
+    }
+
+
+def get_merchant_system_metrics(merchant: Merchant, currency: str = "NGN") -> dict:
+    transactions = (
+        Transaction.objects.filter(merchant=merchant, currency=currency)
+        .order_by("-created_at")
+        .distinct()
+    )
+    disputes = Dispute.objects.filter(merchant=merchant).order_by("-created_at")
+    total_transactions = transactions.count()
+    deposits = transactions.filter(type="DEPOSIT").count()
+    withdrawals = transactions.filter(type="WITHDRAW").count()
+    escrows = transactions.filter(type="ESCROW").count()
+    merchant_settlements = transactions.filter(type="MERCHANT_SETTLEMENT").count()
+    disputes = disputes.count()
+    payout_configurations = PayoutConfig.objects.filter(merchant=merchant).count()
+    return {
+        "total_transactions": total_transactions,
+        "deposits": deposits,
+        "withdrawals": withdrawals,
+        "escrows": escrows,
+        "merchant_settlements": merchant_settlements,
+        "disputes": disputes,
+        "payout_configurations": payout_configurations,
+    }
+
+
+def get_merchant_customer_system_metrics(
+    merchant: Merchant, customer_email: str, currency: str = "NGN"
+) -> dict:
+    transactions = (
+        Transaction.objects.filter(merchant=merchant, currency=currency)
+        .filter(
+            Q(escrowmeta__meta__parties__buyer=customer_email)
+            | Q(escrowmeta__meta__parties__seller=customer_email)
+            | Q(user_id__email=customer_email)
+        )
+        .distinct()
+        .order_by("-created_at")
+    )
+    disputes = (
+        Dispute.objects.filter(merchant=merchant)
+        .filter(Q(buyer__email=customer_email) | Q(seller__email=customer_email))
+        .order_by("-created_at")
+    )
+    total_transactions = transactions.count()
+    deposits = transactions.filter(type="DEPOSIT").count()
+    withdrawals = transactions.filter(type="WITHDRAW").count()
+    escrows = transactions.filter(type="ESCROW").count()
+    disputes = disputes.count()
+    return {
+        "total_transactions": total_transactions,
+        "deposits": deposits,
+        "withdrawals": withdrawals,
+        "escrows": escrows,
         "disputes": disputes,
     }

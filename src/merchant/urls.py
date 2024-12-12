@@ -63,7 +63,7 @@ urlpatterns = [
     path("customer-transactions/<str:id>/release-funds", ReleaseEscrowFundsByMerchantView.as_view(), name="unlock-customer-escrow-funds-merchant",),
     path("initiate-customer-withdrawal", InitiateMerchantWalletWithdrawalByMerchantView.as_view(), name="initiate-customer-wallet-withdrawal",),
     path("confirm-customer-withdrawal", ConfirmMerchantWalletWithdrawalByMerchantView.as_view(), name="confirm-customer-wallet-withdrawal",),
-    # CUSTOMER MANAGEMENT
+    # DASHBOARD x CUSTOMER MANAGEMENT
     path("dashboard/customer-transactions", MerchantDashboardCustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
     path("dashboard/customer-transactions/<uuid:id>", MerchantDashboardCustomerTransactionDetailView.as_view(), name="dasboard-customer-transaction-detail",),
     path("dashboard/customer-disputes", MerchantDashboardCustomerDisputeListView.as_view(), name="dasboard-customer-disputes",),
