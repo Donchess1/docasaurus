@@ -69,6 +69,13 @@ class EmailClientV2:
         return cls.send_email(email, subject, html_content)
 
     @classmethod
+    def send_one_time_verification_code_email(cls, email: str, context: dict):
+        template_name = "one_time_verification_code.html"
+        html_content = render_to_string(template_name=template_name, context=context)
+        subject = "One-Time Verification Code 🔐"
+        return cls.send_email(email, subject, html_content)
+
+    @classmethod
     def send_reset_password_request_email(cls, email: str, context: dict):
         template_name = "reset_password_request.html"
         html_content = render_to_string(template_name=template_name, context=context)

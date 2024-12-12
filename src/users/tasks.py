@@ -20,6 +20,11 @@ def send_one_time_login_code_email(email, values):
 
 
 @shared_task
+def send_one_time_verification_code_email(email, values):
+    EmailClientV2.send_one_time_verification_code_email(email, values)
+
+
+@shared_task
 def send_reset_password_request_email(email, values):
     EmailClientV2.send_reset_password_request_email(email, values)
 

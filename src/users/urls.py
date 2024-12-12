@@ -3,6 +3,7 @@ from django.urls import path
 from users.views.bank import UserBankAccountListCreateView
 from users.views.buyer import RegisterBuyerView
 from users.views.login import LoginView
+from users.views.merchant import RegisterMerchantView
 from users.views.password import (
     ChangePasswordView,
     ForgotPasswordView,
@@ -14,6 +15,7 @@ from users.views.user import (
     EditSellerBusinessProfileView,
     EditUserProfileView,
     GenerateOneTimeLoginCodeView,
+    GenerateOneTimeVerificationCodeView,
     UpdateKYCView,
     UploadAvatarView,
 )
@@ -31,11 +33,14 @@ urlpatterns = [
     # =================================================================
     path("register", RegisterBuyerView.as_view(), name="register-buyer"),
     path("register/seller", RegisterSellerView.as_view(), name="register-seller"),
+    path("register/merchant", RegisterMerchantView.as_view(), name="register-merchant"),
     path("resend-otp", ResendAccountVerificationOTPView.as_view(), name="resend-account-otp",),
     path("verify-account", VerifyOTPView.as_view(), name="verify-email"),
     path("login", LoginView.as_view(), name="login"),
     path("send-login-otc", GenerateOneTimeLoginCodeView.as_view(), name="send-login-otc"),
     path("verify-login-otc", VerifyOneTimeLoginCodeView.as_view(), name="verify-login-otc",),
+    path("generate-otc", GenerateOneTimeVerificationCodeView.as_view(), name="send-login-otc"),
+    path("verify-otc", VerifyOneTimeLoginCodeView.as_view(), name="verify-login-otc",),
     # =================================================================
     # USER PROFILE MANAGEMENT
     # =================================================================

@@ -1,12 +1,13 @@
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
-from .views import BlogPostListCreateView, BlogPostRetrieveUpdateDestroyView
+from blog.views.blog import BlogPostViewSet
+from blog.views.tag import TagViewSet
+
+router = DefaultRouter()
+router.register(r"tags", TagViewSet)
+router.register(r"", BlogPostViewSet)
 
 urlpatterns = [
-    path("", BlogPostListCreateView.as_view(), name="blog-post-list"),
-    path(
-        "<uuid:pk>/",
-        BlogPostRetrieveUpdateDestroyView.as_view(),
-        name="blog-post-detail",
-    ),
+    path("", include(router.urls)),
 ]

@@ -20,21 +20,41 @@ def get_transaction_instance(ref_or_id):
     return instance
 
 
-def get_escrow_transaction_stakeholders(tx_ref):
+def get_escrow_transaction_stakeholders(transaction: Transaction):
     try:
-        transaction = Transaction.objects.get(reference=tx_ref)
-
-        if transaction.escrowmeta.author == "BUYER":
+        escrow_meta = transaction.escrowmeta
+        author = escrow_meta.author
+        if author == "BUYER":
             buyer_email = transaction.user_id.email
-            seller_email = transaction.escrowmeta.partner_email
-        else:
+            seller_email = escrow_meta.partner_email
+        elif author == "SELLER":
             seller_email = transaction.user_id.email
-            buyer_email = transaction.escrowmeta.partner_email
+            buyer_email = escrow_meta.partner_email
+        elif author == "MERCHANT":
+            parties = escrow_meta.meta.get("parties", {})
+            buyer_email = parties.get("buyer")
+            seller_email = parties.get("seller")
+        else:
+            buyer_email = None
+            seller_email = None
 
         return {"BUYER": buyer_email, "SELLER": seller_email}
-
-    except Transaction.DoesNotExist:
+    except Exception as e:
+        print("Error Fetching Escrow Transaction  Stakeholders: ", str(e))
         return {}
+
+
+def invert_escrow_transaction_stakeholders(stakeholders):
+    if not stakeholders.get("BUYER") or not stakeholders.get("SELLER"):
+        return stakeholders  # Return as-is if either email is missing
+
+    buyer_email = stakeholders["BUYER"]
+    seller_email = stakeholders["SELLER"]
+
+    # Add inverted mappings
+    stakeholders[buyer_email] = "BUYER"
+    stakeholders[seller_email] = "SELLER"
+    return stakeholders
 
 
 def get_escrow_transaction_users(transaction: Transaction) -> dict:

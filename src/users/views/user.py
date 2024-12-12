@@ -264,7 +264,7 @@ class GenerateOneTimeLoginCodeView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 10)
+            cache.set(otp_key, value, 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,
@@ -275,6 +275,53 @@ class GenerateOneTimeLoginCodeView(generics.GenericAPIView):
         return Response(
             success=True,
             message="Verification email sent!",
+            data=payload,
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class GenerateOneTimeVerificationCodeView(generics.GenericAPIView):
+    serializer_class = OneTimeLoginCodeSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=serializer.errors.get("email")[0],
+            )
+
+        email = serializer.validated_data["email"]
+        user = User.objects.filter(email=email).first()
+        name = user.name
+
+        otp = generate_otp()
+        otp_key = generate_temp_id()
+
+        payload = {
+            "temp_id": otp_key,
+            "email": email,
+        }
+        value = {
+            "otp": otp,
+            "email": email,
+            "name": name,
+            "is_valid": True,
+        }
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 10)
+        dynamic_values = {
+            "name": name,
+            "otp": otp,
+            "recipient": email,
+        }
+        tasks.send_one_time_verification_code_email.delay(email, dynamic_values)
+
+        return Response(
+            success=True,
+            message="One-time verification code sent!",
             data=payload,
             status_code=status.HTTP_201_CREATED,
         )

@@ -7,7 +7,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 
 from console.permissions import IsSuperAdmin
-from merchant.decorators import authorized_api_call
+from console.serializers.base import EmptySerializer
+from merchant.decorators import authorized_merchant_apikey_or_token_call
 from merchant.filters import MerchantFilter
 from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
 from merchant.serializers.merchant import (
@@ -28,7 +29,7 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
 
 
-class MerchantCreateView(generics.CreateAPIView):
+class ConsoleMerchantCreateView(generics.CreateAPIView):
     serializer_class = MerchantCreateSerializer
     queryset = Merchant.objects.all()
     permission_classes = (IsSuperAdmin,)
@@ -137,7 +138,7 @@ class MerchantDetailView(generics.GenericAPIView):
 
 class ConsoleMerchantCustomerView(generics.ListAPIView):
     serializer_class = CustomerUserProfileSerializer
-    permission_classes = (IsSuperAdmin,)
+    permission_classes = (permissions.IsAuthenticated,)
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -186,7 +187,11 @@ class ConsoleMerchantCustomerView(generics.ListAPIView):
         qs = self.paginate_queryset(queryset)
         serialized_customers = self.get_serializer(
             qs,
-            context={"merchant": merchant, "hide_wallet_details": True},
+            context={
+                "merchant": merchant,
+                "hide_wallet_details": True,
+                "hide_system_metrics": True,
+            },
             many=True,
         )
         self.pagination_class.message = "Customers retrieved successfully."
@@ -194,9 +199,47 @@ class ConsoleMerchantCustomerView(generics.ListAPIView):
         return response
 
 
+class ConsoleGenerateMerchantApiKeyView(generics.GenericAPIView):
+    serializer_class = EmptySerializer
+    permission_classes = (IsSuperAdmin,)
+
+    def post(self, request, id, *args, **kwargs):
+        merchant = Merchant.objects.filter(id=id).first()
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant does not exist",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        raw_api_key, hashed_api_key = generate_api_key(str(merchant.id))
+        name = generate_random_text(10)
+        key_identifier = None
+
+        existing_api_key = ApiKey.objects.filter(merchant=merchant).first()
+        if existing_api_key:
+            existing_api_key.key = hashed_api_key
+            existing_api_key.save()
+            key_identifier = str(existing_api_key.id)
+        else:
+            obj = ApiKey.objects.create(
+                key=hashed_api_key, merchant=merchant, name=name
+            )
+            key_identifier = str(obj.id)
+
+        suffix = f"{generate_random_text(3)}{custom_flatten_uuid(key_identifier)}{raw_api_key}"
+        api_key = f"MYBTSTSECK-{suffix}" if env == "test" else f"MYBLIVSECK-{suffix}"
+
+        return Response(
+            success=True,
+            message="API Key generated successfully. You can only view once.",
+            status_code=status.HTTP_200_OK,
+            data={"api_key": api_key},
+        )
+
+
 class MerchantApiKeyView(generics.GenericAPIView):
     serializer_class = ApiKeySerializer
-    permission_classes = (IsSuperAdmin,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -204,7 +247,7 @@ class MerchantApiKeyView(generics.GenericAPIView):
         if not merchant:
             return Response(
                 success=False,
-                message="Merchant does not exist",
+                message="Merchant account does not exist!",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
         serializer = self.get_serializer(
@@ -244,10 +287,35 @@ class MerchantApiKeyView(generics.GenericAPIView):
 
 class MerchantProfileView(generics.GenericAPIView):
     serializer_class = MerchantSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        merchant = Merchant.objects.filter(user_id=user).first()
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant account does not exist!",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(
+            merchant,
+            context={"show_complete_wallet_info": True, "show_system_metrics": True},
+        )
+        return Response(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Merchant profile retrieved successfully",
+            data=serializer.data,
+        )
+
+
+class MerchantProfileByAPIKeyView(generics.GenericAPIView):
+    serializer_class = MerchantSerializer
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         serializer = self.get_serializer(
@@ -266,7 +334,7 @@ class MerchantWalletsView(generics.GenericAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         _, wallets = merchant.user_id.get_wallets()
@@ -282,6 +350,7 @@ class MerchantWalletsView(generics.GenericAPIView):
 class MerchantCustomerView(generics.CreateAPIView):
     serializer_class = CustomerUserProfileSerializer
     permission_classes = (permissions.AllowAny,)
+    pagination_class = CustomPagination
     throttle_scope = "merchant_api"
 
     def get_serializer_class(self, *args, **kwargs):
@@ -289,7 +358,11 @@ class MerchantCustomerView(generics.CreateAPIView):
             return RegisterCustomerSerializer
         return self.serializer_class
 
-    @authorized_api_call
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        return instance
+
+    @authorized_merchant_apikey_or_token_call
     def post(self, request, *args, **kwargs):
         merchant = request.merchant
         serializer = self.get_serializer(
@@ -301,29 +374,35 @@ class MerchantCustomerView(generics.CreateAPIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 errors=serializer.errors,
             )
-        self.perform_create(serializer)
+        instance = self.perform_create(serializer)
+        serializer = CustomerUserProfileSerializer(
+            instance.customer, context={"hide_user_id": True, "merchant": merchant}
+        )
         return Response(
             success=True,
             message="Customer created successfully",
             status_code=status.HTTP_200_OK,
+            data=serializer.data,
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, *args, **kwargs):
         merchant = request.merchant
         customers = merchant.customer_set.all()
-        serialized_customers = self.get_serializer(
-            customers,
+        qs = self.paginate_queryset(customers)
+        serializer = self.get_serializer(
+            qs,
             many=True,
-            context={"merchant": merchant, "hide_wallet_details": True},
+            context={
+                "merchant": merchant,
+                "hide_wallet_details": True,
+                "hide_user_id": True,
+                "hide_system_metrics": True,
+            },
         )
-        return Response(
-            success=True,
-            data=serialized_customers.data,
-            message="Customers retrieved successfully",
-            status_code=status.HTTP_200_OK,
-            meta={"count": len(serialized_customers.data)},
-        )
+        self.pagination_class.message = "Customers retrieved successfully."
+        response = self.get_paginated_response(serializer.data)
+        return response
 
 
 class MerchantCustomerDetailView(generics.GenericAPIView):
@@ -340,7 +419,7 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
         instance = serializer.save()
         return instance
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def get(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = Customer.objects.filter(id=id).first()
@@ -350,7 +429,17 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
                 message="Customer does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        serializer = self.get_serializer(instance, context={"merchant": merchant})
+        try:
+            merchant_customer = instance.customermerchant_set.get(merchant=merchant)
+        except CustomerMerchant.DoesNotExist:
+            return Response(
+                success=False,
+                message="Customer does not exist for merchant",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = self.get_serializer(
+            instance, context={"merchant": merchant, "hide_user_id": True}
+        )
         return Response(
             success=True,
             message="Customer information retrieved successfully.",
@@ -358,7 +447,7 @@ class MerchantCustomerDetailView(generics.GenericAPIView):
             data=serializer.data,
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def patch(self, request, id, *args, **kwargs):
         merchant = request.merchant
         instance = Customer.objects.filter(id=id).first()

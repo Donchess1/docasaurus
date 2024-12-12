@@ -1,6 +1,6 @@
 from rest_framework import status, viewsets
 
-from merchant.decorators import authorized_api_call
+from merchant.decorators import authorized_merchant_apikey_or_token_call
 from merchant.models.base import PayoutConfig
 from merchant.serializers.merchant import PayoutConfigSerializer
 from utils.response import Response
@@ -15,7 +15,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
     serializer_class = PayoutConfigSerializer
     throttle_scope = "merchant_api"
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def create(self, request, *args, **kwargs):
         merchant = request.merchant
         serializer = self.get_serializer(
@@ -41,7 +41,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
             message="Payout Configuration Created",
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def list(self, request, *args, **kwargs):
         merchant = request.merchant
         queryset = self.queryset.filter(merchant=merchant)
@@ -55,7 +55,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
             message="Payout Configurations retrieved successfully",
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def retrieve(self, request, *args, **kwargs):
         merchant = request.merchant
         instance = self.get_object()
@@ -73,7 +73,7 @@ class PayoutConfigViewSet(viewsets.ModelViewSet):
             message="Payout Config retrieved successfully",
         )
 
-    @authorized_api_call
+    @authorized_merchant_apikey_or_token_call
     def destroy(self, request, *args, **kwargs):
         merchant = request.merchant
         instance = self.get_object()

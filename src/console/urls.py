@@ -21,8 +21,9 @@ from console.views.overview import (
 from console.views.product import ProductViewSet
 from console.views.provider import EmailProviderSwitchView
 from merchant.views.base import (
+    ConsoleGenerateMerchantApiKeyView,
+    ConsoleMerchantCreateView,
     ConsoleMerchantCustomerView,
-    MerchantCreateView,
     MerchantDetailView,
     MerchantListView,
 )
@@ -50,9 +51,10 @@ urlpatterns = [
     path("disputes", DisputeListView.as_view(), name="disputes"),
     path("disputes/<uuid:id>", DisputeDetailView.as_view(), name="dispute-detail-view",),
     path("merchants", MerchantListView.as_view(), name="list-merchants",),
-    path("merchants/create", MerchantCreateView.as_view(), name="create-merchants",),
+    path("merchants/create", ConsoleMerchantCreateView.as_view(), name="create-merchants",),
     path("merchants/<uuid:id>", MerchantDetailView.as_view(), name="merchant-detail-view",),
     path("merchants/<uuid:id>/customers", ConsoleMerchantCustomerView.as_view(), name="merchant-detail-customers",),
+    path("merchants/<uuid:id>/api-key", ConsoleGenerateMerchantApiKeyView.as_view(), name="generate-merchant-api-key",),
     path("check-email", CheckUserByEmailView.as_view(), name="user-detail-email-view",),
     path("check-phone-number", CheckUserByPhoneView.as_view(), name="user-detail-phone-view",),
     path("get-user-wallet", CheckUserWalletInfoByEmailView.as_view(), name="user-wallet-info-view",),

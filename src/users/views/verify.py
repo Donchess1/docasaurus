@@ -23,6 +23,7 @@ from utils.utils import (
     EDIT_PROFILE_URL,
     GET_STARTED_BUYER_URL,
     GET_STARTED_SELLER_URL,
+    MERCHANT_DASHBOARD_URL,
     generate_otp,
     generate_temp_id,
 )
@@ -80,25 +81,25 @@ class VerifyOTPView(GenericAPIView):
         user.is_verified = True
         user.save()
 
+        get_started_url = ""
+        if user.is_seller:
+            get_started_url = GET_STARTED_SELLER_URL
+        elif user.is_buyer:
+            get_started_url = GET_STARTED_BUYER_URL
+        elif user.is_merchant:
+            get_started_url = MERCHANT_DASHBOARD_URL
+
         dynamic_values = {
             "name": name,
             "recipient": email,
-            "get_started_url": GET_STARTED_BUYER_URL
-            if user.is_buyer
-            else GET_STARTED_BUYER_URL,
+            "get_started_url": get_started_url,
         }
         tasks.send_onboarding_successful_email.delay(email, dynamic_values)
-
-        token = self.jwt_client.sign(user.id)
-        user.userprofile.last_login_date = timezone.now()
-        user.userprofile.save()
+        data = handle_successful_login(user)
         return Response(
             success=True,
             message="Email verified!",
-            data={
-                "email": email,
-                "token": token["access_token"],
-            },
+            data=data,
             status_code=status.HTTP_200_OK,
         )
 
@@ -153,7 +154,7 @@ class ResendAccountVerificationOTPView(GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 60 * 10)
+            cache.set(otp_key, value, 60 * 10)
         dynamic_values = {
             "name": name,
             "otp": otp,
@@ -211,7 +212,7 @@ class VerifyOneTimeLoginCodeView(GenericAPIView):
         if not user:
             return Response(
                 success=False,
-                message="User not found!",
+                message="User information not found!",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 

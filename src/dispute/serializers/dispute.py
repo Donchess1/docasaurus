@@ -8,35 +8,6 @@ from merchant.utils import transactions_delivery_date_has_not_elapsed
 User = get_user_model()
 
 
-class DisputeUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = (
-            "id",
-            "name",
-            "email",
-            "phone",
-            "is_verified",
-            "created_at",
-            "updated_at",
-        )
-
-
-class DisputeTransactionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Transaction
-        fields = (
-            "id",
-            "status",
-            "type",
-            "reference",
-            "amount",
-            "charge",
-            "created_at",
-            "updated_at",
-        )
-
-
 class DisputeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dispute

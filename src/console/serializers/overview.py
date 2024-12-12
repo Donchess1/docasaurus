@@ -17,9 +17,24 @@ class VolumeCountSerializer(serializers.Serializer):
     count = serializers.IntegerField()
 
 
-class UserSystemMetricsSerializer(serializers.Serializer):
+class BaseSystemMetricsSerializer(serializers.Serializer):
     total_transactions = serializers.IntegerField()
     deposits = serializers.IntegerField()
     withdrawals = serializers.IntegerField()
     escrows = serializers.IntegerField()
     disputes = serializers.IntegerField()
+
+
+class UserSystemMetricsSerializer(BaseSystemMetricsSerializer):
+    product_purchases = serializers.IntegerField()
+    product_settlements = serializers.IntegerField()
+    merchant_settlements = serializers.IntegerField()
+
+
+class MerchantSystemMetricsSerializer(BaseSystemMetricsSerializer):
+    payout_configurations = serializers.IntegerField()
+    merchant_settlements = serializers.IntegerField()
+
+
+class CustomerSystemMetricsSerializer(BaseSystemMetricsSerializer):
+    pass
