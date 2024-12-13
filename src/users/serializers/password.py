@@ -39,7 +39,7 @@ class MerchantForgotPasswordSerializer(serializers.Serializer):
         if not user:
             raise serializers.ValidationError("User with this email does not exist.")
         if not user.is_merchant:
-            raise serializers.ValidationError("User must be a merchant to perform this action")
+            raise serializers.ValidationError("Merchant account does not exist.")
         return validated_response["normalized_email"].lower()
 
 
