@@ -23,7 +23,7 @@ from utils.utils import (
     EDIT_PROFILE_URL,
     GET_STARTED_BUYER_URL,
     GET_STARTED_SELLER_URL,
-    MERCHANT_DASHBOARD_URL,
+    MERCHANT_DASHBOARD_BASE_URL,
     generate_otp,
     generate_temp_id,
 )
@@ -87,7 +87,7 @@ class VerifyOTPView(GenericAPIView):
         elif user.is_buyer:
             get_started_url = GET_STARTED_BUYER_URL
         elif user.is_merchant:
-            get_started_url = MERCHANT_DASHBOARD_URL
+            get_started_url = MERCHANT_DASHBOARD_BASE_URL
 
         dynamic_values = {
             "name": name,

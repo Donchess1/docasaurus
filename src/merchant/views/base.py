@@ -127,7 +127,10 @@ class MerchantDetailView(generics.GenericAPIView):
                 message="Merchant does not exist",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        serializer = self.get_serializer(instance)
+        serializer = self.get_serializer(
+            instance,
+            context={"show_system_metrics": True, "show_complete_wallet_info": True},
+        )
         return Response(
             success=True,
             message="Merchant retrieved successfully.",

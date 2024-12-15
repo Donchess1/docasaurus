@@ -15,6 +15,7 @@ from users.serializers.password import (
 )
 from utils.response import Response
 from utils.utils import (
+    MERCHANT_DASHBOARD_RESET_PASSWORD_URL,
     RESET_PASSWORD_URL,
     generate_otp,
     generate_random_text,
@@ -42,8 +43,8 @@ class ForgotPasswordView(generics.GenericAPIView):
             )
 
         email = serializer.validated_data["email"]
-
-        user = User.objects.get(email=email)
+        user = serializer.validated_data["user"]
+        platform = serializer.validated_data["platform"]
         name = user.name
 
         otp = generate_otp()
@@ -54,12 +55,17 @@ class ForgotPasswordView(generics.GenericAPIView):
             "email": email,
             "is_valid": True,
         }
+        password_reset_link_base_url = (
+            RESET_PASSWORD_URL
+            if platform == "BASE_PLATFORM"
+            else MERCHANT_DASHBOARD_RESET_PASSWORD_URL
+        )
         with Cache() as cache:
             cache.set(otp_key, value, 60 * 15)  # OTP/Token expires in 15 minutes
         dynamic_values = {
             "first_name": name.split(" ")[0],
             "recipient": email,
-            "password_reset_link": f"{RESET_PASSWORD_URL}/{otp_key}",
+            "password_reset_link": f"{password_reset_link_base_url}/{otp_key}",
         }
         tasks.send_reset_password_request_email.delay(email, dynamic_values)
 

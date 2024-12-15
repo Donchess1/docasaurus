@@ -1,9 +1,8 @@
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
-from django.db.models import Q
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, QuerySet, Sum
+from django.db.models import Count, Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -385,6 +384,7 @@ def get_time_range_from_period(period: str, params: dict):
 def get_user_system_metrics(user: User, currency: str = "NGN") -> dict:
     transactions = get_user_owned_transaction_queryset(user, currency)
     disputes = get_user_owned_dispute_queryset(user)
+
     total = transactions.count()
     deposits = transactions.filter(type="DEPOSIT").count()
     withdrawals = transactions.filter(type="WITHDRAW").count()
@@ -412,6 +412,8 @@ def get_merchant_system_metrics(merchant: Merchant, currency: str = "NGN") -> di
         .distinct()
     )
     disputes = Dispute.objects.filter(merchant=merchant).order_by("-created_at")
+    customers = merchant.customer_set.all()
+
     total_transactions = transactions.count()
     deposits = transactions.filter(type="DEPOSIT").count()
     withdrawals = transactions.filter(type="WITHDRAW").count()
@@ -419,6 +421,7 @@ def get_merchant_system_metrics(merchant: Merchant, currency: str = "NGN") -> di
     merchant_settlements = transactions.filter(type="MERCHANT_SETTLEMENT").count()
     disputes = disputes.count()
     payout_configurations = PayoutConfig.objects.filter(merchant=merchant).count()
+    customers = customers.count()
     return {
         "total_transactions": total_transactions,
         "deposits": deposits,
@@ -427,6 +430,7 @@ def get_merchant_system_metrics(merchant: Merchant, currency: str = "NGN") -> di
         "merchant_settlements": merchant_settlements,
         "disputes": disputes,
         "payout_configurations": payout_configurations,
+        "customers": customers,
     }
 
 
@@ -448,6 +452,7 @@ def get_merchant_customer_system_metrics(
         .filter(Q(buyer__email=customer_email) | Q(seller__email=customer_email))
         .order_by("-created_at")
     )
+
     total_transactions = transactions.count()
     deposits = transactions.filter(type="DEPOSIT").count()
     withdrawals = transactions.filter(type="WITHDRAW").count()

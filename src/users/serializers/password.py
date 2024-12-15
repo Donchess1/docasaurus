@@ -8,19 +8,35 @@ User = get_user_model()
 
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
+    platform = serializers.ChoiceField(
+        choices=("BASE_PLATFORM", "MERCHANT_DASBOARD"), default="BASE_PLATFORM"
+    )
 
-    def validate_email(self, value):
+    def validate(self, data):
+        email = data.get("email")
+        platform = data.get("platform")
         is_valid, message, validated_response = validate_email_address(
-            value, check_deliverability=True
+            email, check_deliverability=True
         )
         if not is_valid:
-            raise serializers.ValidationError(message)
+            raise serializers.ValidationError({"email": message})
+
         user = User.objects.filter(
             email=validated_response["normalized_email"].lower()
         ).first()
         if not user:
-            raise serializers.ValidationError("User with this email does not exist.")
-        return validated_response["normalized_email"].lower()
+            raise serializers.ValidationError(
+                {"email": f"User with this email does not exist."}
+            )
+
+        if platform == "MERCHANT_DASBOARD" and not user.is_merchant:
+            raise serializers.ValidationError(
+                {"email": "Merchant account does not exist."}
+            )
+
+        data["email"] = validated_response["normalized_email"].lower()
+        data["user"] = user
+        return data
 
 
 class ResetPasswordSerializer(serializers.Serializer):
