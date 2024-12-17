@@ -60,6 +60,9 @@ update_env_var "/mybalance/${ENV_SUFFIX}/CUSTOMER_WIDGET_BASE_URL" "CUSTOMER_WID
 update_env_var "/mybalance/${ENV_SUFFIX}/FLW_SECRET_KEY" "FLW_SECRET_KEY"
 update_env_var "/mybalance/${ENV_SUFFIX}/FLW_SECRET_HASH" "FLW_SECRET_HASH"
 
+update_env_var "/mybalance/${ENV_SUFFIX}/ZEEHAFRICA_BASE_URL" "ZEEHAFRICA_BASE_URL"
+update_env_var "/mybalance/${ENV_SUFFIX}/ZEEHAFRICA_PRIVATE_KEY" "ZEEHAFRICA_PRIVATE_KEY"
+
 update_env_var "/mybalance/${ENV_SUFFIX}/CLOUDINARY_CLOUD_NAME" "CLOUDINARY_CLOUD_NAME"
 update_env_var "/mybalance/${ENV_SUFFIX}/CLOUDINARY_API_KEY" "CLOUDINARY_API_KEY"
 update_env_var "/mybalance/${ENV_SUFFIX}/CLOUDINARY_API_SECRET" "CLOUDINARY_API_SECRET"
