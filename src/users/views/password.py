@@ -65,7 +65,7 @@ class ForgotPasswordView(generics.GenericAPIView):
         dynamic_values = {
             "first_name": name.split(" ")[0],
             "recipient": email,
-            "password_reset_link": f"{password_reset_link_base_url}/{otp_key}",
+            "password_reset_link": f"{password_reset_link_base_url}?token={otp_key}",
         }
         tasks.send_reset_password_request_email.delay(email, dynamic_values)
 
