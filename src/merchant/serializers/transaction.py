@@ -96,6 +96,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
     # locked_amount = serializers.SerializerMethodField()
     escrow = serializers.SerializerMethodField()
     customer_role = serializers.SerializerMethodField()
+    delivery_date_is_due = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -119,6 +120,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             "verified",
             # "locked_amount",
             "escrow",
+            "delivery_date_is_due",
             "created_at",
             "updated_at",
         )
@@ -140,6 +142,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
             "currency",
             # "locked_amount",
             "escrow",
+            "delivery_date_is_due",
             "provider",
         )
 
@@ -147,6 +150,8 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         super(MerchantTransactionSerializer, self).__init__(*args, **kwargs)
         if self.context.get("hide_escrow_details"):
             self.fields.pop("escrow")
+        if not self.context.get("show_delivery_date_is_due", False):
+            self.fields.pop("delivery_date_is_due")
 
     def get_locked_amount(self, obj):
         instance = LockedAmount.objects.filter(transaction=obj).first()
@@ -164,6 +169,11 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         dispute = Dispute.objects.filter(transaction=obj).first()
         data["dispute_raised"] = True if dispute else False
         return data
+
+    def get_delivery_date_is_due(self, obj):
+        escrowmeta = getattr(obj, "escrowmeta", None)
+        delivery_date = getattr(escrowmeta, "delivery_date", None)
+        return timezone.now().date() >= delivery_date if delivery_date else None
 
     def get_customer_role(self, obj):
         customer_email = self.context.get("customer_email")
