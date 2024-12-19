@@ -9,7 +9,7 @@ User = get_user_model()
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     platform = serializers.ChoiceField(
-        choices=("BASE_PLATFORM", "MERCHANT_DASBOARD"), default="BASE_PLATFORM"
+        choices=("BASE_PLATFORM", "MERCHANT_DASHBOARD"), default="BASE_PLATFORM"
     )
 
     def validate(self, data):
