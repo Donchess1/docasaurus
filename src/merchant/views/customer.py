@@ -168,6 +168,7 @@ class CustomerTransactionListView(generics.ListAPIView):
             context={
                 "hide_escrow_details": True,
                 "show_delivery_date_is_due": True,
+                "show_dispute_raised_status": True,
                 "customer_email": customer_email,
             },
             many=True,
