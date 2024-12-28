@@ -9,7 +9,7 @@ from utils.response import Response
 def api_ok(request):
     # hostname = os.uname().nodename
     hostname = os.getenv("HOSTNAME")
-    return HttpResponse(f"<h1>The Server is Now Running on {hostname}</h1>")
+    return HttpResponse(f"<h1>The Server is running on {hostname}</h1>")
 
 
 class HealthCheckSerializer(serializers.Serializer):
