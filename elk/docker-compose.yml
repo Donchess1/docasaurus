@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false  # Disable security for local development
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"  # Set heap size
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"  # Elasticsearch REST API
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.2
+    container_name: kibana
+    ports:
+      - "5601:5601"  # Kibana UI
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK.FLEET.ENABLE=false
+      - XPACK.DATA_STREAMS.ENABLE=false  # Disable data streams to allow index patterns
+    depends_on:
+      - elasticsearch
+
+
+volumes:
+  es_data:
+    driver: local
