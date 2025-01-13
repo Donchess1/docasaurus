@@ -92,7 +92,7 @@ class CustomerWidgetSessionView(generics.GenericAPIView):
             "is_valid": True,
         }
         with Cache() as cache:
-            cache.set(otp_key, value, 60 * 5)  # 5 mins
+            cache.set(otp_key, value, 60 * 30)  # 30 mins
 
         url = f"{CUSTOMER_WIDGET_BASE_URL}/{otp_key}"
         payload = {"url": url}
