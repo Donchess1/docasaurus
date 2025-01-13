@@ -33,6 +33,7 @@ from merchant.utils import (
     verify_otp,
 )
 from transaction.filters import TransactionFilter
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.pagination import CustomPagination
 from utils.response import Response
 from utils.transaction import get_merchant_escrow_transaction_stakeholders
@@ -533,6 +534,7 @@ class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
         operation_description="Confirm wallet withdrawal on merchant widget",
     )
     def post(self, request):
+        request_meta = extract_api_request_metadata(request)
         user = request.user
         serializer = self.serializer_class(
             data=request.data,
@@ -558,7 +560,9 @@ class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
                 message=resource,
             )
         data = resource.get("data")
-        successful, resource = initiate_gateway_withdrawal_transaction(user, data)
+        successful, resource = initiate_gateway_withdrawal_transaction(
+            user, data, request_meta, "CUSTOMER"
+        )
         return (
             Response(
                 success=False,
@@ -582,6 +586,7 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
 
     @authorized_merchant_apikey_or_token_call
     def post(self, request):
+        request_meta = extract_api_request_metadata(request)
         merchant = request.merchant
         serializer = self.serializer_class(
             data=request.data,
@@ -606,7 +611,9 @@ class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
         data = resource.get("data")
         email = data.get("email")
         user = User.objects.filter(email=email).first()
-        successful, resource = initiate_gateway_withdrawal_transaction(user, data)
+        successful, resource = initiate_gateway_withdrawal_transaction(
+            user, data, request_meta, "MERCHANT"
+        )
         return (
             Response(
                 success=False,

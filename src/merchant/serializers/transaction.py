@@ -471,6 +471,13 @@ class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
         merchant = get_merchant_by_id(merchant_id)
         if not merchant:
             raise serializers.ValidationError({"error": "Merchant does not exist"})
+        merchant_customer: CustomerMerchant = get_customer_merchant_instance(
+            user.email, merchant
+        )
+        if not merchant_customer:
+            raise serializers.ValidationError(
+                {"error": "Customer does not exist for Merchant!"}
+            )
         charge, total_amount = get_withdrawal_fee(int(amount))
         status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not status:
@@ -481,7 +488,9 @@ class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
             raise serializers.ValidationError({"error": "Invalid bank details"})
         data["merchant_platform"] = merchant.name
         data["merchant_id"] = str(merchant.id)
-        data["amount"] = int(total_amount)
+        data["amount"] = int(total_amount)  # TODO: Should probably convert to float
+        data["customer_name"] = merchant_customer.alternate_name
+        data["customer_email"] = merchant_customer.customer.user.email
         return data
 
 
@@ -514,7 +523,9 @@ class InitiateCustomerWalletWithdrawalByMerchantSerializer(serializers.Serialize
             raise serializers.ValidationError({"error": obj["message"]})
         data["merchant_platform"] = merchant.name
         data["merchant_id"] = str(merchant.id)
-        data["amount"] = int(total_amount)
+        data["amount"] = int(total_amount)  # TODO: Should probably convert to float
+        data["customer_name"] = merchant_customer.alternate_name
+        data["customer_email"] = merchant_customer.customer.user.email
         return data
 
 
