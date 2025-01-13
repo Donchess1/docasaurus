@@ -80,7 +80,7 @@ def verify_merchant_widget_token_key(key):
 
 
 @transaction.atomic
-def initiate_gateway_withdrawal_transaction(user, data):
+def initiate_gateway_withdrawal_transaction(user, data, request_meta, initiator):
     amount = data.get("amount")
     bank_code = data.get("bank_code")
     account_number = data.get("account_number")
@@ -91,6 +91,7 @@ def initiate_gateway_withdrawal_transaction(user, data):
     tx_ref = f"{generate_txn_reference()}_PMCKDU_1"
     description = "MyBalance TRF-API"
     email = user.email
+    customer_name = data.get("customer_name")
 
     txn = Transaction.objects.create(
         user_id=user,
@@ -126,6 +127,20 @@ def initiate_gateway_withdrawal_transaction(user, data):
     txn.save()
     if obj["status"] == "error":
         return False, msg
+
+    description = f"{(customer_name).upper()} initiated withdrawal of {currency} {add_commas_to_transaction_amount(amount)} from wallet. Initiator: {initiator}"
+    log_transaction_activity(txn, description, request_meta)
+
+    _, wallet = user.get_currency_wallet(txn.currency)
+    description = f"Previous User Balance: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    log_transaction_activity(txn, description, request_meta)
+
+    user.debit_wallet(amount, txn.currency)
+
+    _, wallet = user.get_currency_wallet(txn.currency)
+    description = f"Updated User Balance after Init Debit of {txn.currency} {add_commas_to_transaction_amount(amount)}: {txn.currency} {add_commas_to_transaction_amount(wallet.balance)}"
+    log_transaction_activity(txn, description, request_meta)
+
     return (
         True,
         {"transaction_reference": tx_ref},
