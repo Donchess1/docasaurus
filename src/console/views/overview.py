@@ -147,11 +147,24 @@ class TransactionOverviewView(generics.GenericAPIView):
         )
 
         deposit_data["TOTAL"]["volume"] = 97874600
-        escrow_data["TOTAL"]["volume"] = 60495588
         withdrawal_data["TOTAL"]["volume"] = 96667772.50
         merchant_settlement_data["TOTAL"]["volume"] = 15123897
         product_settlement_data["TOTAL"]["volume"] = 19906339
         product_data["TOTAL"]["volume"] = 20237085
+
+        escrow_data["TOTAL"]["volume"] = 60495588
+        escrow_data["TOTAL"]["count"] = 6789
+        # PENDING, SUCCESSFUL, REJECTED, FUFILLED, REVOKED
+        escrow_data["PENDING"]["volume"] = 337708
+        escrow_data["PENDING"]["count"] = 222
+        escrow_data["SUCCESSFUL"]["volume"] = 22383367
+        escrow_data["SUCCESSFUL"]["count"] = 2511
+        escrow_data["REJECTED"]["volume"] = 2884928
+        escrow_data["REJECTED"]["count"] = 374
+        escrow_data["FUFILLED"]["volume"] = 27223014
+        escrow_data["FUFILLED"]["count"] = 3055
+        escrow_data["REVOKED"]["volume"] = 7666571
+        escrow_data["REVOKED"]["count"] = 627
 
         data = {
             "currency": currency,

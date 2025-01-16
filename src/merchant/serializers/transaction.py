@@ -173,6 +173,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         data = serializer.data
         dispute = Dispute.objects.filter(transaction=obj).first()
         data["dispute_raised"] = True if dispute else False
+        data["dispute_id"] = dispute.id if dispute else None
         return data
 
     def get_dispute_raised(self, obj):
