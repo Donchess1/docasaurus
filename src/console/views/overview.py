@@ -68,8 +68,7 @@ class UserOverviewView(generics.GenericAPIView):
             "period": period,
             "start_date": start_date,
             "end_date": end_date,
-            # "total": users.count(),
-            "total": 18744,
+            "total": users.count(),
             "buyers": users.filter(is_buyer=True).count(),
             "sellers": users.filter(is_seller=True).count(),
             "merchants": users.filter(is_merchant=True).count(),
@@ -146,33 +145,12 @@ class TransactionOverviewView(generics.GenericAPIView):
             transactions, "PRODUCT", MERCHANT_SETTLEMENT_STATES
         )
 
-        deposit_data["TOTAL"]["volume"] = 97874600
-        withdrawal_data["TOTAL"]["volume"] = 96667772.50
-        merchant_settlement_data["TOTAL"]["volume"] = 15123897
-        product_settlement_data["TOTAL"]["volume"] = 19906339
-        product_data["TOTAL"]["volume"] = 20237085
-
-        escrow_data["TOTAL"]["volume"] = 60495588
-        escrow_data["TOTAL"]["count"] = 6789
-        # PENDING, SUCCESSFUL, REJECTED, FUFILLED, REVOKED
-        escrow_data["PENDING"]["volume"] = 337708
-        escrow_data["PENDING"]["count"] = 222
-        escrow_data["SUCCESSFUL"]["volume"] = 22383367
-        escrow_data["SUCCESSFUL"]["count"] = 2511
-        escrow_data["REJECTED"]["volume"] = 2884928
-        escrow_data["REJECTED"]["count"] = 374
-        escrow_data["FUFILLED"]["volume"] = 27223014
-        escrow_data["FUFILLED"]["count"] = 3055
-        escrow_data["REVOKED"]["volume"] = 7666571
-        escrow_data["REVOKED"]["count"] = 627
-
         data = {
             "currency": currency,
             "period": period,
             "start_date": start_date,
             "end_date": end_date,
-            # "total": transactions.count(),
-            "total": 16470,
+            "total": transactions.count(),
             "deposits": deposit_data,
             "withdrawals": withdrawal_data,
             "escrows": escrow_data,
@@ -326,8 +304,7 @@ class DisputeOverviewView(generics.GenericAPIView):
             "period": period,
             "start_date": start_date,
             "end_date": end_date,
-            # "total": disputes.count(),
-            "total": 72,
+            "total": disputes.count(),
             "low": low_priority_dispute_data,
             "medium": medium_priority_dispute_data,
             "high": high_priority_dispute_data,
@@ -381,8 +358,7 @@ class EmailLogOverviewView(generics.GenericAPIView):
             "period": period,
             "start_date": start_date,
             "end_date": end_date,
-            # "total": email_logs.count(),
-            "total": 53651,
+            "total": email_logs.count(),
             "aws_ses": aws_ses_data,
             "sendgrid": sendgrid_data,
         }
