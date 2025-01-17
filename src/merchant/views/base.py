@@ -1,5 +1,6 @@
 import os
 
+from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from django_filters import rest_framework as django_filters
 from rest_framework import filters, generics, permissions, status, viewsets
@@ -8,6 +9,8 @@ from rest_framework.exceptions import NotFound
 
 from console.permissions import IsSuperAdmin
 from console.serializers.base import EmptySerializer
+from core.resources.cache import Cache
+from merchant import tasks
 from merchant.decorators import authorized_merchant_apikey_or_token_call
 from merchant.filters import MerchantFilter
 from merchant.models import ApiKey, Customer, CustomerMerchant, Merchant
@@ -20,13 +23,26 @@ from merchant.serializers.merchant import (
     RegisterCustomerSerializer,
     UpdateCustomerSerializer,
 )
-from merchant.utils import generate_api_key
+from merchant.serializers.transaction import InitiateMerchantWalletWithdrawalSerializer, ConfirmMerchantActionOTPSerializer
+from merchant.utils import (
+    MINIMUM_WITHDRAWAL_AMOUNT,
+    generate_api_key,
+    initiate_gateway_withdrawal_transaction,
+    verify_otp,
+)
+from utils.activity_log import extract_api_request_metadata, log_transaction_activity
 from utils.pagination import CustomPagination
 from utils.response import Response
-from utils.utils import custom_flatten_uuid, generate_random_text
+from utils.utils import (
+    custom_flatten_uuid,
+    generate_otp,
+    generate_random_text,
+    generate_temp_id,
+)
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", None)
 env = "live" if ENVIRONMENT == "production" else "test"
+User = get_user_model()
 
 
 class ConsoleMerchantCreateView(generics.CreateAPIView):
@@ -347,6 +363,119 @@ class MerchantWalletsView(generics.GenericAPIView):
             status_code=status.HTTP_200_OK,
             message="Merchant wallets retrieved successfully",
             data=serializer.data,
+        )
+
+
+class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
+    serializer_class = InitiateMerchantWalletWithdrawalSerializer
+    permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
+
+    @authorized_merchant_apikey_or_token_call
+    def post(self, request):
+        merchant = request.merchant
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "merchant": merchant,
+            },
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        otp = generate_otp()
+        otp_key = generate_temp_id()
+
+        payload = {
+            "temp_id": otp_key,
+        }
+        value = {
+            "otp": otp,
+            "data": dict(data),
+            "is_valid": True,
+        }
+        with Cache() as cache:
+            cache.set(otp_key, value, 60 * 10)
+        amount = data.get("amount")
+        currency = data.get("currency")
+        email = data.get("email")
+        if amount < MINIMUM_WITHDRAWAL_AMOUNT:
+            return Response(
+                success=False,
+                message=f"Lowest withdrawable amount is {currency}{MINIMUM_WITHDRAWAL_AMOUNT}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        dynamic_values = {
+            "otp": otp,
+            "action_description": f"confirm withdrawal of {currency} {amount:,d} from your wallet",
+            "merchant_platform": "",
+            "expiry_time_minutes": "10 minutes",
+        }
+        tasks.send_wallet_withdrawal_confirmation_via_merchant_platform_email.delay(
+            email, dynamic_values
+        )
+
+        return Response(
+            success=True,
+            message="Withdrawal initiated",
+            status_code=status.HTTP_200_OK,
+            data=payload,
+        )
+
+
+class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
+    serializer_class = ConfirmMerchantActionOTPSerializer
+    permission_classes = (permissions.AllowAny,)
+    throttle_scope = "merchant_api"
+
+    @authorized_merchant_apikey_or_token_call
+    def post(self, request):
+        request_meta = extract_api_request_metadata(request)
+        merchant = request.merchant
+        serializer = self.serializer_class(
+            data=request.data,
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        data = serializer.validated_data
+        otp = data.get("otp")
+        temp_id = data.get("temp_id")
+
+        is_valid, resource = verify_otp(otp, temp_id)
+        if not is_valid:
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=resource,
+            )
+        data = resource.get("data")
+        email = data.get("email")
+        user = User.objects.filter(email=email).first()
+        successful, resource = initiate_gateway_withdrawal_transaction(
+            user, data, request_meta, "MERCHANT"
+        )
+        return (
+            Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=resource,
+            )
+            if not successful
+            else Response(
+                success=True,
+                message="Withdrawal is currently being processed. You should get a notification shortly",
+                status_code=status.HTTP_200_OK,
+                data=resource,
+            )
         )
 
 

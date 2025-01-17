@@ -2,6 +2,8 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from merchant.views.base import (
+    ConfirmMerchantWalletWithdrawalView,
+    InitiateMerchantWalletWithdrawalView,
     MerchantApiKeyView,
     MerchantCustomerDetailView,
     MerchantCustomerView,
@@ -10,13 +12,13 @@ from merchant.views.base import (
     MerchantWalletsView,
 )
 from merchant.views.customer import (
-    ConfirmMerchantWalletWithdrawalByMerchantView,
-    ConfirmMerchantWalletWithdrawalView,
+    ConfirmCustomerWalletWithdrawalByMerchantView,
+    ConfirmCustomerWidgetWalletWithdrawalView,
     CustomerTransactionDetailView,
     CustomerTransactionListView,
     CustomerWidgetSessionView,
-    InitiateMerchantWalletWithdrawalByMerchantView,
-    InitiateMerchantWalletWithdrawalView,
+    InitiateCustomerWalletWithdrawalByMerchantView,
+    InitiateCustomerWidgetWalletWithdrawalView,
     MerchantDashboardCustomerTransactionDetailView,
     MerchantDashboardCustomerTransactionListByUserIdView,
 )
@@ -51,6 +53,8 @@ urlpatterns = [
     path("", include(router.urls)),  # payout config
     path("profile", MerchantProfileByAPIKeyView.as_view(), name="merchant-profile-by-api-key"),
     path("wallets", MerchantWalletsView.as_view(), name="merchant-wallets"),
+    path("initiate-withdrawal", InitiateMerchantWalletWithdrawalView.as_view(), name="initiate-merchant-wallet-withdrawal",),
+    path("confirm-withdrawal", ConfirmMerchantWalletWithdrawalView.as_view(), name="confirm-merchant-wallet-withdrawal",),
     path("customers", MerchantCustomerView.as_view(), name="register-merchant-customer"),
     path("customers/<int:id>", MerchantCustomerDetailView.as_view(), name="merchant-customer-user-detail",),
     path("transactions", MerchantTransactionListView.as_view(), name="merchant-transactions",),
@@ -61,8 +65,8 @@ urlpatterns = [
     path("disputes/<uuid:id>", MerchantDisputeDetailView.as_view(), name="merchant-dispute-detail",),
     path("customer-transactions/<str:id>/mandate-release", MandateFundsReleaseView.as_view(), name="consent-funds-release",),
     path("customer-transactions/<str:id>/release-funds", ReleaseEscrowFundsByMerchantView.as_view(), name="unlock-customer-escrow-funds-merchant",),
-    path("initiate-customer-withdrawal", InitiateMerchantWalletWithdrawalByMerchantView.as_view(), name="initiate-customer-wallet-withdrawal",),
-    path("confirm-customer-withdrawal", ConfirmMerchantWalletWithdrawalByMerchantView.as_view(), name="confirm-customer-wallet-withdrawal",),
+    path("initiate-customer-withdrawal", InitiateCustomerWalletWithdrawalByMerchantView.as_view(), name="initiate-customer-wallet-withdrawal",),
+    path("confirm-customer-withdrawal", ConfirmCustomerWalletWithdrawalByMerchantView.as_view(), name="confirm-customer-wallet-withdrawal",),
     # DASHBOARD x CUSTOMER MANAGEMENT
     path("dashboard/customer-transactions", MerchantDashboardCustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
     path("dashboard/customer-transactions/<uuid:id>", MerchantDashboardCustomerTransactionDetailView.as_view(), name="dasboard-customer-transaction-detail",),
@@ -81,8 +85,8 @@ urlpatterns = [
     path("customer-transactions", CustomerTransactionListView.as_view(), name="customer-transactions",),
     path("customer-transactions/<uuid:id>", CustomerTransactionDetailView.as_view(), name="customer-transaction-detail-view",),
     path("customers/unlock-funds", UnlockEscrowFundsByBuyerView.as_view(), name="unlock-customer-escrow-funds-buyer",),
-    path("customers/initiate-withdrawal", InitiateMerchantWalletWithdrawalView.as_view(), name="initiate-wallet-withdrawal",),
-    path("customers/confirm-withdrawal", ConfirmMerchantWalletWithdrawalView.as_view(), name="confirm-wallet-withdrawal",
+    path("customers/initiate-withdrawal", InitiateCustomerWidgetWalletWithdrawalView.as_view(), name="initiate-customer-widget-wallet-withdrawal",),
+    path("customers/confirm-withdrawal", ConfirmCustomerWidgetWalletWithdrawalView.as_view(), name="confirm-customer-widget-wallet-withdrawal",
     ),
     # =================================================================
     # =================================================================

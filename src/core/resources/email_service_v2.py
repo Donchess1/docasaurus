@@ -209,7 +209,7 @@ class EmailClientV2:
         return cls.send_email(email, subject, html_content)
 
     @classmethod
-    def send_merchant_wallet_withdrawal_confirmation_email(
+    def send_wallet_withdrawal_confirmation_via_merchant_platform_email(
         cls, email: str, context: dict
     ):
         template_name = "merchant/merchant_wallet_withdrawal_confirmation_code.html"
