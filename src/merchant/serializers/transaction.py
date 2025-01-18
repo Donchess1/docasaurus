@@ -173,6 +173,7 @@ class MerchantTransactionSerializer(serializers.ModelSerializer):
         data = serializer.data
         dispute = Dispute.objects.filter(transaction=obj).first()
         data["dispute_raised"] = True if dispute else False
+        data["dispute_id"] = dispute.id if dispute else None
         return data
 
     def get_dispute_raised(self, obj):
@@ -453,7 +454,7 @@ class UnlockCustomerEscrowTransactionByBuyerSerializer(serializers.Serializer):
         return completed, message
 
 
-class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
+class InitiateCustomerWidgetWithdrawalSerializer(serializers.Serializer):
     amount = serializers.IntegerField()
     currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES)
     bank_code = serializers.CharField()
@@ -471,6 +472,13 @@ class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
         merchant = get_merchant_by_id(merchant_id)
         if not merchant:
             raise serializers.ValidationError({"error": "Merchant does not exist"})
+        merchant_customer: CustomerMerchant = get_customer_merchant_instance(
+            user.email, merchant
+        )
+        if not merchant_customer:
+            raise serializers.ValidationError(
+                {"error": "Customer does not exist for Merchant!"}
+            )
         charge, total_amount = get_withdrawal_fee(int(amount))
         status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
         if not status:
@@ -481,7 +489,9 @@ class InitiateCustomerWalletWithdrawalSerializer(serializers.Serializer):
             raise serializers.ValidationError({"error": "Invalid bank details"})
         data["merchant_platform"] = merchant.name
         data["merchant_id"] = str(merchant.id)
-        data["amount"] = int(total_amount)
+        data["amount"] = int(total_amount)  # TODO: Should probably convert to float
+        data["customer_name"] = merchant_customer.alternate_name
+        data["customer_email"] = merchant_customer.customer.user.email
         return data
 
 
@@ -514,11 +524,44 @@ class InitiateCustomerWalletWithdrawalByMerchantSerializer(serializers.Serialize
             raise serializers.ValidationError({"error": obj["message"]})
         data["merchant_platform"] = merchant.name
         data["merchant_id"] = str(merchant.id)
-        data["amount"] = int(total_amount)
+        data["amount"] = int(total_amount)  # TODO: Should probably convert to float
+        data["customer_name"] = merchant_customer.alternate_name
+        data["customer_email"] = merchant_customer.customer.user.email
         return data
 
 
-class ConfirmMerchantWalletWithdrawalSerializer(serializers.Serializer):
+class InitiateMerchantWalletWithdrawalSerializer(serializers.Serializer):
+    amount = serializers.IntegerField()
+    currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES)
+    bank_code = serializers.CharField()
+    account_number = serializers.CharField(max_length=10, min_length=10)
+
+    def validate(self, data):
+        amount = data.get("amount")
+        bank_code = data.get("bank_code")
+        account_number = data.get("account_number")
+        currency = data.get("currency")
+
+        merchant = self.context.get("merchant")
+        user = merchant.user_id
+
+        charge, total_amount = get_withdrawal_fee(int(amount))
+        status, message = user.validate_wallet_withdrawal_amount(total_amount, currency)
+        if not status:
+            raise serializers.ValidationError({"error": message})
+
+        obj = ThirdPartyAPI.validate_bank_account(bank_code, account_number)
+        if obj["status"] in ["error", False]:
+            raise serializers.ValidationError({"error": "Invalid bank details"})
+        data["merchant_platform"] = merchant.name
+        data["merchant_id"] = str(merchant.id)
+        data["amount"] = int(total_amount)  # TODO: Should probably convert to float
+        data["customer_name"] = merchant.user_id.name
+        data["email"] = merchant.user_id.email
+        return data
+
+
+class ConfirmMerchantActionOTPSerializer(serializers.Serializer):
     otp = serializers.CharField(min_length=6, max_length=6, required=True)
     temp_id = serializers.CharField()
 
