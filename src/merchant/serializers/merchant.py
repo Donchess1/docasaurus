@@ -90,7 +90,29 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
         merchant = Merchant.objects.create(**merchant_data)
         config = PayoutConfig.objects.create(merchant=merchant, name="Default Config")
         return password, merchant
+    
+    
 
+class MerchantBusinessSerializer(MerchantCreateSerializer):
+    class Meta:
+        email = serializers.EmailField().read_only
+        phone = serializers.CharField(source="User.phone", required=False)
+
+        model = Merchant
+        fields = ("description","address", "phone", "email")
+        
+        def to_representation(self, instance):
+            representation = super().to_representation(instance)
+            representation["email"] = self.context["request"].user.email
+            return representation
+    
+        def update(self, instance, validated_data):
+            editable_field=["description","address", "phone"]
+            for field in editable_field:
+                if field in validated_data:
+                    setattr(instance, field, validated_data[field])
+            instance.save()
+            return instance
 
 class MerchantSerializer(serializers.ModelSerializer):
     email = serializers.SerializerMethodField()

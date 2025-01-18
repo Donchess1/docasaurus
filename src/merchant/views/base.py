@@ -19,6 +19,7 @@ from merchant.serializers.merchant import (
     MerchantWalletSerializer,
     RegisterCustomerSerializer,
     UpdateCustomerSerializer,
+    MerchantBusinessSerializer,
 )
 from merchant.utils import generate_api_key
 from utils.pagination import CustomPagination
@@ -292,6 +293,11 @@ class MerchantProfileView(generics.GenericAPIView):
     serializer_class = MerchantSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
+    def get_serializer_class(self, *args, **kwargs):
+        if self.request.method == "PATCH":
+            return MerchantBusinessSerializer
+        return self.serializer_class
+    
     def get(self, request, *args, **kwargs):
         user = request.user
         merchant = Merchant.objects.filter(user_id=user).first()
@@ -311,6 +317,30 @@ class MerchantProfileView(generics.GenericAPIView):
             message="Merchant profile retrieved successfully",
             data=serializer.data,
         )
+    
+    def patch(self, request, *args, **kwargs):
+        user = request.user
+        merchant = Merchant.objects.filter(user_id=user).first()
+       
+        serializer=self.get_serializer(merchant, data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        
+        serializer.save()
+        serializer_data=serializer.data
+        serializer_data["email"]= request.user.email
+        return Response(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Merchant profile updated successfully",
+            data=serializer_data,
+            
+        )
+
 
 
 class MerchantProfileByAPIKeyView(generics.GenericAPIView):
