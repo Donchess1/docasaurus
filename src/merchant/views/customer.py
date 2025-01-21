@@ -19,9 +19,9 @@ from merchant.serializers.merchant import (
     CustomerWidgetSessionSerializer,
 )
 from merchant.serializers.transaction import (
-    ConfirmMerchantWalletWithdrawalSerializer,
+    ConfirmMerchantActionOTPSerializer,
     InitiateCustomerWalletWithdrawalByMerchantSerializer,
-    InitiateCustomerWalletWithdrawalSerializer,
+    InitiateCustomerWidgetWithdrawalSerializer,
     MerchantTransactionSerializer,
 )
 from merchant.utils import (
@@ -398,8 +398,8 @@ class MerchantDashboardCustomerTransactionDetailView(generics.GenericAPIView):
         )
 
 
-class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
-    serializer_class = InitiateCustomerWalletWithdrawalSerializer
+class InitiateCustomerWidgetWalletWithdrawalView(generics.GenericAPIView):
+    serializer_class = InitiateCustomerWidgetWithdrawalSerializer
     permission_classes = (permissions.IsAuthenticated,)
     throttle_scope = "merchant_api"
 
@@ -448,9 +448,9 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
             "otp": otp,
             "merchant_platform": merchant_platform,
             "expiry_time_minutes": "10 minutes",
-            "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet",
+            "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet on",
         }
-        tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
+        tasks.send_wallet_withdrawal_confirmation_via_merchant_platform_email.delay(
             user.email, dynamic_values
         )
 
@@ -462,7 +462,7 @@ class InitiateMerchantWalletWithdrawalView(generics.GenericAPIView):
         )
 
 
-class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
+class InitiateCustomerWalletWithdrawalByMerchantView(generics.GenericAPIView):
     serializer_class = InitiateCustomerWalletWithdrawalByMerchantSerializer
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
@@ -511,9 +511,9 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
             "otp": otp,
             "merchant_platform": merchant_platform,
             "expiry_time_minutes": "10 minutes",
-            "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet",
+            "action_description": f"confirm withdrawal of {currency} {add_commas_to_transaction_amount(int(amount))} from your wallet on",
         }
-        tasks.send_merchant_wallet_withdrawal_confirmation_email.delay(
+        tasks.send_wallet_withdrawal_confirmation_via_merchant_platform_email.delay(
             email, dynamic_values
         )
 
@@ -525,8 +525,8 @@ class InitiateMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
         )
 
 
-class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
-    serializer_class = ConfirmMerchantWalletWithdrawalSerializer
+class ConfirmCustomerWidgetWalletWithdrawalView(generics.GenericAPIView):
+    serializer_class = ConfirmMerchantActionOTPSerializer
     permission_classes = (permissions.IsAuthenticated,)
     throttle_scope = "merchant_api"
 
@@ -579,8 +579,8 @@ class ConfirmMerchantWalletWithdrawalView(generics.GenericAPIView):
         )
 
 
-class ConfirmMerchantWalletWithdrawalByMerchantView(generics.GenericAPIView):
-    serializer_class = ConfirmMerchantWalletWithdrawalSerializer
+class ConfirmCustomerWalletWithdrawalByMerchantView(generics.GenericAPIView):
+    serializer_class = ConfirmMerchantActionOTPSerializer
     permission_classes = (permissions.AllowAny,)
     throttle_scope = "merchant_api"
 

@@ -173,7 +173,7 @@ class EmailClient:
         return cls.send_email(email, template_id, dynamic_template_data)
 
     @classmethod
-    def send_merchant_wallet_withdrawal_confirmation_email(
+    def send_wallet_withdrawal_confirmation_via_merchant_platform_email(
         cls, email: str, values: dict
     ):
         template_id = cls.template_handler.get_template(

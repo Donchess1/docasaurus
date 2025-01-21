@@ -82,10 +82,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**user_data)
         user.set_password(validated_data["password"])
         user.save()
-        # bank_account = BankAccount.objects.create(user_id=user)
         profile = UserProfile.objects.create(
             user_id=user,
-            # bank_account_id=bank_account,
             user_type="BUYER",
             free_escrow_transactions=5,
             referrer=validated_data.get("referrer"),
