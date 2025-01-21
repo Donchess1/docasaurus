@@ -8,6 +8,7 @@ from users.models.bank_account import BankAccount
 class BankAccountSerializer(serializers.ModelSerializer):
     bank_code = serializers.CharField(max_length=255)
     account_number = serializers.CharField(max_length=10, min_length=10)
+    is_default = serializers.BooleanField(default=False)
 
     class Meta:
         model = BankAccount
@@ -18,7 +19,7 @@ class BankAccountSerializer(serializers.ModelSerializer):
             "bank_code",
             "account_name",
             "account_number",
-            "is_active",
+            "is_default",
             "created_at",
             "updated_at",
         )
@@ -26,7 +27,6 @@ class BankAccountSerializer(serializers.ModelSerializer):
             "bank_name",
             "account_name",
             "user_id",
-            "is_active",
             "created_at",
             "updated_at",
         )
@@ -35,6 +35,12 @@ class BankAccountSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         bank_code = data.get("bank_code")
         account_number = data.get("account_number")
+
+        # we only allow 3 bank accounts per user
+        if BankAccount.objects.filter(user_id=user).count() >= 3:
+            raise serializers.ValidationError(
+                {"bank": ["Maximum of 3 bank accounts allowed"]}
+            )
 
         obj = ThirdPartyAPI.validate_bank_account(bank_code, account_number)
         if obj["status"] in ["error", False]:
@@ -47,7 +53,7 @@ class BankAccountSerializer(serializers.ModelSerializer):
             user_id=user, bank_code=bank_code, account_number=account_number
         ).exists():
             raise serializers.ValidationError(
-                {"bank": ["Duplicate bank account not allowed"]}
+                {"bank": ["Bank account details already exists. Try another account"]}
             )
 
         banks = ThirdPartyAPI.list_banks()
@@ -59,6 +65,11 @@ class BankAccountSerializer(serializers.ModelSerializer):
         data["bank_name"] = bank_name
         data["account_name"] = obj["data"]["account_name"]
 
+        # Ensure only one default account exists for the user
+        if data.get("is_default"):
+            BankAccount.objects.filter(user_id=user, is_default=True).update(
+                is_default=False
+            )
         return data
 
     @transaction.atomic
@@ -68,6 +79,7 @@ class BankAccountSerializer(serializers.ModelSerializer):
         account_number = validated_data.get("account_number")
         bank_name = validated_data.get("bank_name")
         account_name = validated_data.get("account_name")
+        is_default = validated_data.get("is_default", False)
 
         bank_account = BankAccount.objects.create(
             user_id=user,
@@ -75,9 +87,6 @@ class BankAccountSerializer(serializers.ModelSerializer):
             bank_code=bank_code,
             account_name=account_name,
             account_number=account_number,
-            is_active=True,
+            is_default=is_default,
         )
-        user.userprofile.bank_account_id = bank_account
-        user.userprofile.save()
-
         return bank_account
