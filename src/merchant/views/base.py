@@ -18,6 +18,7 @@ from merchant.serializers.merchant import (
     ApiKeySerializer,
     CustomerUserProfileSerializer,
     MerchantCreateSerializer,
+    MerchantInfoSerializer,
     MerchantSerializer,
     MerchantWalletSerializer,
     RegisterCustomerSerializer,
@@ -311,6 +312,11 @@ class MerchantProfileView(generics.GenericAPIView):
     serializer_class = MerchantSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
+    def get_serializer_class(self, *args, **kwargs):
+        if self.request.method == "PATCH":
+            return MerchantInfoSerializer
+        return self.serializer_class
+
     def get(self, request, *args, **kwargs):
         user = request.user
         merchant = Merchant.objects.filter(user_id=user).first()
@@ -329,6 +335,33 @@ class MerchantProfileView(generics.GenericAPIView):
             status_code=status.HTTP_200_OK,
             message="Merchant profile retrieved successfully",
             data=serializer.data,
+        )
+
+    def patch(self, request, *args, **kwargs):
+        user = request.user
+        merchant = Merchant.objects.filter(user_id=user).first()
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant account does not exist!",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(
+            merchant, data=request.data, context={"request": request}
+        )
+        if not serializer.is_valid():
+            return Response(
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors,
+            )
+        instance = serializer.save()
+        data = MerchantSerializer(instance, context={"hide_wallet_details": True}).data
+        return Response(
+            success=True,
+            status_code=status.HTTP_200_OK,
+            message="Merchant profile updated successfully",
+            data=data,
         )
 
 
