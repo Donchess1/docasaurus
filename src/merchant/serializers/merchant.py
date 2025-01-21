@@ -90,29 +90,28 @@ class MerchantCreateSerializer(serializers.ModelSerializer):
         merchant = Merchant.objects.create(**merchant_data)
         config = PayoutConfig.objects.create(merchant=merchant, name="Default Config")
         return password, merchant
-    
-    
 
-class MerchantBusinessSerializer(MerchantCreateSerializer):
+
+class MerchantInfoSerializer(serializers.ModelSerializer):
+    phone = serializers.CharField(
+        required=False, validators=[PHONE_NUMBER_SERIALIZER_REGEX_NGN]
+    )
+
     class Meta:
-        email = serializers.EmailField().read_only
-        phone = serializers.CharField(source="User.phone", required=False)
-
         model = Merchant
-        fields = ("description","address", "phone", "email")
-        
-        def to_representation(self, instance):
-            representation = super().to_representation(instance)
-            representation["email"] = self.context["request"].user.email
-            return representation
-    
-        def update(self, instance, validated_data):
-            editable_field=["description","address", "phone"]
-            for field in editable_field:
-                if field in validated_data:
-                    setattr(instance, field, validated_data[field])
-            instance.save()
-            return instance
+        fields = ("description", "address", "phone")
+
+    def update(self, instance, validated_data):
+        editable_fields = ["description", "address"]
+        for field in editable_fields:
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+        instance.save()
+        if validated_data.get("phone"):
+            instance.user_id.phone = validated_data["phone"]
+            instance.user_id.save()
+        return instance
+
 
 class MerchantSerializer(serializers.ModelSerializer):
     email = serializers.SerializerMethodField()
@@ -121,6 +120,7 @@ class MerchantSerializer(serializers.ModelSerializer):
     system_metrics = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
     user_id = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
 
     class Meta:
         model = Merchant
@@ -131,6 +131,7 @@ class MerchantSerializer(serializers.ModelSerializer):
             "user_id",
             "email",
             "wallets",
+            "phone",
             "system_metrics",
             "is_active",
             "description",
@@ -148,6 +149,9 @@ class MerchantSerializer(serializers.ModelSerializer):
 
     def get_email(self, obj):
         return obj.user_id.email
+
+    def get_phone(self, obj):
+        return obj.user_id.phone
 
     def get_owner(self, obj):
         return obj.user_id.name
