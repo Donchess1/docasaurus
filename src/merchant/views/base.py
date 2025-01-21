@@ -23,7 +23,10 @@ from merchant.serializers.merchant import (
     RegisterCustomerSerializer,
     UpdateCustomerSerializer,
 )
-from merchant.serializers.transaction import InitiateMerchantWalletWithdrawalSerializer, ConfirmMerchantActionOTPSerializer
+from merchant.serializers.transaction import (
+    ConfirmMerchantActionOTPSerializer,
+    InitiateMerchantWalletWithdrawalSerializer,
+)
 from merchant.utils import (
     MINIMUM_WITHDRAWAL_AMOUNT,
     generate_api_key,
