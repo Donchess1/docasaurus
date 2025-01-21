@@ -321,7 +321,13 @@ class MerchantProfileView(generics.GenericAPIView):
     def patch(self, request, *args, **kwargs):
         user = request.user
         merchant = Merchant.objects.filter(user_id=user).first()
-       
+        
+        if not merchant:
+            return Response(
+                success=False,
+                message="Merchant account does not exist!",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
         serializer=self.get_serializer(merchant, data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(
