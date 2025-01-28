@@ -215,6 +215,7 @@ class CreateMerchantEscrowTransactionSerializer(serializers.Serializer):
     )
     currency = serializers.ChoiceField(choices=SYSTEM_CURRENCIES, default="NGN")
     entities = EscrowEntitySerializer(many=True)
+    # TODO: ASk for reference from merchant transaction
 
     def validate_payout_configuration(self, value):
         merchant = self.context.get("merchant")

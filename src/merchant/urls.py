@@ -83,6 +83,7 @@ urlpatterns = [
     # =================================================================
     path("generate-widget-session", CustomerWidgetSessionView.as_view(), name="customer-widget-session",),
     path("customer-transactions", CustomerTransactionListView.as_view(), name="customer-transactions",),
+    # this next endpoint is used to retrieve an escrow transaction and also create a dispute if needed
     path("customer-transactions/<uuid:id>", CustomerTransactionDetailView.as_view(), name="customer-transaction-detail-view",),
     path("customers/unlock-funds", UnlockEscrowFundsByBuyerView.as_view(), name="unlock-customer-escrow-funds-buyer",),
     path("customers/initiate-withdrawal", InitiateCustomerWidgetWalletWithdrawalView.as_view(), name="initiate-customer-widget-wallet-withdrawal",),
