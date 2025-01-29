@@ -8,6 +8,7 @@ from django.db.models.functions import (
     TruncHour,
     TruncMonth,
     TruncWeek,
+    TruncYear,
 )
 from django.utils import timezone
 
