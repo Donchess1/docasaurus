@@ -22,6 +22,7 @@ from merchant.views.customer import (
     MerchantDashboardCustomerTransactionDetailView,
     MerchantDashboardCustomerTransactionListByUserIdView,
 )
+from merchant.views.dashboard import MerchantTransactionChartView
 from merchant.views.dispute import (
     MerchantDashboardCustomerDisputeDetailView,
     MerchantDashboardCustomerDisputeListView,
@@ -68,6 +69,7 @@ urlpatterns = [
     path("initiate-customer-withdrawal", InitiateCustomerWalletWithdrawalByMerchantView.as_view(), name="initiate-customer-wallet-withdrawal",),
     path("confirm-customer-withdrawal", ConfirmCustomerWalletWithdrawalByMerchantView.as_view(), name="confirm-customer-wallet-withdrawal",),
     # DASHBOARD x CUSTOMER MANAGEMENT
+    path("dashboard/transactions-chart", MerchantTransactionChartView.as_view(), name="dasboard-transactions-chart",),
     path("dashboard/customer-transactions", MerchantDashboardCustomerTransactionListByUserIdView.as_view(), name="dasboard-customer-transactions",),
     path("dashboard/customer-transactions/<uuid:id>", MerchantDashboardCustomerTransactionDetailView.as_view(), name="dasboard-customer-transaction-detail",),
     path("dashboard/customer-disputes", MerchantDashboardCustomerDisputeListView.as_view(), name="dasboard-customer-disputes",),
@@ -83,6 +85,7 @@ urlpatterns = [
     # =================================================================
     path("generate-widget-session", CustomerWidgetSessionView.as_view(), name="customer-widget-session",),
     path("customer-transactions", CustomerTransactionListView.as_view(), name="customer-transactions",),
+    # this next endpoint is used to retrieve an escrow transaction and also create a dispute if needed
     path("customer-transactions/<uuid:id>", CustomerTransactionDetailView.as_view(), name="customer-transaction-detail-view",),
     path("customers/unlock-funds", UnlockEscrowFundsByBuyerView.as_view(), name="unlock-customer-escrow-funds-buyer",),
     path("customers/initiate-withdrawal", InitiateCustomerWidgetWalletWithdrawalView.as_view(), name="initiate-customer-widget-wallet-withdrawal",),

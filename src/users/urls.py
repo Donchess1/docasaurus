@@ -1,6 +1,9 @@
 from django.urls import path
 
-from users.views.bank import UserBankAccountListCreateView
+from users.views.bank import (
+    UserBankAccountListCreateView,
+    UserBankAccountRetrieveUpdateView,
+)
 from users.views.buyer import RegisterBuyerView
 from users.views.login import LoginView
 from users.views.merchant import RegisterMerchantView
@@ -47,6 +50,7 @@ urlpatterns = [
     path("profile", UserProfileView.as_view(), name="user-profile"),
     path("wallets", UserWalletListView.as_view(), name="user-wallets",),
     path("bank-accounts", UserBankAccountListCreateView.as_view(), name="user-bank-accounts",),
+    path("bank-accounts/<uuid:id>", UserBankAccountRetrieveUpdateView.as_view(), name="user-bank-account-details",),
     path("end-tour-guide", EndUserTourGuideView.as_view(), name="end-tour-guide"),
     path("kyc", UpdateKYCView.as_view(), name="update-kyc"),
     path("profile/edit", EditUserProfileView.as_view(), name="user-profile-edit"),

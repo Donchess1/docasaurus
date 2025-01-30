@@ -216,6 +216,9 @@ class InitiateMerchantEscrowTransactionView(generics.CreateAPIView):
         )
         obj = self.flw_api.initiate_payment_link(flw_init_txn_data)
         if obj["status"] == "error":
+            msg = obj["message"]
+            description = f"Failed to initiate payment link on {PAYMENT_GATEWAY_PROVIDER}. Reason: {msg}"
+            log_transaction_activity(deposit_txn, description, request_meta)
             return Response(
                 success=False,
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -240,7 +243,6 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
     serializer_class = MerchantEscrowRedirectPayloadSerializer
     permission_classes = (permissions.AllowAny,)
     flw_api = FlwAPI
-    throttle_scope = "merchant_api"
 
     def get(self, request):
         request_meta = extract_api_request_metadata(request)
@@ -473,7 +475,7 @@ class MerchantEscrowTransactionRedirectView(generics.GenericAPIView):
             data={
                 "transaction_reference": txn.reference,
                 "amount": total_payable_amount_to_charge,
-                "redirect_url": f"{redirect_url}?status=successful",
+                "redirect_url": f"{redirect_url}?status=successful",  # TODO: Include the original transaction reference of the merchant
             },
             message="Transaction verified.",
         )
