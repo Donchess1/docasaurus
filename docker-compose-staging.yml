@@ -1,18 +1,17 @@
 services:
   api: &api
     image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+    restart: always
     volumes:
       - myb-dev-static-data:/vol/web
     env_file:
       - ./.env
-    # depends_on:
-      # - db
-      # - redis
     networks:
       - myb
 
   nginx:
     image: nginx:latest
+    restart: always
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
@@ -21,27 +20,6 @@ services:
       - api
     networks:
       - myb
-
-  # db:
-  #   image: postgres:14.5-alpine3.16
-  #   restart: always
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - myb-dev-db:/var/lib/postgresql/data
-  #   env_file:
-  #     - ./.env
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USER}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${POSTGRES_DB}
-  #   networks:
-  #     - myb
-
-  # redis:
-  #   image: redis:alpine
-  #   networks:
-  #     - myb
 
   celery:
     <<: *api
@@ -55,6 +33,7 @@ services:
       echo 'Starting Celery worker:' &&
       celery -A core worker -l INFO --logfile=celery.log
       "
+    restart: always
     depends_on:
       - api
     networks:
@@ -72,6 +51,7 @@ services:
       echo 'Starting Celery worker:' &&
       celery -A core beat -l INFO --logfile=celery_beat.log
       "
+    restart: always
     depends_on:
       - api
     networks:
