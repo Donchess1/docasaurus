@@ -15,10 +15,10 @@ const config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://https://github.com/Orange-Invent-House-Ltd/mybalance-apihttps://github.com/Orange-Invent-House-Ltd/',
+  url: 'https://github.com/',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/Orange-Invent-House-Ltd/mybalance-api',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
