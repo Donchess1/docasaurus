@@ -1,0 +1,29 @@
+
+----------------------------------------------------------------------------------
+## User's General Events
+* Endpoint: `GET /v1/console/events`
+* Purpose: .
+
+> Body parameter
+
+```json
+{}
+```
+> 200 Response
+
+```json
+[
+  {
+    "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+    "name": "string",
+    "description": "string",
+    "venue": "string",
+    "date": "2019-08-24T14:15:22Z",
+    "convener": "string",
+    "meta": null,
+    "created_at": "2019-08-24T14:15:22Z",
+    "updated_at": "2019-08-24T14:15:22Z"
+  }
+]
+```
+----------------------------------------------------------------------------------
