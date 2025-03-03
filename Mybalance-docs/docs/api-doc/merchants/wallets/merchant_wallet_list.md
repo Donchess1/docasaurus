@@ -1,29 +1,32 @@
 
 ----------------------------------------------------------------------------------
-## merchants confirm-customer-withdrawal create
-* Endpoint: `POST v1/merchants/customers/confirm-customer-withdrawal`
+## merchants wallets list
+* Endpoint: `GET v1/merchants/wallets`
 * Purpose: 
 
-##Authorization
+## Authorization
 
 ```json
-API Key
+API key
 ```
 
 > Body parameter
-
 ```json
- {
-  "otp": "<string>",
-  "tempId": "<string>"
-}
+{  }
 ```
 
 > 200 Response
+
 ```json
-{
-  "otp": "<string>",
-  "tempId": "<string>"
-}
+[
+  {
+    "currency": "USD",
+    "balance": "<string>"
+  },
+  {
+    "currency": "USD",
+    "balance": "<string>"
+  }
+]
 ```
 ----------------------------------------------------------------------------------

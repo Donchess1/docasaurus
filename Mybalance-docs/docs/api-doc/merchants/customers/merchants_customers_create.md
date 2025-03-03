@@ -21,7 +21,7 @@ Bearer Token
   "phoneNumber": "60945585911"
 }
 ```
-
+> 200 Response
 ```json
 {
   "email": "<email>",

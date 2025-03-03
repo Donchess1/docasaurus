@@ -4,11 +4,16 @@
 * Endpoint: `GET /console/chart/transactions`
 * Purpose: Retrieve transactions.
 
-> Body parameter
-
+## Authorization
 ```json
-
+API key
 ```
+
+> Body parameter
+```json
+{ }
+```
+
 > 200 Response
 
 ```json
