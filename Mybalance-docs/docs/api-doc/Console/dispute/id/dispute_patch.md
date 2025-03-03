@@ -1,5 +1,4 @@
 
-
 ----------------------------------------------------------------------------------
 ## console disputes partial update
 * Endpoint: `PUT /console/disputes/:id`
@@ -10,8 +9,8 @@
 API key
 ```
 
-Path Variables
-id                      <string>(Required)
+## Path Variables
+id                      "string"(Required)
 
 > Body parameter
 

@@ -5,42 +5,43 @@
 * Purpose: 
 
 ## Authorization
-
 ```json
 API key
 ```
-```json
+
 Path Variables
-id<string>                    (Required)
-```
-
-##Query Params
 ```json
-priority<string>            priority
-
-source<string>              source
-
-status<string>              status
-
-author<string>              author
-
-created<string>             created
-
-email<string>               email
-
-search<string>              A search term.
-
-page<integer>               A page number within the paginated result set.
-
-size<integer>               Number of results to return per page.
+id "string"                     (Required)
 ```
 
+## Query Params
+```json
+priority "string"            priority
+
+source "string"              source
+
+status "string"              status
+
+author "string"              author
+
+created "string"             created
+
+email "string"               email
+
+search "string"              A search term.
+
+page "integer"               A page number within the paginated result set.
+
+size "integer"               Number of results to return per page.
+```
 
 > Body parameter
 
 ```json
-
+{ }
 ```
+Body parameter
+```json
   "count": "<integer>",
   "results": [
     {
@@ -78,7 +79,5 @@ size<integer>               Number of results to return per page.
   ],
   "next": "<uri>",
   "previous": "<uri>"
-
-}
 ```
 ----------------------------------------------------------------------------------

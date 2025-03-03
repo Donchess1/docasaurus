@@ -11,7 +11,7 @@ API key
 ```
 
 ## Path Variables
-id                          <string>(Required)
+id                          "string"(Required)
 
 > Body parameter
 ```json

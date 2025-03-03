@@ -10,10 +10,9 @@
 API key
 ```
 ## Query Params
-status                  <completed>
-tx_ref                  <string>
-transaction_id          <string>
-
+status                  "completed"
+tx_ref                  "string"
+transaction_id          "string"
 > Body parameter
 ```json
 

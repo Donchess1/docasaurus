@@ -10,37 +10,37 @@ _
 Bearer Token
 ```
 Query Params
-status<string>            status
+status "string"            status
 
-created<string>           created
+created "string"           created
 
-type<string>              type
+type "string"              type
 
-reference<string>         reference
+reference "string"         reference
 
 providerMYBALANCE         provider
 
-currency<string>          currency
+currency "string"          currency
 
-email<string>             email
+email "string"             email
 
-mode<string>              mode
+mode "string"              mode
 
-amount_lt<string>         amount_lt
+amount_lt "string"         amount_lt
 
-amount_gt<string>         amount_gt
+amount_gt "string"         amount_gt
 
-amount_lte<string>        amount_lte
+amount_lte "string"        amount_lte
 
-amount_gte<string>        amount_gte
+amount_gte "string"        amount_gte
 
-amount_exact<string>      amount_exact
+amount_exact "string"      amount_exact
 
-search<string>            A search term.
+search "string"            A search term.
 
-page<integer>             A page number within the paginated result set.
+page "integer"             A page number within the paginated result set.
 
-size<integer>             Number of results to return per page.
+size "integer"             Number of results to return per page.
 
 > Body parameter
 ```json

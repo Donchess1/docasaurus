@@ -10,7 +10,7 @@
 API Key
 ```
 Path Variables
-id                              <string>(Required)
+id                              "string"(Required)
 
 > Body parameter
 
