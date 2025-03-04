@@ -1,0 +1,4 @@
+## API Documentation {#introduction}
+MyBalance provides escrow services to individuals and businesses. This API built for merchants safeguards customers on their platform - allowing customers to initiate, fund, hold and release payments from our escrow vault.
+
+To interact with this API, you need to [create](https://docs.google.com/forms/d/e/1FAIpQLSfVw-lN6ciWaqf6zm-dhHyImK6RltA9KPc91zmZi1TO2gKSCw/viewform) a Merchant account with MyBalance. Your platform API key will be sent via email within 72 hours.

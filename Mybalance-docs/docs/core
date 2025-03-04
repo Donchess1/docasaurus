@@ -1,0 +1,15 @@
+
+## Core Concepts {#section 1}
+This section describes the core concepts in the API.
+
+`Customer`
+A customer represents a user account (buyer/seller) on MyBalance which you must create if not already existing in order for a transaction to be initiated successfully.
+
+`Transaction`
+This is an escrow transaction which represents an arrangement where MyBalance holds and releases funds for a transaction once specified conditions are met.
+
+`Settlement`
+As the name implies, this represents payouts made to the merchant wallet once an escrow transaction has been completed and funds have been released.
+
+`Dispute`
+A dispute arises when there is a conflict between the buyer and seller, such as when the buyer decides to reject a delivered item or when seller does not receive funds in their wallet, necessitating resolution.
