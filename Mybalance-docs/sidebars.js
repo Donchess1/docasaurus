@@ -16,7 +16,7 @@ const sidebars = {
           {
         type: 'doc',
         id: 'API_Documentation',
-        label: 'Introduction', 
+        label: 'Introduction',
       },
       {
         type: 'link',

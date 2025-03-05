@@ -7,7 +7,7 @@
     "start": "docusaurus start",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
-    "deploy": "docusaurus deploy",
+    "deploy": "GIT_USER=Donchess1 npm run deploy",
     "clear": "docusaurus clear",
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
@@ -16,7 +16,6 @@
   "dependencies": {
     "@docusaurus/core": "3.7.0",
     "@docusaurus/plugin-content-docs": "^3.7.0",
-    "@docusaurus/preset-classic": "3.7.0",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "prism-react-renderer": "^2.3.0",
@@ -25,7 +24,9 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.7.0",
-    "@docusaurus/types": "3.7.0"
+    "@docusaurus/preset-classic": "^3.7.0",
+    "@docusaurus/types": "3.7.0",
+    "gh-pages": "^6.3.0"
   },
   "browserslist": {
     "production": [
